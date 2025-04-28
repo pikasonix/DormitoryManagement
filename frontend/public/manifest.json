@@ -1,0 +1,15 @@
+{
+  "short_name": "DMS",
+  "name": "QUẢN LÝ KÍ TÚC XÁ",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#4F46E5",
+  "background_color": "#ffffff"
+}

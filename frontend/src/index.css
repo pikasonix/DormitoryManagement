@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Calendar Styles */
+.rbc-calendar {
+  @apply font-sans;
+}
+
+.rbc-toolbar button {
+  @apply text-gray-700;
+}
+
+.rbc-toolbar button:hover {
+  @apply bg-gray-100;
+}
+
+.rbc-toolbar button.rbc-active {
+  @apply bg-indigo-600 text-white;
+}
+
+.rbc-toolbar button.rbc-active:hover {
+  @apply bg-indigo-700;
+}
+
+.rbc-event {
+  @apply rounded-md;
+}
+
+.rbc-today {
+  @apply bg-indigo-50;
+}
+
+.rbc-off-range-bg {
+  @apply bg-gray-50;
+}
+
+.rbc-header {
+  @apply py-2 font-medium text-gray-700;
+}
+
+.resident-photo {
+  background-color: #f3f4f6;
+  background-image: url('./assets/default-avatar.png');
+  background-size: cover;
+  background-position: center;
+} 

@@ -1,0 +1,1 @@
+{"version":3,"file":"storage.config.js","sourceRoot":"","sources":["../../src/config/storage.config.ts"],"names":[],"mappings":";;;;;;AAAA,oDAA2B;AAC3B,gBAAM,CAAC,MAAM,EAAE,CAAA;AAEF,QAAA,aAAa,GAAG;IAC3B,WAAW,EAAE,OAAO,CAAC,GAAG,CAAC,iBAAiB;IAC1C,eAAe,EAAE,OAAO,CAAC,GAAG,CAAC,qBAAqB;IAClD,MAAM,EAAE,OAAO,CAAC,GAAG,CAAC,UAAU;IAC9B,MAAM,EAAE,OAAO,CAAC,GAAG,CAAC,eAAe;CACpC,CAAA"}

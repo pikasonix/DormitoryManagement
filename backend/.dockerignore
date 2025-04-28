@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log
+*.log
+.git
+.gitignore
+README.md
+.vscode
+.idea
+
+# Jangan abaikan file-file ini
+# .env
+# .env.*
+# dist 
