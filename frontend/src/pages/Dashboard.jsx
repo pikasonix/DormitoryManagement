@@ -1,562 +1,396 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate, Outlet } from 'react-router-dom'
-import api from '../services/api'
-import { Card } from '../components/shared'
-import { Bar, Pie, Doughnut } from 'react-chartjs-2'
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext'; // Sử dụng AuthContext
+import apiClient from '../api/axios'; // Sử dụng apiClient đã cấu hình
+import { Card } from '../components/shared'; // Sử dụng Card component
+import LoadingSpinner from '../components/shared/LoadingSpinner'; // Sử dụng LoadingSpinner
+import { Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
+  ArcElement,
   Tooltip,
   Legend,
-  ArcElement
-} from 'chart.js'
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
+} from 'chart.js';
+import {
+  UsersIcon,
+  BuildingOffice2Icon,
+  RectangleGroupIcon,
+  WrenchScrewdriverIcon,
+  DocumentTextIcon,
+  BellAlertIcon, // Icon cho thông báo hoặc yêu cầu mới
+  InformationCircleIcon, // Icon cho thông tin sinh viên
+} from '@heroicons/react/24/outline';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-)
+// Đăng ký các thành phần cần thiết cho ChartJS (chỉ cần cho Pie/Doughnut)
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const Dashboard = () => {
-  const navigate = useNavigate()
-  const [residents, setResidents] = useState([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    byEducation: {},
-    byGender: {
-      MALE: 0,
-      FEMALE: 0
-    },
-    byAssistance: {
-      YAYASAN: 0,
-      DIAKONIA: 0
-    }
-  })
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [timeStats, setTimeStats] = useState({
-    byMonth: {
-      labels: [],
-      active: [],
-      new: [],
-      alumni: []
-    }
-  });
-
-  // Thêm ref cho biểu đồ
-  const chartRef = useRef(null);
-  const dashboardRef = useRef(null);  // Thêm ref cho container dashboard
-
-  // Định nghĩa màu sắc nhất quán
-  const chartColors = {
-    active: 'rgb(79, 70, 229)', // Indigo-600 cho Cư dân Hoạt động
-    new: 'rgb(34, 197, 94)',    // Green-600 cho Cư dân Mới
-    alumni: 'rgb(202, 138, 4)'  // Yellow-600 cho Cựu sinh viên
-  };
-
-  // Hàm để tính toán thống kê theo dòng thời gian
-  const calculateTimeStats = (residents) => {
-    // Khởi tạo thống kê theo tháng
-    const monthlyStats = {};
-
-    // Lấy khoảng thời gian bao gồm tất cả dữ liệu
-    const allDates = [];
-
-    residents.forEach(resident => {
-      // Thêm ngày vào
-      allDates.push(new Date(resident.createdAt));
-
-      // Thêm ngày ra cho cựu sinh viên
-      if (resident.status === 'ALUMNI' && resident.exitDate) {
-        allDates.push(new Date(resident.exitDate));
-      }
-    });
-
-    const minDate = allDates.length > 0 ? new Date(Math.min(...allDates)) : new Date();
-    const maxDate = new Date();
-
-    // Khởi tạo tất cả các tháng với giá trị 0
-    let currentDate = new Date(minDate);
-    while (currentDate <= maxDate) {
-      const monthKey = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
-      monthlyStats[monthKey] = { active: 0, new: 0, alumni: 0 };
-      currentDate.setMonth(currentDate.getMonth() + 1);
-    }
-
-    // Xử lý từng cư dân
-    residents.forEach(resident => {
-      const startDate = new Date(resident.createdAt);
-      const startKey = `${startDate.getFullYear()}-${(startDate.getMonth() + 1).toString().padStart(2, '0')}`;
-
-      console.log('Đang xử lý cư dân:', {
-        name: resident.name,
-        status: resident.status,
-        startKey,
-        exitDate: resident.exitDate
-      });
-
-      switch (resident.status) {
-        case 'NEW':
-          // Cư dân mới được tính vào tháng nhập
-          if (monthlyStats[startKey]) {
-            monthlyStats[startKey].new++;
-          }
-          break;
-
-        case 'ALUMNI':
-          if (resident.exitDate) {
-            const exitDate = new Date(resident.exitDate);
-            const exitKey = `${exitDate.getFullYear()}-${(exitDate.getMonth() + 1).toString().padStart(2, '0')}`;
-
-            console.log('Đang xử lý cựu sinh viên:', {
-              name: resident.name,
-              exitKey,
-              monthlyStats: monthlyStats[exitKey]
-            });
-
-            // Thêm vào cựu sinh viên trong tháng ra
-            if (monthlyStats[exitKey]) {
-              monthlyStats[exitKey].alumni++;
-            }
-
-            // Đối với cựu sinh viên, không cần tính là hoạt động sau ngày ra
-            let currentDate = new Date(startDate);
-            while (currentDate < exitDate) {
-              const key = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
-              if (monthlyStats[key]) {
-                monthlyStats[key].active++;
-              }
-              currentDate.setMonth(currentDate.getMonth() + 1);
-            }
-          }
-          break;
-
-        case 'ACTIVE':
-          // Tính là hoạt động từ tháng nhập đến hiện tại
-          let currentDate = new Date(startDate);
-          const now = new Date();
-          while (currentDate <= now) {
-            const key = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
-            if (monthlyStats[key]) {
-              monthlyStats[key].active++;
-            }
-            currentDate.setMonth(currentDate.getMonth() + 1);
-          }
-          break;
-      }
-    });
-
-    // Định dạng kết quả với thứ tự tháng đúng
-    const sortedMonths = Object.keys(monthlyStats).sort();
-    const result = {
-      labels: sortedMonths.map(month => {
-        const [year, monthNum] = month.split('-');
-        return new Date(year, parseInt(monthNum) - 1).toLocaleDateString('vi-VN', {
-          month: 'short',
-          year: 'numeric'
-        });
-      }),
-      active: sortedMonths.map(month => monthlyStats[month].active),
-      new: sortedMonths.map(month => monthlyStats[month].new),
-      alumni: sortedMonths.map(month => monthlyStats[month].alumni)
-    };
-
-    console.log('Thống kê hàng tháng:', monthlyStats);
-    console.log('Thống kê dòng thời gian cuối cùng:', result);
-    return result;
-  };
+  const { user, isLoading: isAuthLoading } = useAuth(); // Lấy user và trạng thái loading từ context
+  const [stats, setStats] = useState(null); // State cho dữ liệu thống kê (Admin/Staff)
+  const [studentInfo, setStudentInfo] = useState(null); // State cho thông tin sinh viên (Student)
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchData = async () => {
+      if (!user || isAuthLoading) return; // Chờ user và auth load xong
+
+      setIsLoading(true);
+      setError(null);
+
       try {
-        setLoading(true);
-        const response = await api.get('/api/residents');
-        const residentsData = response.data;
+        if (user.role === 'ADMIN' || user.role === 'STAFF') {
+          // --- Fetch data cho Admin/Staff ---
+          const [
+            studentRes,
+            roomRes,
+            maintenanceRes,
+            invoiceRes
+          ] = await Promise.allSettled([
+            // Lấy tổng số sinh viên (dùng limit=1 để lấy meta)
+            apiClient.get('/students?limit=1'),
+            // Lấy danh sách phòng để tính toán trạng thái
+            apiClient.get('/rooms'), // API này chưa có phân trang, lấy hết
+            // Lấy yêu cầu bảo trì đang chờ (dùng limit=1)
+            apiClient.get('/maintenance?status=pending&limit=1'),
+            // Lấy hóa đơn chưa thanh toán (dùng limit=1)
+            apiClient.get('/invoices?status=pending&limit=1'),
+          ]);
 
-        console.log('Dữ liệu cư dân đã lấy:', residentsData);
-        setResidents(residentsData);
+          // Xử lý kết quả student
+          const totalStudents = studentRes.status === 'fulfilled' ? (studentRes.value.data?.meta?.total ?? 0) : 0;
 
-        // Tính toán thống kê dòng thời gian
-        const timelineStats = calculateTimeStats(residentsData);
-        setTimeStats({
-          byMonth: timelineStats
-        });
-
-        // Tính toán thống kê
-        const statistics = {
-          total: residentsData.length,
-          byEducation: {},
-          byGender: {
-            MALE: 0,
-            FEMALE: 0
-          },
-          byAssistance: {
-            YAYASAN: 0,
-            DIAKONIA: 0
+          // Xử lý kết quả room
+          let roomStats = { total: 0, available: 0, occupied: 0, maintenance: 0 };
+          if (roomRes.status === 'fulfilled' && roomRes.value.data?.data) {
+            const rooms = roomRes.value.data.data;
+            roomStats.total = rooms.length;
+            rooms.forEach(room => {
+              // Giả sử status là 'AVAILABLE', 'OCCUPIED', 'UNDER_MAINTENANCE', 'FULL'
+              if (room.status === 'AVAILABLE') roomStats.available++;
+              else if (room.status === 'OCCUPIED' || room.status === 'FULL') roomStats.occupied++;
+              else if (room.status === 'UNDER_MAINTENANCE') roomStats.maintenance++;
+            });
           }
+
+          // Xử lý kết quả maintenance
+          const pendingMaintenance = maintenanceRes.status === 'fulfilled' ? (maintenanceRes.value.data?.meta?.total ?? 0) : 0;
+
+          // Xử lý kết quả invoice
+          const pendingInvoices = invoiceRes.status === 'fulfilled' ? (invoiceRes.value.data?.meta?.total ?? 0) : 0;
+
+          setStats({
+            totalStudents,
+            roomStats,
+            pendingMaintenance,
+            pendingInvoices,
+          });
+
+        } else if (user.role === 'STUDENT') {
+          // --- Fetch data cho Student ---
+          // Thông tin user cơ bản đã có trong `user` từ context
+          // Cần lấy thêm: phòng đang ở, hóa đơn chưa trả
+          const studentProfileId = user.profile?.id; // Lấy ID profile sinh viên từ user context
+          if (!studentProfileId) {
+            throw new Error("Không tìm thấy thông tin hồ sơ sinh viên.");
+          }
+
+          const [roomRes, invoiceRes] = await Promise.allSettled([
+            // Lấy thông tin phòng dựa vào roomId trong profile student (nếu có)
+            user.profile?.roomId ? apiClient.get(`/rooms/${user.profile.roomId}`) : Promise.resolve({ status: 'fulfilled', value: { data: { data: null } } }), // Nếu ko có roomId thì trả về null
+            // Lấy hóa đơn chưa thanh toán của sinh viên này
+            apiClient.get(`/invoices?studentId=${studentProfileId}&status=pending`),
+          ]);
+
+          const currentRoom = roomRes.status === 'fulfilled' ? roomRes.value.data?.data : null;
+          const pendingInvoices = invoiceRes.status === 'fulfilled' ? invoiceRes.value.data?.data ?? [] : [];
+
+          setStudentInfo({
+            currentRoom,
+            pendingInvoicesCount: pendingInvoices.length,
+            // Có thể thêm các thông tin khác như thông báo, lịch hoạt động sắp tới...
+          });
         }
-
-        // Tính toán theo giáo dục
-        residentsData.forEach(resident => {
-          if (resident.education) {
-            statistics.byEducation[resident.education] =
-              (statistics.byEducation[resident.education] || 0) + 1
-          }
-
-          if (resident.gender) {
-            statistics.byGender[resident.gender]++
-          }
-
-          if (resident.assistance) {
-            statistics.byAssistance[resident.assistance]++
-          }
-        })
-
-        console.log('Thống kê đã tính toán:', statistics) // Debug log
-        setStats(statistics)
-
-      } catch (error) {
-        console.error('Lỗi khi lấy dữ liệu:', error);
-        setError('Không thể tải dữ liệu');
+      } catch (err) {
+        console.error('Lỗi khi tải dữ liệu Dashboard:', err);
+        setError('Không thể tải dữ liệu cho bảng điều khiển.');
+        // Lỗi 401/403 đã được interceptor xử lý
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    fetchStats();
-  }, []);
+    fetchData();
+    // Chạy lại khi user thay đổi (ví dụ: logout rồi login lại với role khác)
+  }, [user, isAuthLoading]);
 
-  // Update useEffect untuk destroy chart sebelum update
-  useEffect(() => {
-    return () => {
-      if (chartRef.current) {
-        chartRef.current.destroy();
-      }
+  // --- Dữ liệu và Tùy chọn cho Biểu đồ (Admin/Staff) ---
+  const roomChartData = useMemo(() => {
+    if (!stats?.roomStats) return null;
+    const { available, occupied, maintenance } = stats.roomStats;
+    return {
+      labels: ['Phòng trống', 'Đang ở/Đầy', 'Đang bảo trì'],
+      datasets: [{
+        data: [available, occupied, maintenance],
+        backgroundColor: [
+          'rgba(52, 211, 153, 0.7)', // emerald-400
+          'rgba(59, 130, 246, 0.7)', // blue-500
+          'rgba(245, 158, 11, 0.7)', // amber-500
+        ],
+        borderColor: [
+          'rgba(5, 150, 105, 1)', // emerald-600
+          'rgba(37, 99, 235, 1)',  // blue-600
+          'rgba(217, 119, 6, 1)',  // amber-600
+        ],
+        borderWidth: 1,
+      }],
     };
-  }, []);
+  }, [stats]);
 
-  // Chart options
   const chartOptions = {
     responsive: true,
-    maintainAspectRatio: false,
+    maintainAspectRatio: false, // Cho phép biểu đồ co giãn tốt hơn
     plugins: {
       legend: {
-        position: 'bottom',
-        labels: {
-          padding: 20
-        }
-      }
-    }
-  }
-
-  // Chart data
-  const educationChartData = {
-    labels: Object.keys(stats.byEducation),
-    datasets: [{
-      label: 'Jumlah Penghuni',
-      data: Object.values(stats.byEducation),
-      backgroundColor: [
-        'rgba(99, 102, 241, 0.8)',  // Indigo
-        'rgba(59, 130, 246, 0.8)',  // Blue
-        'rgba(16, 185, 129, 0.8)',  // Green
-        'rgba(245, 158, 11, 0.8)',  // Yellow
-        'rgba(239, 68, 68, 0.8)',   // Red
-        'rgba(168, 85, 247, 0.8)'   // Purple
-      ]
-    }]
-  }
-
-  const genderChartData = {
-    labels: ['Laki-laki', 'Perempuan'],
-    datasets: [{
-      data: [stats.byGender.MALE, stats.byGender.FEMALE],
-      backgroundColor: [
-        'rgba(59, 130, 246, 0.8)',  // Blue
-        'rgba(236, 72, 153, 0.8)'   // Pink
-      ]
-    }]
-  }
-
-  const assistanceChartData = {
-    labels: ['Yayasan', 'Diakonia'],
-    datasets: [{
-      data: [stats.byAssistance.YAYASAN, stats.byAssistance.DIAKONIA],
-      backgroundColor: [
-        'rgba(16, 185, 129, 0.8)',  // Green
-        'rgba(245, 158, 11, 0.8)'   // Yellow
-      ]
-    }]
-  }
-
-  // Data untuk timeline chart
-  const timelineChartData = {
-    labels: timeStats.byMonth.labels,
-    datasets: [
-      {
-        label: 'Penghuni Aktif',
-        data: timeStats.byMonth.active,
-        backgroundColor: chartColors.active,
-        borderColor: chartColors.active,
-        borderWidth: 1
-      },
-      {
-        label: 'Penghuni Baru',
-        data: timeStats.byMonth.new,
-        backgroundColor: chartColors.new,
-        borderColor: chartColors.new,
-        borderWidth: 1
-      },
-      {
-        label: 'Alumni',
-        data: timeStats.byMonth.alumni,
-        backgroundColor: chartColors.alumni,
-        borderColor: chartColors.alumni,
-        borderWidth: 1
-      }
-    ]
-  };
-  // Tùy chọn cho biểu đồ dòng thời gian
-  const timelineChartOptions = {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      x: {
-        stacked: false
-      },
-      y: {
-        stacked: false,
-        beginAtZero: true,
-        ticks: {
-          stepSize: 1
-        }
-      }
-    },
-    plugins: {
-      legend: {
-        position: 'bottom'
+        position: 'bottom', // Chuyển chú giải xuống dưới
       },
       tooltip: {
-        mode: 'index',
-        intersect: false,
         callbacks: {
           label: function (context) {
-            const label = context.dataset.label || '';
-            const value = context.parsed.y || 0;
-            return `${label}: ${value} người`;
-          }
-        }
-      }
-    }
+            let label = context.label || '';
+            if (label) {
+              label += ': ';
+            }
+            if (context.parsed !== null) {
+              // Tính % nếu muốn
+              const total = context.dataset.data.reduce((acc, value) => acc + value, 0);
+              const value = context.parsed;
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+              label += `${value} (${percentage})`;
+            }
+            return label;
+          },
+        },
+      },
+    },
   };
 
-  // Hàm xuất PDF
-  const exportToPDF = async () => {
-    try {
-      const dashboard = dashboardRef.current;
-      const canvas = await html2canvas(dashboard, {
-        scale: 2,  // Tăng chất lượng
-        useCORS: true,  // Để xử lý hình ảnh cross-origin
-        logging: false  // Tắt logging
-      });
+  // --- Render UI ---
+  if (isLoading || isAuthLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
-      const imgWidth = 210;  // Chiều rộng A4 tính bằng mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  if (error) {
+    return (
+      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <strong className="font-bold">Lỗi!</strong>
+        <span className="block sm:inline"> {error}</span>
+      </div>
+    );
+  }
 
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgData = canvas.toDataURL('image/png');
+  // --- Render cho Admin/Staff ---
+  if (user && (user.role === 'ADMIN' || user.role === 'STAFF') && stats) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-semibold text-gray-900">Bảng điều khiển</h1>
 
-      // Thêm tiêu đề
-      pdf.setFontSize(16);
-      pdf.text('Báo cáo Thống kê Cư dân', 105, 15, { align: 'center' });
-      pdf.setFontSize(12);
-      pdf.text(`In vào ngày: ${new Date().toLocaleDateString('vi-VN')}`, 105, 22, { align: 'center' });
+        {/* Các thẻ thống kê nhanh */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Card>
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <UsersIcon className="h-6 w-6 text-blue-500" aria-hidden="true" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Tổng Sinh viên</dt>
+                    <dd className="text-2xl font-semibold text-gray-900">{stats.totalStudents}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-5 py-3 rounded-b-lg">
+              <div className="text-sm">
+                <Link to="/students" className="font-medium text-indigo-600 hover:text-indigo-500">Xem chi tiết</Link>
+              </div>
+            </div>
+          </Card>
 
-      // Thêm hình ảnh dashboard
-      pdf.addImage(imgData, 'PNG', 0, 30, imgWidth, imgHeight);
+          <Card>
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <RectangleGroupIcon className="h-6 w-6 text-green-500" aria-hidden="true" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Phòng Trống</dt>
+                    <dd className="text-2xl font-semibold text-gray-900">{stats.roomStats.available}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-5 py-3 rounded-b-lg">
+              <div className="text-sm">
+                <Link to="/rooms" className="font-medium text-indigo-600 hover:text-indigo-500">Xem chi tiết</Link>
+              </div>
+            </div>
+          </Card>
 
-      // Tải xuống PDF
-      pdf.save(`thong-ke-cu-dan-${new Date().toISOString().split('T')[0]}.pdf`);
+          <Card>
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <WrenchScrewdriverIcon className="h-6 w-6 text-yellow-500" aria-hidden="true" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">YC Bảo trì Chờ xử lý</dt>
+                    <dd className="text-2xl font-semibold text-gray-900">{stats.pendingMaintenance}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-5 py-3 rounded-b-lg">
+              <div className="text-sm">
+                <Link to="/maintenance" className="font-medium text-indigo-600 hover:text-indigo-500">Xem chi tiết</Link>
+              </div>
+            </div>
+          </Card>
 
-    } catch (error) {
-      console.error('Lỗi khi xuất PDF:', error);
-      // Thêm thông báo lỗi nếu cần
-    }
-  };
+          <Card>
+            <div className="p-5">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <DocumentTextIcon className="h-6 w-6 text-red-500" aria-hidden="true" />
+                </div>
+                <div className="ml-5 w-0 flex-1">
+                  <dl>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Hóa đơn Chưa thanh toán</dt>
+                    <dd className="text-2xl font-semibold text-gray-900">{stats.pendingInvoices}</dd>
+                  </dl>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gray-50 px-5 py-3 rounded-b-lg">
+              <div className="text-sm">
+                <Link to="/invoices" className="font-medium text-indigo-600 hover:text-indigo-500">Xem chi tiết</Link>
+              </div>
+            </div>
+          </Card>
+        </div>
 
-  // Thêm hàm xử lý khi nhấn vào trạng thái
-  const handleStatusClick = (status) => {
-    navigate('/dashboard/residents', {
-      state: { filterStatus: status }
-    });
-  };
+        {/* Biểu đồ */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Biểu đồ trạng thái phòng */}
+          <Card className="lg:col-span-2">
+            <div className="p-5">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Trạng thái phòng</h3>
+              {roomChartData ? (
+                <div className="h-64 md:h-80"> {/* Tăng chiều cao biểu đồ */}
+                  <Pie data={roomChartData} options={chartOptions} />
+                </div>
+              ) : (
+                <p className="text-gray-500">Không có dữ liệu phòng.</p>
+              )}
+            </div>
+          </Card>
 
-  if (loading) return (
-    <div className="flex justify-center items-center h-64">
-      <div className="text-lg text-gray-600">Đang tải thống kê...</div>
-    </div>
-  )
+          {/* Có thể thêm Card cho các hoạt động gần đây hoặc thông báo khác */}
+          <Card>
+            <div className="p-5">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Hoạt động gần đây</h3>
+              {/* TODO: Fetch và hiển thị hoạt động gần đây */}
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li>- Yêu cầu bảo trì mới từ phòng A101.</li>
+                <li>- Sinh viên Nguyễn Văn B vừa đăng ký xe.</li>
+                <li>- Hóa đơn tháng 5 đã được tạo.</li>
+              </ul>
+              <Link to="#" className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500">Xem tất cả</Link>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
-  if (error) return (
-    <div className="bg-red-50 p-4 rounded-lg">
-      <div className="text-red-700">{error}</div>
-    </div>
-  )
+  // --- Render cho Student ---
+  if (user && user.role === 'STUDENT' && studentInfo) {
+    const { currentRoom, pendingInvoicesCount } = studentInfo;
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-semibold text-gray-900">Chào mừng, {user.profile?.fullName || user.name || user.email}!</h1>
 
-  return (
-    <div className="space-y-8">
-      {/* Hiển thị nội dung dashboard chỉ khi ở route /dashboard */}
-      {window.location.pathname === '/dashboard' && (
-        <>
-          <div className="flex justify-between items-center pb-4 border-b border-gray-200">
-            <h1 className="text-2xl font-semibold text-gray-900">Thống kê Cư dân</h1>
-            <button
-              onClick={exportToPDF}
-              className="inline-flex items-center px-4 py-2 bg-indigo-600 text-sm font-medium text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-150"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 mr-2"
-                viewBox="0 0 20 20"
-                fill="currentColor"
+        {/* Thông tin phòng ở */}
+        <Card>
+          <div className="p-5">
+            <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+              <RectangleGroupIcon className="h-5 w-5 mr-2 text-indigo-500" />
+              Phòng ở hiện tại
+            </h3>
+            {currentRoom ? (
+              <div>
+                <p><span className="font-medium">Tòa nhà:</span> {currentRoom.building?.name || 'N/A'}</p>
+                <p><span className="font-medium">Số phòng:</span> {currentRoom.number}</p>
+                <p><span className="font-medium">Loại phòng:</span> {currentRoom.type}</p>
+                {/* Thêm các thông tin khác nếu cần */}
+                <Link to={`/rooms`} className="mt-3 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500">Xem chi tiết phòng</Link>
+              </div>
+            ) : (
+              <p className="text-gray-600">Bạn chưa được xếp phòng.</p>
+              // Có thể thêm Link đến trang đăng ký phòng
+            )}
+          </div>
+        </Card>
+
+        {/* Thông báo & Hành động nhanh */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          {/* Hóa đơn chờ thanh toán */}
+          <Card>
+            <div className="p-5">
+              <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+                <DocumentTextIcon className="h-5 w-5 mr-2 text-red-500" />
+                Hóa đơn & Thanh toán
+              </h3>
+              {pendingInvoicesCount > 0 ? (
+                <p className="text-red-600">Bạn có {pendingInvoicesCount} hóa đơn chưa thanh toán.</p>
+              ) : (
+                <p className="text-green-600">Không có hóa đơn nào cần thanh toán.</p>
+              )}
+              <Link to="/profile" className="mt-3 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500">Xem hóa đơn của bạn</Link> {/* Link đến tab billing trong profile? */}
+            </div>
+          </Card>
+
+          {/* Yêu cầu bảo trì */}
+          <Card>
+            <div className="p-5">
+              <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+                <WrenchScrewdriverIcon className="h-5 w-5 mr-2 text-yellow-500" />
+                Bảo trì & Sửa chữa
+              </h3>
+              <p className="text-gray-600 mb-3">Gặp sự cố trong phòng? Gửi yêu cầu ngay.</p>
+              <Link
+                to="/maintenance/request"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                <path
-                  fillRule="evenodd"
-                  d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Xuất PDF
-            </button>
-          </div>
-
-          <div ref={dashboardRef} className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <Card className="p-6">
-                <div className="text-center">
-                  <h3 className="text-lg font-medium mb-3">Tổng số Cư dân</h3>
-                  <p className="text-3xl font-bold text-indigo-600">{stats.total}</p>
-                </div>
-              </Card>
-
-              <Card className="p-6">
-                <div className="text-center">
-                  <h3 className="text-lg font-medium mb-3">Theo Giới tính</h3>
-                  <div className="mt-3 space-y-3">
-                    <div>
-                      <span className="text-gray-600">Nam:</span>
-                      <span className="ml-3 font-bold text-indigo-600">{stats.byGender.MALE}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Nữ:</span>
-                      <span className="ml-3 font-bold text-indigo-600">{stats.byGender.FEMALE}</span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-6">
-                <div className="text-center">
-                  <h3 className="text-lg font-medium mb-3">Theo Hỗ trợ</h3>
-                  <div className="mt-3 space-y-3">
-                    <div>
-                      <span className="text-gray-600">Yayasan:</span>
-                      <span className="ml-3 font-bold text-indigo-600">{stats.byAssistance.YAYASAN}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-600">Diakonia:</span>
-                      <span className="ml-3 font-bold text-indigo-600">{stats.byAssistance.DIAKONIA}</span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
+                Gửi yêu cầu mới
+              </Link>
             </div>
+          </Card>
+        </div>
+        {/* Có thể thêm phần Thông báo chung hoặc Lịch hoạt động sắp tới */}
+      </div>
+    );
+  }
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <Card className="p-6">
-                <h3 className="text-lg font-medium mb-6">Thống kê Giáo dục</h3>
-                <div className="h-[300px]">
-                  <Bar data={educationChartData} options={chartOptions} />
-                </div>
-              </Card>
+  // Trường hợp không khớp role nào hoặc không có dữ liệu (ít xảy ra nếu logic đúng)
+  return <div>Không có dữ liệu hiển thị cho bảng điều khiển.</div>;
+};
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
-                <Card className="p-6">
-                  <h3 className="text-lg font-medium mb-6">Thống kê Giới tính</h3>
-                  <div className="h-[200px]">
-                    <Doughnut data={genderChartData} options={chartOptions} />
-                  </div>
-                </Card>
-
-                <Card className="p-6">
-                  <h3 className="text-lg font-medium mb-6">Thống kê Hỗ trợ</h3>
-                  <div className="h-[200px]">
-                    <Pie data={assistanceChartData} options={chartOptions} />
-                  </div>
-                </Card>
-              </div>
-            </div>
-
-            <Card className="p-6">
-              <h3 className="text-lg font-medium mb-6">Trạng thái Cư dân</h3>
-
-              <div className="grid grid-cols-3 gap-6">
-                <button
-                  onClick={() => handleStatusClick('ACTIVE')}
-                  className="text-center p-6 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors duration-150"
-                >
-                  <h4 className="text-sm font-medium text-indigo-600 mb-2">Cư dân Hoạt động</h4>
-                  <p className="text-2xl font-bold text-indigo-600">
-                    {residents.filter(r => r.status === 'ACTIVE').length}
-                  </p>
-                  <span className="text-sm text-indigo-500 mt-2 block">
-                    Nhấn để xem chi tiết
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => handleStatusClick('NEW')}
-                  className="text-center p-6 bg-green-50 rounded-lg hover:bg-green-100 transition-colors duration-150"
-                >
-                  <h4 className="text-sm font-medium text-green-600 mb-2">Cư dân Mới</h4>
-                  <p className="text-2xl font-bold text-green-600">
-                    {residents.filter(r => r.status === 'NEW').length}
-                  </p>
-                  <span className="text-sm text-green-500 mt-2 block">
-                    Nhấn để xem chi tiết
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => handleStatusClick('ALUMNI')}
-                  className="text-center p-6 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors duration-150"
-                >
-                  <h4 className="text-sm font-medium text-yellow-600 mb-2">Cựu sinh viên</h4>
-                  <p className="text-2xl font-bold text-yellow-600">
-                    {residents.filter(r => r.status === 'ALUMNI').length}
-                  </p>
-                  <span className="text-sm text-yellow-500 mt-2 block">
-                    Nhấn để xem chi tiết
-                  </span>
-                </button>
-              </div>
-            </Card>
-          </div>
-        </>
-      )}
-
-      {/* Outlet cho các route lồng nhau */}
-      <Outlet />
-    </div>
-  )
-}
-
-export default Dashboard 
+export default Dashboard;

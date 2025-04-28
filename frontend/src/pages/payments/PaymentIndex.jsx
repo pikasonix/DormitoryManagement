@@ -1,235 +1,206 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { paymentService } from '../../services/payment.service'
-import { Card } from '../../components/shared'
-import {
-  PlusIcon,
-  MagnifyingGlassIcon,
-  FunnelIcon,
-  ArrowPathIcon
-} from '@heroicons/react/24/outline'
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { paymentService } from '../../services/payment.service';
+import { studentService } from '../../services/student.service'; // Lấy tên SV
+import { invoiceService } from '../../services/invoice.service'; // Lấy số HĐ?
+import { Button, Table, Select, Input, Pagination, Badge } from '../../components/shared';
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
+import { toast } from 'react-hot-toast';
+import { EyeIcon, PencilSquareIcon, TrashIcon, CreditCardIcon, BanknotesIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
+import { format, parseISO } from 'date-fns';
+import { vi } from 'date-fns/locale';
+// import { useDebounce } from '../../hooks/useDebounce';
 
-const PaymentIndex = () => {
-  const [payments, setPayments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filters, setFilters] = useState({
-    status: '',
-    type: ''
-  })
+// Format ngày giờ
+const formatDateTime = (dateString) => { /* ... */ }
+// Format tiền tệ
+const formatCurrency = (amount) => { /* ... */ }
 
-  useEffect(() => {
-    fetchPayments()
-  }, [])
-
-  const fetchPayments = async () => {
-    try {
-      setLoading(true)
-      const response = await paymentService.getAll()
-      setPayments(response.data)
-      setError(null)
-    } catch (error) {
-      console.error('Error fetching payments:', error)
-      setError('Không thể tải dữ liệu thanh toán')
-    } finally {
-      setLoading(false)
-    }
+// Options trạng thái thanh toán
+const paymentStatusOptions = [
+  { value: '', label: 'Tất cả trạng thái' },
+  { value: 'success', label: 'Thành công' },
+  { value: 'pending', label: 'Đang chờ' },
+  { value: 'failed', label: 'Thất bại' },
+  { value: 'cancelled', label: 'Đã hủy' }, // Ví dụ
+];
+// Options phương thức thanh toán
+const paymentMethodOptions = [
+  { value: '', label: 'Tất cả phương thức' },
+  { value: 'credit_card', label: 'Thẻ tín dụng' },
+  { value: 'bank_transfer', label: 'Chuyển khoản NH' },
+  { value: 'cash', label: 'Tiền mặt' },
+  { value: 'momo', label: 'MoMo' }, // Ví dụ
+  { value: 'zalopay', label: 'ZaloPay' }, // Ví dụ
+  { value: 'other', label: 'Khác' },
+];
+// Màu badge
+const getStatusBadgeColor = (status) => {
+  switch (status?.toLowerCase()) {
+    case 'success': return 'green';
+    case 'pending': return 'yellow';
+    case 'failed': return 'red';
+    case 'cancelled': return 'gray';
+    default: return 'gray';
   }
-
-  const handleDelete = async (id) => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa khoản thanh toán này không?')) {
-      try {
-        await paymentService.delete(id)
-        fetchPayments()
-      } catch (error) {
-        console.error('Error deleting payment:', error)
-        setError('Không thể xóa khoản thanh toán')
-      }
-    }
+};
+// Icon phương thức
+const getMethodIcon = (method) => {
+  switch (method?.toLowerCase()) {
+    case 'credit_card': return <CreditCardIcon className="h-5 w-5 text-blue-500 inline-block mr-1" />;
+    case 'bank_transfer': return <BanknotesIcon className="h-5 w-5 text-green-500 inline-block mr-1" />;
+    case 'cash': return <BanknotesIcon className="h-5 w-5 text-gray-500 inline-block mr-1" />;
+    // Thêm icon cho MoMo, ZaloPay...
+    default: return <QuestionMarkCircleIcon className="h-5 w-5 text-gray-400 inline-block mr-1" />;
   }
-
-  const filteredPayments = payments.filter(payment => {
-    const matchesSearch =
-      payment.resident?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      payment.invoice_number.toLowerCase().includes(searchTerm.toLowerCase())
-
-    const matchesFilters = (
-      (!filters.status || payment.status === filters.status) &&
-      (!filters.type || payment.type === filters.type)
-    )
-
-    return matchesSearch && matchesFilters
-  })
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'PAID':
-        return 'bg-green-100 text-green-800'
-      case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800'
-      case 'OVERDUE':
-        return 'bg-red-100 text-red-800'
-      default:
-        return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <ArrowPathIcon className="w-8 h-8 text-gray-400 animate-spin" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 p-4 rounded-lg">
-        <div className="text-red-700">{error}</div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-6">
-      {/* Tiêu đề */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Dữ liệu thanh toán</h1>
-        <Link
-          to="/dashboard/payments/new"
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-        >
-          <PlusIcon className="h-5 w-5 mr-2" />
-          Thêm thanh toán
-        </Link>
-      </div>
-
-      {/* Tìm kiếm và Lọc */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="md:col-span-2">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Tìm tên cư dân hoặc số hóa đơn..."
-                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <FunnelIcon className="h-5 w-5 text-gray-400" />
-            <select
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            >
-              <option value="">Trạng thái</option>
-              <option value="PAID">Đã thanh toán</option>
-              <option value="PENDING">Đang chờ</option>
-              <option value="OVERDUE">Quá hạn</option>
-            </select>
-
-            <select
-              value={filters.type}
-              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-              className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            >
-              <option value="">Loại thanh toán</option>
-              <option value="MONTHLY">Hàng tháng</option>
-              <option value="REGISTRATION">Đăng ký</option>
-              <option value="OTHER">Khác</option>
-            </select>
-          </div>
-        </div>
-      </Card>
-
-      {/* Bảng thanh toán */}
-      <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hóa đơn
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Cư dân
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Loại
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Số tiền
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trạng thái
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ngày
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Hành động
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredPayments.map((payment) => (
-                <tr key={payment.id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
-                      {payment.invoice_number}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{payment.resident?.name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{payment.type}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      Rp {payment.amount.toLocaleString('id-ID')}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(payment.status)}`}>
-                      {payment.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {new Date(payment.date).toLocaleDateString('id-ID')}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link
-                      to={`/dashboard/payments/${payment.id}/edit`}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
-                    >
-                      Sửa
-                    </Link>
-                    <button
-                      onClick={() => handleDelete(payment.id)}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Xóa
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-    </div>
-  )
 }
 
-export default PaymentIndex
+const PaymentIndex = () => {
+  const [payments, setPayments] = useState([]);
+  const [students, setStudents] = useState({}); // Cache SV
+  // const [invoices, setInvoices] = useState({}); // Cache hóa đơn nếu cần hiển thị số HĐ
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [meta, setMeta] = useState({ currentPage: 1, totalPages: 1, limit: 10, total: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filters, setFilters] = useState({
+    status: '',
+    method: '',
+    studentId: '',
+    invoiceId: '',
+    // search: '', // Tìm theo mã giao dịch?
+  });
+  // const debouncedSearch = useDebounce(filters.search, 500);
+  const navigate = useNavigate();
+
+  // Fetch danh sách thanh toán
+  const fetchPayments = useCallback(async (page = 1, currentFilters) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const params = { page, limit: meta.limit };
+      Object.keys(currentFilters).forEach(key => {
+        if (currentFilters[key]) params[key] = currentFilters[key];
+      });
+      const data = await paymentService.getAllPayments(params);
+      const paymentList = data.payments || [];
+      setPayments(paymentList);
+      setMeta(prev => ({ ...prev, ...data.meta }));
+      setCurrentPage(data.meta?.page || 1);
+
+      // Fetch thông tin SV liên quan (nếu cần)
+      const studentIds = [...new Set(paymentList.map(p => p.studentId).filter(id => id && !students[id]))];
+      if (studentIds.length > 0) { /* ... fetch students ... */ }
+
+    } catch (err) {
+      setError('Không thể tải lịch sử thanh toán.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [meta.limit, students]); // Thêm students dependency
+
+  useEffect(() => {
+    fetchPayments(currentPage, filters);
+  }, [fetchPayments, currentPage, filters]);
+
+  // Fetch students cho filter (chỉ 1 lần)
+  useEffect(() => {
+    const loadStudents = async () => {
+      try {
+        const data = await studentService.getAllStudents({ limit: 1000, fields: 'id,fullName' });
+        // Chuyển thành object để dễ tra cứu
+        const studentMap = {};
+        (data.students || []).forEach(s => { studentMap[s.id] = s; });
+        setStudents(studentMap);
+      } catch (err) { console.error("Lỗi tải SV cho filter payment:", err); }
+    };
+    loadStudents();
+  }, []);
+
+  // Handlers
+  const handleFilterChange = (e) => {
+    setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    setCurrentPage(1);
+  };
+  const handlePageChange = (page) => setCurrentPage(page);
+  const handleDelete = async (id) => { // Thận trọng khi dùng
+    if (window.confirm(`Bạn có chắc muốn xóa giao dịch thanh toán này không? Hành động này thường không được khuyến khích.`)) {
+      try {
+        await paymentService.deletePayment(id);
+        toast.success(`Đã xóa giao dịch!`);
+        fetchPayments(currentPage, filters);
+      } catch (err) {
+        toast.error(err?.message || `Xóa giao dịch thất bại.`);
+      }
+    }
+  };
+
+  // --- Cấu hình bảng ---
+  const columns = useMemo(() => [
+    { Header: 'Mã GD', accessor: 'id', Cell: ({ value }) => <span className='font-mono text-xs'>#{value}</span> }, // Hoặc mã GD từ cổng TT
+    { Header: 'Ngày GD', accessor: 'transactionDate', Cell: ({ value }) => formatDateTime(value) },
+    { Header: 'Sinh viên', accessor: 'studentId', Cell: ({ value }) => students[value]?.fullName || `ID: ${value}` },
+    { Header: 'Số tiền', accessor: 'amount', Cell: ({ value }) => formatCurrency(value) },
+    { Header: 'Hóa đơn ID', accessor: 'invoiceId', Cell: ({ value }) => value ? <Link to={`/invoices/${value}`} className='text-indigo-600 hover:underline font-mono'>#{value}</Link> : '-' },
+    { Header: 'Phương thức', accessor: 'method', Cell: ({ value }) => <span className='flex items-center'>{getMethodIcon(value)}{paymentMethodOptions.find(opt => opt.value === value)?.label || value}</span> },
+    { Header: 'Trạng thái', accessor: 'status', Cell: ({ value }) => <Badge color={getStatusBadgeColor(value)}>{value?.toUpperCase() || 'N/A'}</Badge> },
+    // { Header: 'Chi tiết', accessor: 'details', Cell: ({value}) => <p className='text-xs text-gray-500 line-clamp-1'>{value || '-'}</p> },
+    {
+      Header: 'Hành động',
+      accessor: 'actions',
+      Cell: ({ row }) => (
+        <div className="flex space-x-2 justify-center">
+          {/* Nút xem chi tiết nếu có trang chi tiết Payment */}
+          {/* <Button variant="icon" onClick={() => navigate(`/payments/${row.original.id}`)} tooltip="Xem chi tiết"><EyeIcon className="h-5 w-5"/></Button> */}
+          {/* Nút sửa trạng thái nếu cần */}
+          {/* <Button variant="icon" onClick={() => navigate(`/payments/${row.original.id}/edit`)} tooltip="Cập nhật"><PencilSquareIcon className="h-5 w-5"/></Button> */}
+          {/* Nút xóa (thận trọng) */}
+          <Button variant="icon" onClick={() => handleDelete(row.original.id)} tooltip="Xóa giao dịch"><TrashIcon className="h-5 w-5 text-red-500 hover:text-red-700" /></Button>
+        </div>
+      ),
+    },
+  ], [navigate, students, currentPage, filters]);
+
+  // Options cho filter SV
+  const studentOptions = [{ value: '', label: 'Tất cả sinh viên' }, ...Object.values(students).map(s => ({ value: s.id.toString(), label: s.fullName }))];
+
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap justify-between items-center gap-4">
+        <h1 className="text-2xl font-semibold">Lịch sử Thanh toán</h1>
+        {/* Nút ghi nhận thanh toán thủ công nếu cần */}
+        {/* <Button onClick={() => navigate('/payments/new')} icon={PlusIcon}>Ghi nhận Thanh toán</Button> */}
+      </div>
+
+      {/* Bộ lọc */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
+        <Select label="Sinh viên" id="studentId" name="studentId" value={filters.studentId} onChange={handleFilterChange} options={studentOptions} searchable /> {/* Thêm searchable nếu component hỗ trợ */}
+        <Select label="Trạng thái" id="status" name="status" value={filters.status} onChange={handleFilterChange} options={paymentStatusOptions} />
+        <Select label="Phương thức" id="method" name="method" value={filters.method} onChange={handleFilterChange} options={paymentMethodOptions} />
+        <Input label="Mã Hóa đơn" id="invoiceId" name="invoiceId" placeholder="Nhập ID hóa đơn..." value={filters.invoiceId} onChange={handleFilterChange} />
+        {/* <Input label="Tìm kiếm GD" id="search" name="search" value={filters.search} onChange={handleFilterChange} /> */}
+      </div>
+
+      {/* Bảng dữ liệu */}
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
+      ) : error ? (
+        <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
+      ) : (
+        <>
+          <Table columns={columns} data={payments} />
+          {meta.totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={meta.totalPages}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+export default PaymentIndex;

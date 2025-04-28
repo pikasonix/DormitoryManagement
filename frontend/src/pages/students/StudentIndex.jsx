@@ -1,203 +1,174 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { studentService } from '../../services/student.service';
-import { buildingService } from '../../services/building.service'; // Để lọc theo tòa nhà
-import { roomService } from '../../services/room.service'; // Để lọc theo phòng
-import StudentInfoCard from '../../components/students/StudentInfoCard'; // Card hiển thị
-import Pagination from '../../components/shared/Pagination';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import SearchInput from '../../components/shared/SearchInput';
-import Select from '../../components/shared/Select';
-import { PlusIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { Button, Table, Input, Pagination, Badge } from '../../components/shared'; // Thêm Pagination, Badge
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import { StudentStatus } from '@prisma/client'; // Import enum nếu cần (hoặc định nghĩa const)
+import { PlusIcon, PencilSquareIcon, TrashIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { format, parseISO } from 'date-fns';
+import { vi } from 'date-fns/locale';
+import { useDebounce } from '../../hooks/useDebounce'; // Giả sử có hook debounce
 
-// Options cho bộ lọc Status
-const studentStatuses = [
-  { value: '', label: 'Tất cả trạng thái' },
-  { value: 'RENTING', label: 'Đang ở' },
-  { value: 'PENDING_APPROVAL', label: 'Chờ duyệt' },
-  { value: 'CHECKED_OUT', label: 'Đã rời đi' },
-  { value: 'EVICTED', label: 'Buộc thôi ở' },
-];
+// Helper format ngày
+const formatDate = (dateString) => {
+  if (!dateString) return '-';
+  try { return format(parseISO(dateString), 'dd/MM/yyyy', { locale: vi }); }
+  catch (e) { return dateString; }
+}
+
+// Helper lấy màu badge status
+const getStatusBadgeColor = (status) => {
+  switch (status?.toUpperCase()) { // API trả về 'active' ?
+    case 'ACTIVE': return 'green';
+    case 'INACTIVE': return 'gray';
+    case 'GRADUATED': return 'blue'; // Ví dụ thêm status
+    case 'SUSPENDED': return 'yellow'; // Ví dụ
+    default: return 'gray';
+  }
+}
 
 const StudentIndex = () => {
   const [students, setStudents] = useState([]);
-  const [buildings, setBuildings] = useState([]);
-  const [rooms, setRooms] = useState([]); // Phòng thuộc tòa nhà đã chọn
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalItems: 0, limit: 10 });
+  const [meta, setMeta] = useState({ currentPage: 1, totalPages: 1, limit: 10, total: 0 }); // State cho phân trang
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    buildingId: '',
-    roomId: '',
-    status: '',
-    faculty: '', // Thêm filter theo Khoa
-    courseYear: '', // Thêm filter theo Khóa
-  });
+  const debouncedSearchTerm = useDebounce(searchTerm, 500); // Debounce search input
+  const navigate = useNavigate();
 
-  // Fetch buildings cho bộ lọc
-  useEffect(() => {
-    buildingService.getAllBuildings({ limit: 500 })
-      .then(res => setBuildings([{ value: '', label: 'Tất cả tòa nhà' }, ...res.data.map(b => ({ value: b.id, label: b.name }))]))
-      .catch(err => console.error("Lỗi lấy tòa nhà:", err));
-  }, []);
-
-  // Fetch rooms khi building thay đổi
-  useEffect(() => {
-    if (filters.buildingId) {
-      roomService.getAllRooms({ buildingId: filters.buildingId, limit: 500 }) // Lấy hết phòng trong tòa nhà
-        .then(res => setRooms([{ value: '', label: 'Tất cả phòng' }, ...res.data.map(r => ({ value: r.id, label: r.number }))]))
-        .catch(err => { console.error("Lỗi lấy phòng:", err); setRooms([]); });
-    } else {
-      setRooms([]); // Xóa danh sách phòng nếu không chọn tòa nhà
-    }
-    // Reset filter phòng khi tòa nhà thay đổi
-    setFilters(prev => ({ ...prev, roomId: '' }));
-  }, [filters.buildingId]);
-
-  // Fetch danh sách sinh viên
-  const fetchStudents = useCallback(async (page = 1, limit = 10, search = '', currentFilters = {}) => {
-    setLoading(true);
+  // Hàm fetch dữ liệu
+  const fetchStudents = useCallback(async (page = 1, search = '') => {
+    setIsLoading(true);
     setError(null);
-    const activeFilters = Object.entries(currentFilters)
-      .filter(([, value]) => value !== '')
-      .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
     try {
-      const params = { page, limit, search, ...activeFilters, sortBy: 'fullName', sortOrder: 'asc' };
-      const response = await studentService.getAllStudents(params);
-      setStudents(response.data || []);
-      setPagination({
-        currentPage: page,
-        totalPages: Math.ceil(response.total / limit),
-        totalItems: response.total,
-        limit: limit,
-      });
+      const params = {
+        page: page,
+        limit: meta.limit,
+        keyword: search || undefined, // Gửi keyword nếu có giá trị
+      };
+      const data = await studentService.getAllStudents(params);
+      setStudents(data.students || []);
+      setMeta(prev => ({ ...prev, ...data.meta })); // Cập nhật meta data
+      setCurrentPage(data.meta?.page || 1); // Cập nhật trang hiện tại
     } catch (err) {
       setError('Không thể tải danh sách sinh viên.');
-      console.error(err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, []);
+  }, [meta.limit]); // Chỉ phụ thuộc vào limit để định nghĩa hàm
 
-  // Trigger fetch khi state thay đổi
+  // Fetch khi trang thay đổi hoặc search term (đã debounce) thay đổi
   useEffect(() => {
-    const debounceFetch = setTimeout(() => {
-      fetchStudents(pagination.currentPage, pagination.limit, searchTerm, filters);
-    }, 500);
-    return () => clearTimeout(debounceFetch);
-  }, [pagination.currentPage, pagination.limit, searchTerm, filters, fetchStudents]);
+    fetchStudents(currentPage, debouncedSearchTerm);
+  }, [fetchStudents, currentPage, debouncedSearchTerm]);
 
-  // Xử lý thay đổi filter
-  const handleFilterChange = (e) => {
-    const { name, value } = e.target;
-    setFilters(prev => ({ ...prev, [name]: value }));
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
-  };
-
-  // Xử lý thay đổi tìm kiếm
-  const handleSearchChange = (searchValue) => {
-    setSearchTerm(searchValue);
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
-  };
-
-
-  // Xử lý thay đổi trang
-  const handlePageChange = (newPage) => {
-    if (newPage > 0 && newPage <= pagination.totalPages) {
-      setPagination(prev => ({ ...prev, currentPage: newPage }));
-    }
-  };
-
-  // Xử lý xóa sinh viên (cần xác nhận)
-  const handleDeleteStudent = async (id, name) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa sinh viên "${name}"? Tất cả dữ liệu liên quan (hóa đơn, thanh toán,...) cũng sẽ bị xóa!`)) {
+  // Hàm xử lý xóa
+  const handleDelete = async (id, name) => {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa hồ sơ sinh viên "${name}" không? Hành động này có thể không thể hoàn tác.`)) {
       try {
         await studentService.deleteStudent(id);
-        // Tải lại trang hiện tại
-        fetchStudents(pagination.currentPage, pagination.limit, searchTerm, filters);
-        // toast.success đã có trong service
+        toast.success(`Đã xóa hồ sơ sinh viên "${name}" thành công!`);
+        // Fetch lại trang hiện tại sau khi xóa
+        fetchStudents(currentPage, debouncedSearchTerm);
       } catch (err) {
-        console.error("Lỗi khi xóa sinh viên từ Index:", err);
+        toast.error(err?.message || `Xóa hồ sơ sinh viên "${name}" thất bại.`);
       }
     }
   };
 
+  // Xử lý chuyển trang
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  // --- Cấu hình bảng ---
+  const columns = useMemo(() => [
+    {
+      Header: 'Ảnh',
+      accessor: 'user.avatar.path', // Đường dẫn avatar từ user liên kết
+      Cell: ({ value }) => {
+        const UPLOADS_BASE_URL = (import.meta.env.VITE_UPLOADS_URL || import.meta.env.VITE_API_URL)?.replace('/api', '');
+        const avatarUrl = value ? (value.startsWith('http') ? value : `${UPLOADS_BASE_URL || ''}${value.startsWith('/') ? '' : '/'}${value}`) : '/default-avatar.png';
+        return <img src={avatarUrl} alt="Avatar" className="h-8 w-8 rounded-full object-cover mx-auto" onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.png' }} />;
+      }
+    },
+    { Header: 'Mã SV', accessor: 'studentId', Cell: ({ value }) => <span className='font-mono'>{value}</span> },
+    { Header: 'Họ và tên', accessor: 'fullName' }, // API trả về fullName
+    { Header: 'Email', accessor: 'email' }, // API trả về email
+    { Header: 'Số điện thoại', accessor: 'phone' }, // API trả về phone
+    { Header: 'Phòng', accessor: 'roomId', Cell: ({ value }) => value ? `Phòng ${value}` : '-' }, // Cần lấy tên phòng thực tế?
+    { Header: 'Ngày sinh', accessor: 'dateOfBirth', Cell: ({ value }) => formatDate(value) },
+    {
+      Header: 'Trạng thái',
+      accessor: 'status', // API trả về status
+      Cell: ({ value }) => (
+        <Badge color={getStatusBadgeColor(value)}>{value?.toUpperCase() || 'N/A'}</Badge>
+      )
+    },
+    {
+      Header: 'Hành động',
+      accessor: 'actions',
+      Cell: ({ row }) => (
+        <div className="flex space-x-2 justify-center">
+          {/* // TODO: Thêm nút xem chi tiết nếu có trang chi tiết */}
+          {/* <Button variant="icon" onClick={() => navigate(`/students/${row.original.id}`)} tooltip="Xem chi tiết">...</Button> */}
+          <Button
+            variant="icon"
+            onClick={() => navigate(`/students/${row.original.id}/edit`)} // ID ở đây là profile ID
+            tooltip="Chỉnh sửa"
+          >
+            <PencilSquareIcon className="h-5 w-5 text-yellow-600 hover:text-yellow-800" />
+          </Button>
+          <Button
+            variant="icon"
+            onClick={() => handleDelete(row.original.id, row.original.fullName)}
+            tooltip="Xóa"
+          >
+            <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
+          </Button>
+        </div>
+      ),
+    },
+  ], [navigate, currentPage, debouncedSearchTerm]); // Thêm dependencies cho handlePageChange nếu cần
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Quản lý Sinh viên</h1>
-        <Link
-          to="/students/new"
-          className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap"
-        >
-          <PlusIcon className="h-5 w-5 mr-1" />
-          Thêm Sinh viên
-        </Link>
+    <div className="space-y-4">
+      <div className="flex flex-wrap justify-between items-center gap-4">
+        <h1 className="text-2xl font-semibold">Quản lý Sinh viên</h1>
+        {/* Nút Thêm mới cần quyền Admin? */}
+        <Button onClick={() => navigate('/students/new')} icon={PlusIcon}>
+          Thêm Sinh viên mới
+        </Button>
       </div>
 
-      {/* Filters và Search */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 bg-white p-4 rounded-lg shadow">
-        <div className="lg:col-span-2">
-          <SearchInput
-            placeholder="Tìm theo tên, MSSV, email, CCCD..."
-            value={searchTerm}
-            onChange={(e) => handleSearchChange(e.target.value)}
-          />
-        </div>
-        <div>
-          <Select label="Tòa nhà" name="buildingId" value={filters.buildingId} onChange={handleFilterChange} options={buildings} />
-        </div>
-        <div>
-          <Select label="Phòng" name="roomId" value={filters.roomId} onChange={handleFilterChange} options={rooms} disabled={!filters.buildingId || rooms.length <= 1} />
-        </div>
-        <div>
-          <Select label="Trạng thái" name="status" value={filters.status} onChange={handleFilterChange} options={studentStatuses} />
-        </div>
-        <div>
-          <input type="text" name="faculty" value={filters.faculty} onChange={handleFilterChange} placeholder="Lọc theo khoa..." className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
-          {/* Hoặc dùng Select nếu có danh sách Khoa cố định */}
-        </div>
-        {/* Thêm filter cho courseYear nếu cần */}
-      </div>
-
-
-      {/* Loading / Error */}
-      {loading && <div className="text-center py-10"><LoadingSpinner /></div>}
-      {!loading && error && <div className="text-center py-10 text-red-600 bg-red-50 p-4 rounded">{error}</div>}
-
-      {/* Danh sách sinh viên */}
-      {!loading && !error && students.length > 0 && (
-        <div className="space-y-4">
-          {students.map((student) => (
-            <StudentInfoCard key={student.id} student={student} />
-            // Hoặc dùng Table component nếu muốn hiển thị dạng bảng
-          ))}
-        </div>
-      )}
-
-      {/* Không có dữ liệu */}
-      {!loading && !error && students.length === 0 && (
-        <div className="text-center py-10 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
-          <UserGroupIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">Không tìm thấy sinh viên</h3>
-          <p className="mt-1 text-sm text-gray-500">Không có sinh viên nào phù hợp với bộ lọc hiện tại.</p>
-        </div>
-      )}
-
-      {/* Phân trang */}
-      {!loading && !error && students.length > 0 && pagination.totalPages > 1 && (
-        <Pagination
-          currentPage={pagination.currentPage}
-          totalPages={pagination.totalPages}
-          onPageChange={handlePageChange}
+      {/* Thanh tìm kiếm */}
+      <div className="max-w-sm">
+        <Input
+          placeholder="Tìm theo tên, mã SV, email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
-      )}
+      </div>
 
+      {/* Bảng dữ liệu */}
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
+      ) : error ? (
+        <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
+      ) : (
+        <>
+          <Table columns={columns} data={students} />
+          {/* Phân trang */}
+          {meta.totalPages > 1 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={meta.totalPages}
+              onPageChange={handlePageChange}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 };

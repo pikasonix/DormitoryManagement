@@ -1,225 +1,147 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
-// Import Auth Context
-import { AuthProvider, useAuth } from './contexts/AuthContext'; // Giả sử đường dẫn đúng
-import { Toaster } from 'react-hot-toast';
+import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'; // Chỉ cần import 1 lần
+
+// Import Route Guards từ file riêng
+import PrivateRoute from './components/PrivateRoute';
+import AdminRoute from './components/AdminRoute';
+import StaffRoute from './components/StaffRoute';
 
 // Import Layouts
-import DashboardLayout from './layouts/DashboardLayout'; // Giả sử đường dẫn đúng
+import DashboardLayout from './layouts/DashboardLayout'; // Chỉ cần import 1 lần
 
-// Import Pages (Cần tạo các component này)
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard'; // Trang tổng quan
-import Profile from './pages/Profile'; // Trang hồ sơ cá nhân
-
-// --- Quản lý Người dùng & Sinh viên ---
-import StudentIndex from './pages/students/StudentIndex'; // ĐỔI TÊN
-import StudentForm from './pages/students/StudentForm';   // ĐỔI TÊN
-// import StaffIndex from './pages/staff/StaffIndex'; // (Nếu cần trang riêng cho Staff)
-// import StaffForm from './pages/staff/StaffForm';   // (Nếu cần trang riêng cho Staff)
-// import UserList from './pages/users/UserList'; // (Nếu cần trang quản lý User chung)
-
-// --- Quản lý Cơ sở vật chất ---
-import BuildingIndex from './pages/buildings/BuildingIndex'; // MỚI
-import BuildingForm from './pages/buildings/BuildingForm';   // MỚI
+// Import Pages
+import Login from './pages/Login';                     // Chỉ cần import 1 lần
+import Dashboard from './pages/Dashboard';                 // Chỉ cần import 1 lần
+import Profile from './pages/Profile';
+import StudentIndex from './pages/students/StudentIndex';
+import StudentForm from './pages/students/StudentForm';
+import BuildingIndex from './pages/buildings/BuildingIndex';
+import BuildingForm from './pages/buildings/BuildingForm';
 import RoomIndex from './pages/rooms/RoomIndex';
-import RoomForm from './pages/rooms/RoomForm'; // MỚI (Nếu cần form tạo/sửa phòng)
-import AmenityIndex from './pages/amenities/AmenityIndex'; // ĐỔI TÊN
-import AmenityForm from './pages/amenities/AmenityForm';   // ĐỔI TÊN
-
-// --- Quản lý Bảo trì ---
-import MaintenanceIndex from './pages/maintenance/MaintenanceIndex'; // Giữ nguyên
-import MaintenanceForm from './pages/maintenance/MaintenanceForm'; // MỚI (Form xem chi tiết/cập nhật status/gán việc)
-import MaintenanceRequestForm from './pages/maintenance/MaintenanceRequestForm'; // MỚI (Form cho Student tạo yêu cầu)
-
-// --- Quản lý Tài chính ---
-import InvoiceIndex from './pages/invoices/InvoiceIndex'; // MỚI
-import InvoiceDetail from './pages/invoices/InvoiceDetail'; // MỚI
-// import InvoiceForm from './pages/invoices/InvoiceForm'; // (Form tạo hóa đơn thủ công?)
-import PaymentIndex from './pages/payments/PaymentIndex'; // Giữ nguyên (Có thể là trang lịch sử GD)
-// import PaymentForm from './pages/payments/PaymentForm'; // (Form ghi nhận thanh toán thủ công?)
-
-// --- Quản lý Tiện ích & Xe ---
-import UtilityReadingIndex from './pages/utilities/UtilityReadingIndex'; // MỚI
-import UtilityReadingForm from './pages/utilities/UtilityReadingForm';   // MỚI
-import VehicleIndex from './pages/vehicles/VehicleIndex'; // MỚI
-import VehicleForm from './pages/vehicles/VehicleForm';   // MỚI
-
-// --- Quản lý Chuyển phòng ---
-import TransferIndex from './pages/transfers/TransferIndex'; // MỚI
-import TransferRequestForm from './pages/transfers/TransferRequestForm'; // MỚI (Form cho student yêu cầu)
-// import TransferApproval from './pages/transfers/TransferApproval'; // (Trang/Component duyệt yêu cầu?)
-
-// --- Các trang khác (Nếu cần) ---
-// import MediaManager from './pages/media/MediaManager'; // Trang quản lý media tập trung?
-// import NotFound from './pages/NotFound'; // Trang 404
-
-// --- Private Route Component ---
-const PrivateRoute = () => {
-  const { user, loading } = useAuth(); // Giả sử context có trạng thái loading
-  const location = useLocation();
-
-  if (loading) {
-    // Hiển thị spinner hoặc placeholder trong khi chờ xác thực
-    return <div>Loading...</div>; // Hoặc component Spinner
-  }
-
-  if (!user) {
-    // Chuyển hướng đến trang login, lưu lại trang muốn truy cập
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  // Nếu đã đăng nhập, hiển thị layout và nội dung con (Outlet)
-  return (
-    <DashboardLayout>
-      <Outlet /> {/* Outlet render các route con */}
-    </DashboardLayout>
-  );
-};
-
-// (Optional) Admin Route Component for Role-Based Access Control
-const AdminRoute = () => {
-  const { user } = useAuth();
-  // Kiểm tra user tồn tại VÀ có role ADMIN
-  return user && user.role === 'ADMIN' ? <Outlet /> : <Navigate to="/dashboard" replace />; // Hoặc trang Access Denied
-};
-
-// (Optional) Staff Route Component
-const StaffRoute = () => {
-  const { user } = useAuth();
-  // Kiểm tra user tồn tại VÀ có role STAFF hoặc ADMIN (Admin cũng có quyền của Staff)
-  return user && (user.role === 'STAFF' || user.role === 'ADMIN') ? <Outlet /> : <Navigate to="/dashboard" replace />;
-};
+import RoomForm from './pages/rooms/RoomForm';
+import AmenityIndex from './pages/amenities/AmenityIndex';
+import AmenityForm from './pages/amenities/AmenityForm';
+import MaintenanceIndex from './pages/maintenance/MaintenanceIndex';
+import MaintenanceForm from './pages/maintenance/MaintenanceForm';
+import MaintenanceRequestForm from './pages/maintenance/MaintenanceRequestForm';
+import InvoiceIndex from './pages/invoices/InvoiceIndex';
+import InvoiceDetail from './pages/invoices/InvoiceDetail';
+import PaymentIndex from './pages/payments/PaymentIndex';
+// import PaymentForm from './pages/payments/PaymentForm'; // Bỏ comment nếu dùng
+import UtilityReadingIndex from './pages/utilities/UtilityReadingIndex';
+import UtilityReadingForm from './pages/utilities/UtilityReadingForm';
+import VehicleIndex from './pages/vehicles/VehicleIndex';
+import VehicleForm from './pages/vehicles/VehicleForm';
+import TransferIndex from './pages/transfers/TransferIndex';
+import TransferRequestForm from './pages/transfers/TransferRequestForm';
+// LoadingSpinner không cần import ở đây nữa, các Route Guard tự xử lý
 
 
 function App() {
+  // Không cần định nghĩa Route Guards ở đây nữa
   return (
-    <Router>
-      <AuthProvider> {/* Bọc toàn bộ ứng dụng trong AuthProvider */}
-        <Routes>
-          {/* Public Route */}
-          <Route path="/login" element={<Login />} />
-
-          {/* Protected Routes - Yêu cầu đăng nhập */}
-          <Route element={<PrivateRoute />}> {/* Wrapper cho các trang cần layout dashboard */}
-
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-
-            {/* --- STUDENT ROUTES --- */}
-            {/* Sinh viên xem ds sinh viên khác? Hay chỉ xem của mình? */}
-            {/* Chỉ Admin/Staff xem danh sách */}
-            <Route path="/students" element={<StaffRoute />}>
-              <Route index element={<StudentIndex />} />
-              {/* Admin tạo mới */}
-              <Route path="new" element={<AdminRoute><StudentForm /></AdminRoute>} />
-              {/* Admin/Staff xem/sửa */}
-              <Route path=":id/edit" element={<StudentForm />} />
-            </Route>
+    <Routes>
+      {/* Public Route */}
+      <Route path="/login" element={<Login />} />
+      {/* <Route path="/register" element={<Register />} /> */}
+      {/* <Route path="/forgot-password" element={<ForgotPassword />} /> */}
+      {/* <Route path="/reset-password/:token" element={<ResetPassword />} /> */}
 
 
-            {/* --- BUILDING ROUTES (Admin/Staff) --- */}
-            <Route path="/buildings" element={<StaffRoute />}>
-              <Route index element={<BuildingIndex />} />
-              <Route path="new" element={<BuildingForm />} />
-              <Route path=":id/edit" element={<BuildingForm />} />
-            </Route>
+      {/* Protected Routes - Yêu cầu đăng nhập */}
+      <Route element={<PrivateRoute />}> {/* Wrapper Layout và kiểm tra đăng nhập */}
 
-            {/* --- ROOM ROUTES (Admin/Staff xem, Student có thể xem phòng trống?) --- */}
-            <Route path="/rooms"> {/* Cho phép mọi người đăng nhập xem? */}
-              <Route index element={<RoomIndex />} />
-              {/* Chỉ Admin/Staff tạo/sửa */}
-              <Route element={<StaffRoute />}>
-                <Route path="new" element={<RoomForm />} />
-                <Route path=":id/edit" element={<RoomForm />} />
-              </Route>
-            </Route>
+        {/* Route mặc định sau khi đăng nhập */}
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
 
+        {/* --- STUDENT ROUTES --- */}
+        <Route path="/students">
+          <Route index element={<StaffRoute><StudentIndex /></StaffRoute>} />
+          <Route path="new" element={<AdminRoute><StudentForm /></AdminRoute>} />
+          <Route path=":id/edit" element={<StaffRoute><StudentForm /></StaffRoute>} />
+        </Route>
 
-            {/* --- AMENITY ROUTES (Admin/Staff) --- */}
-            <Route path="/amenities" element={<StaffRoute />}>
-              <Route index element={<AmenityIndex />} />
-              <Route path="new" element={<AmenityForm />} />
-              <Route path=":id/edit" element={<AmenityForm />} />
-            </Route>
+        {/* --- BUILDING ROUTES (Xem lại quyền tạo/sửa) --- */}
+        <Route path="/buildings" element={<StaffRoute />}>
+          <Route index element={<BuildingIndex />} />
+          {/* Chỉ Admin được tạo/sửa? */}
+          <Route path="new" element={<AdminRoute><BuildingForm /></AdminRoute>} />
+          <Route path=":id/edit" element={<AdminRoute><BuildingForm /></AdminRoute>} />
+          {/* Hoặc nếu Staff cũng được:
+             <Route path="new" element={<BuildingForm />} />
+             <Route path=":id/edit" element={<BuildingForm />} />
+            */}
+        </Route>
 
-            {/* --- MAINTENANCE ROUTES --- */}
-            <Route path="/maintenance">
-              {/* Admin/Staff xem danh sách tổng */}
-              <Route index element={<StaffRoute><MaintenanceIndex /></StaffRoute>} />
-              {/* Sinh viên tạo yêu cầu mới */}
-              <Route path="request" element={<MaintenanceRequestForm />} />
-              {/* Admin/Staff xem/cập nhật chi tiết */}
-              <Route path=":id/edit" element={<StaffRoute><MaintenanceForm /></StaffRoute>} />
-              {/* Sinh viên xem yêu cầu của mình? (Cần route/logic riêng) */}
-            </Route>
+        {/* --- ROOM ROUTES --- */}
+        <Route path="/rooms">
+          <Route index element={<RoomIndex />} /> {/* Mọi người đăng nhập xem */}
+          <Route element={<StaffRoute />}> {/* Chỉ Staff/Admin tạo/sửa */}
+            <Route path="new" element={<RoomForm />} />
+            <Route path=":id/edit" element={<RoomForm />} />
+          </Route>
+        </Route>
 
+        {/* --- AMENITY ROUTES (Xem lại quyền tạo/sửa) --- */}
+        <Route path="/amenities" element={<StaffRoute />}>
+          <Route index element={<AmenityIndex />} />
+          {/* Chỉ Admin được tạo/sửa? */}
+          <Route path="new" element={<AdminRoute><AmenityForm /></AdminRoute>} />
+          <Route path=":id/edit" element={<AdminRoute><AmenityForm /></AdminRoute>} />
+          {/* Hoặc nếu Staff cũng được:
+             <Route path="new" element={<AmenityForm />} />
+             <Route path=":id/edit" element={<AmenityForm />} />
+             */}
+        </Route>
 
-            {/* --- INVOICE & PAYMENT ROUTES --- */}
-            {/* Admin/Staff xem danh sách tổng */}
-            <Route path="/invoices" element={<StaffRoute />}>
-              <Route index element={<InvoiceIndex />} />
-              <Route path=":id" element={<InvoiceDetail />} /> {/* Xem chi tiết hóa đơn */}
-              {/* <Route path="new" element={<InvoiceForm />} /> Tạo hóa đơn thủ công? */}
-            </Route>
-            {/* Admin/Staff xem lịch sử thanh toán tổng */}
-            <Route path="/payments" element={<StaffRoute><PaymentIndex /></StaffRoute>} />
-            {/* Sinh viên xem hóa đơn/thanh toán của mình? (Cần route/logic riêng, vd: /profile/billing) */}
+        {/* --- MAINTENANCE ROUTES --- */}
+        <Route path="/maintenance">
+          <Route index element={<StaffRoute><MaintenanceIndex /></StaffRoute>} />
+          <Route path="request" element={<MaintenanceRequestForm />} />
+          <Route path=":id/edit" element={<StaffRoute><MaintenanceForm /></StaffRoute>} />
+        </Route>
 
+        {/* --- INVOICE & PAYMENT ROUTES --- */}
+        <Route path="/invoices" element={<StaffRoute />}>
+          <Route index element={<InvoiceIndex />} />
+          <Route path=":id" element={<InvoiceDetail />} />
+          {/* <Route path="new" element={<InvoiceForm />} /> */}
+        </Route>
+        <Route path="/payments" element={<StaffRoute />}>
+          <Route index element={<PaymentIndex />} />
+          {/* Bỏ comment nếu dùng PaymentForm */}
+          {/* <Route path="new" element={<PaymentForm />} /> */}
+        </Route>
 
-            {/* --- UTILITY ROUTES (Admin/Staff) --- */}
-            <Route path="/utilities" element={<StaffRoute />}>
-              <Route index element={<UtilityReadingIndex />} /> {/* Xem danh sách */}
-              <Route path="new" element={<UtilityReadingForm />} /> {/* Form nhập chỉ số */}
-              <Route path=":id/edit" element={<UtilityReadingForm />} /> {/* Sửa chỉ số đã nhập */}
-            </Route>
+        {/* --- UTILITY ROUTES --- */}
+        <Route path="/utilities" element={<StaffRoute />}>
+          <Route index element={<UtilityReadingIndex />} />
+          <Route path="new" element={<UtilityReadingForm />} />
+          <Route path=":id/edit" element={<UtilityReadingForm />} />
+        </Route>
 
-            {/* --- VEHICLE ROUTES --- */}
-            <Route path="/vehicles">
-              {/* Admin/Staff xem danh sách tổng */}
-              <Route index element={<StaffRoute><VehicleIndex /></StaffRoute>} />
-              {/* Sinh viên tự đăng ký */}
-              <Route path="register" element={<VehicleForm mode="create" />} /> {/* Form đăng ký */}
-              {/* Admin/Staff tạo hộ/sửa */}
-              <Route element={<StaffRoute />}>
-                <Route path="new" element={<VehicleForm mode="admin_create" />} /> {/* Form admin tạo */}
-                <Route path=":id/edit" element={<VehicleForm mode="edit" />} /> {/* Form sửa */}
-              </Route>
-              {/* Sinh viên xem xe của mình? (Cần route/logic riêng) */}
-            </Route>
+        {/* --- VEHICLE ROUTES --- */}
+        <Route path="/vehicles">
+          <Route index element={<StaffRoute><VehicleIndex /></StaffRoute>} />
+          <Route path="register" element={<VehicleForm mode="create" />} />
+          <Route path=":id/edit" element={<StaffRoute><VehicleForm mode="edit" /></StaffRoute>} />
+          {/* <Route path="new" element={<StaffRoute><VehicleForm mode="admin_create" /></StaffRoute>} /> */}
+        </Route>
 
-            {/* --- TRANSFER ROUTES --- */}
-            <Route path="/transfers">
-              {/* Admin/Staff xem danh sách yêu cầu */}
-              <Route index element={<StaffRoute><TransferIndex /></StaffRoute>} />
-              {/* Sinh viên tạo yêu cầu */}
-              <Route path="request" element={<TransferRequestForm />} />
-              {/* Admin/Staff xem/duyệt chi tiết? Có thể tích hợp vào TransferIndex hoặc trang riêng */}
-            </Route>
+        {/* --- TRANSFER ROUTES --- */}
+        <Route path="/transfers">
+          <Route index element={<StaffRoute><TransferIndex /></StaffRoute>} />
+          <Route path="request" element={<TransferRequestForm />} />
+          {/* <Route path=":id/review" element={<StaffRoute><TransferReviewForm /></StaffRoute>} /> */}
+        </Route>
 
+      </Route> {/* Kết thúc PrivateRoute Wrapper */}
 
-            {/* --- LOẠI BỎ HOẶC ÁNH XẠ LẠI CÁC ROUTE CŨ KHÔNG RÕ RÀNG --- */}
-            {/* <Route path="tasks" ... /> */}
-            {/* <Route path="problems" ... /> */}
-            {/* <Route path="security" ... /> */}
-            {/* <Route path="reports" ... /> */}
-            {/* <Route path="inventory" ... /> */}
-            {/* <Route path="academic" ... /> */}
+      {/* Route 404 Not Found */}
+      <Route path="*" element={<div className='flex justify-center items-center min-h-screen'>404 Page Not Found</div>} />
 
-          </Route> {/* Kết thúc PrivateRoute Wrapper */}
-
-
-          {/* Redirect trang gốc về dashboard sau khi đăng nhập */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-          {/* (Optional) Route 404 Not Found */}
-          {/* <Route path="*" element={<NotFound />} /> */}
-          <Route path="*" element={<div>404 Page Not Found</div>} />
-
-
-        </Routes>
-        <Toaster position="top-right" />
-      </AuthProvider>
-    </Router>
+    </Routes>
   );
 }
 

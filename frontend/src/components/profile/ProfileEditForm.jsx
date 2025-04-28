@@ -1,260 +1,314 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; // Thêm useEffect, useRef nếu cần
 import { CameraIcon } from '@heroicons/react/24/outline';
-import apiClient from '../../api/axios'; // Đường dẫn đúng
+import apiClient from '../../api/axios';
 import { toast } from 'react-hot-toast';
-import LoadingSpinner from '../LoadingSpinner'; // Import spinner
-import { useAuth } from '../../contexts/AuthContext'; // Import useAuth
+import LoadingSpinner from '../shared/LoadingSpinner';
+import { useAuth } from '../../contexts/AuthContext';
+import { Input, Button, Select, Textarea } from '../shared'; // **Import các component chung**
+
+// Định nghĩa các tùy chọn cho Select (ví dụ)
+const genderOptions = [
+    { value: 'MALE', label: 'Nam' },
+    { value: 'FEMALE', label: 'Nữ' },
+    { value: 'OTHER', label: 'Khác' }, // Thêm tùy chọn khác nếu cần
+];
 
 const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
+    const { checkAuthStatus } = useAuth(); // Lấy hàm refresh user context
+
+    // --- State Initialization ---
     const [formData, setFormData] = useState(() => {
         const profile = user?.profile || {};
         const isStudent = user?.role === 'STUDENT';
+        const isStaff = user?.role === 'STAFF'; // Thêm biến isStaff
+
         return {
-            // Chung
-            fullName: profile.fullName || '',
+            // --- Chung ---
+            fullName: profile.fullName || user?.name || '', // Fallback về user.name nếu profile.fullName chưa có
             phoneNumber: profile.phoneNumber || '',
             gender: profile.gender || '',
+            // Format date đúng chuẩn YYYY-MM-DD cho input type="date"
             birthDate: profile.birthDate ? new Date(profile.birthDate).toISOString().split('T')[0] : '',
             identityCardNumber: profile.identityCardNumber || '',
-            // Riêng Student
-            studentId: isStudent ? (profile.studentId || '') : undefined,
-            faculty: isStudent ? (profile.faculty || '') : undefined,
-            courseYear: isStudent ? (profile.courseYear || '') : undefined,
-            className: isStudent ? (profile.className || '') : undefined,
-            personalEmail: isStudent ? (profile.personalEmail || '') : undefined,
-            ethnicity: isStudent ? (profile.ethnicity || '') : undefined,
-            religion: isStudent ? (profile.religion || '') : undefined,
-            priorityObject: isStudent ? (profile.priorityObject || '') : undefined,
-            permanentProvince: isStudent ? (profile.permanentProvince || '') : undefined,
-            permanentDistrict: isStudent ? (profile.permanentDistrict || '') : undefined,
-            permanentAddress: isStudent ? (profile.permanentAddress || '') : undefined,
-            fatherName: isStudent ? (profile.fatherName || '') : undefined,
-            fatherDobYear: isStudent ? (profile.fatherDobYear || '') : undefined,
-            fatherPhone: isStudent ? (profile.fatherPhone || '') : undefined,
-            fatherAddress: isStudent ? (profile.fatherAddress || '') : undefined,
-            motherName: isStudent ? (profile.motherName || '') : undefined,
-            motherDobYear: isStudent ? (profile.motherDobYear || '') : undefined,
-            motherPhone: isStudent ? (profile.motherPhone || '') : undefined,
-            motherAddress: isStudent ? (profile.motherAddress || '') : undefined,
-            emergencyContactRelation: isStudent ? (profile.emergencyContactRelation || '') : undefined,
-            emergencyContactPhone: isStudent ? (profile.emergencyContactPhone || '') : undefined,
-            emergencyContactAddress: isStudent ? (profile.emergencyContactAddress || '') : undefined,
-            // Riêng Staff
-            position: !isStudent && profile ? (profile.position || '') : undefined,
-            address: !isStudent && profile ? (profile.address || '') : undefined,
-            // Không bao gồm avatarId ở đây, sẽ xử lý riêng
-            // Không bao gồm roomId, status, v.v... vì user không tự sửa được
+
+            // --- Riêng Student ---
+            ...(isStudent && {
+                studentId: profile.studentId || '',
+                faculty: profile.faculty || '',
+                courseYear: profile.courseYear || '',
+                className: profile.className || '',
+                personalEmail: profile.personalEmail || '',
+                ethnicity: profile.ethnicity || '',
+                religion: profile.religion || '',
+                priorityObject: profile.priorityObject || '',
+                permanentProvince: profile.permanentProvince || '',
+                permanentDistrict: profile.permanentDistrict || '',
+                permanentAddress: profile.permanentAddress || '',
+                fatherName: profile.fatherName || '',
+                fatherDobYear: profile.fatherDobYear || '',
+                fatherPhone: profile.fatherPhone || '',
+                fatherAddress: profile.fatherAddress || '',
+                motherName: profile.motherName || '',
+                motherDobYear: profile.motherDobYear || '',
+                motherPhone: profile.motherPhone || '',
+                motherAddress: profile.motherAddress || '',
+                emergencyContactRelation: profile.emergencyContactRelation || '',
+                emergencyContactPhone: profile.emergencyContactPhone || '',
+                emergencyContactAddress: profile.emergencyContactAddress || '',
+            }),
+
+            // --- Riêng Staff ---
+            ...(isStaff && { // Sử dụng isStaff
+                position: profile.position || '',
+                address: profile.address || '', // Có thể trùng với permanentAddress? Làm rõ
+                // Thêm các trường khác của Staff nếu có
+            }),
+            // Không bao gồm avatarId, roomId, status...
         };
     });
+
     const [newAvatarFile, setNewAvatarFile] = useState(null);
     const [newAvatarPreview, setNewAvatarPreview] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const { checkAuthStatus } = useAuth(); // Lấy hàm checkAuthStatus
+    const fileInputRef = useRef(null); // Ref cho input file để reset
 
+    // --- Handlers ---
     const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        // Xử lý cho radio button gender
-        if (name === 'gender') {
-            setFormData({ ...formData, gender: value });
-        } else {
-            setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
-        }
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleAvatarChange = (e) => {
         const file = e.target.files?.[0];
         if (file) {
-            if (file.size > 5 * 1024 * 1024) { // Giới hạn 5MB ví dụ
-                toast.error("Kích thước ảnh đại diện không được vượt quá 5MB.");
+            if (file.size > 5 * 1024 * 1024) { // Giới hạn 5MB
+                toast.error("Kích thước ảnh không được vượt quá 5MB.");
+                if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input file
                 return;
             }
             setNewAvatarFile(file);
             const reader = new FileReader();
             reader.onloadend = () => setNewAvatarPreview(reader.result);
             reader.readAsDataURL(file);
-        } else {
-            setNewAvatarFile(null);
-            setNewAvatarPreview(null);
         }
+    };
+
+    const handleRemoveAvatar = () => {
+        setNewAvatarFile(null); // Đánh dấu là muốn xóa/reset
+        setNewAvatarPreview(null); // Xóa preview
+        if (fileInputRef.current) fileInputRef.current.value = ""; // Reset input file
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSaving(true);
-        let newAvatarId = null;
+        let uploadedAvatarId = user?.avatar?.id || null; // Giữ avatarId cũ mặc định
 
+        // 1. Upload avatar mới nếu có
         if (newAvatarFile) {
             setIsUploading(true);
             const uploadFormData = new FormData();
             uploadFormData.append('file', newAvatarFile);
-            uploadFormData.append('mediaType', 'USER_AVATAR');
+            // Thêm context nếu cần (vd: 'user-avatar')
+            // uploadFormData.append('context', 'user-avatar');
             try {
+                // **Sử dụng endpoint upload media chính xác**
                 const response = await apiClient.post('/media/upload', uploadFormData, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
-                newAvatarId = response.data?.media?.id;
+                // **Lấy ID từ response upload chính xác** (Kiểm tra lại cấu trúc API /media/upload)
+                uploadedAvatarId = response.data?.data?.id; // Giả sử trả về { success: true, data: { id: '...' } }
+                if (!uploadedAvatarId) throw new Error("Không nhận được ID ảnh sau khi tải lên.");
                 toast.success('Tải ảnh đại diện mới thành công!');
             } catch (uploadError) {
                 console.error("Lỗi tải ảnh đại diện:", uploadError);
                 toast.error(uploadError.response?.data?.message || 'Tải ảnh đại diện thất bại.');
                 setIsUploading(false);
                 setIsSaving(false);
-                return;
+                return; // Dừng lại nếu upload lỗi
             } finally {
                 setIsUploading(false);
             }
+        } else if (newAvatarFile === null && newAvatarPreview === null && user?.avatar) {
+            // Trường hợp người dùng bấm xóa avatar hiện tại
+            uploadedAvatarId = null; // Gửi null để xóa
         }
 
-        // Chuẩn bị payload, chỉ gửi các trường có giá trị hoặc null nếu muốn xóa
+        // 2. Chuẩn bị payload cập nhật profile
         const updatePayload = { ...formData };
+        // Dọn dẹp payload: Chuyển đổi kiểu, loại bỏ undefined, xử lý rỗng -> null
         Object.keys(updatePayload).forEach(key => {
-            // Chuyển đổi các trường số
-            if (['courseYear', 'fatherDobYear', 'motherDobYear'].includes(key) && updatePayload[key]) {
-                updatePayload[key] = parseInt(updatePayload[key], 10);
-                if (isNaN(updatePayload[key])) updatePayload[key] = null; // Hoặc xử lý lỗi
-            }
-            // Xử lý ngày sinh rỗng -> null
-            if (key === 'birthDate' && updatePayload[key] === '') {
-                updatePayload[key] = null;
-            }
-            // Xóa các key undefined (trường riêng của role khác)
             if (updatePayload[key] === undefined) {
                 delete updatePayload[key];
+                return;
+            }
+            if (typeof updatePayload[key] === 'string') {
+                updatePayload[key] = updatePayload[key].trim(); // Trim khoảng trắng
+                if (updatePayload[key] === '') {
+                    // Chỉ chuyển thành null cho các trường không bắt buộc và date
+                    if (!['fullName', 'phoneNumber', 'gender', 'identityCardNumber', 'studentId'].includes(key) || key === 'birthDate') {
+                        updatePayload[key] = null;
+                    }
+                }
+            }
+            // Chuyển đổi các trường số nguyên
+            if (['courseYear', 'fatherDobYear', 'motherDobYear'].includes(key) && updatePayload[key] !== null) {
+                const num = parseInt(updatePayload[key], 10);
+                updatePayload[key] = isNaN(num) ? null : num;
             }
         });
 
-        if (newAvatarId !== null) {
-            updatePayload.avatarId = newAvatarId;
+        // Thêm avatarId vào payload (có thể là null nếu muốn xóa)
+        if (newAvatarFile || (newAvatarFile === null && newAvatarPreview === null)) {
+            updatePayload.avatarId = uploadedAvatarId;
         }
-        // Logic xóa avatar (nếu cần):
-        // else if (newAvatarFile === null && newAvatarPreview === null && user?.avatar) {
-        //     updatePayload.avatarId = null; // Gửi null để xóa avatar
-        // }
 
 
+        // 3. Gọi API cập nhật profile
         try {
-            const response = await apiClient.put(`/users/${user.id}/profile`, updatePayload);
-            toast.success('Cập nhật hồ sơ thành công!');
-            await checkAuthStatus(); // Cập nhật context
-            onSaveSuccess();
+            // **Sử dụng endpoint cập nhật profile chính xác**
+            const apiUrl = `/users/${user.id}/profile`; // Hoặc `/profile` nếu API thiết kế vậy
+            await apiClient.put(apiUrl, updatePayload);
+
+            // Thành công
+            onSaveSuccess(); // Gọi callback để Profile.jsx xử lý tiếp (đã bao gồm toast và refresh)
+
         } catch (error) {
             console.error("Lỗi cập nhật hồ sơ:", error);
-            toast.error(error.response?.data?.message || 'Cập nhật hồ sơ thất bại.');
+            let errorMsg = 'Cập nhật hồ sơ thất bại.';
+            if (error.response?.data?.message) {
+                errorMsg = error.response.data.message;
+            }
+            // Hiển thị lỗi validation chi tiết nếu có
+            if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
+                const validationErrors = error.response.data.errors.map(err => `- ${err.field ? `${err.field}: ` : ''}${err.message}`).join('\n');
+                errorMsg += `\nChi tiết:\n${validationErrors}`;
+            }
+            toast.error(errorMsg, { duration: 6000 });
         } finally {
             setIsSaving(false);
         }
     };
 
+    // --- Xác định Avatar URL ---
+    const UPLOADS_BASE_URL = (import.meta.env.VITE_UPLOADS_URL || import.meta.env.VITE_API_URL)?.replace('/api', '');
     const currentAvatarUrl = user?.avatar?.path
-        ? (user.avatar.path.startsWith('http') ? user.avatar.path : `${import.meta.env.VITE_API_BASE_URL?.replace('/api', '')}${user.avatar.path}`)
-        : '/src/assets/default-avatar.png';
+        ? (user.avatar.path.startsWith('http') ? user.avatar.path : `${UPLOADS_BASE_URL || ''}${user.avatar.path.startsWith('/') ? '' : '/'}${user.avatar.path}`)
+        : '/default-avatar.png'; // Đặt ảnh default ở public
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8 divide-y divide-gray-200">
-            <div className="space-y-8 divide-y divide-gray-200">
+        <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg">
+            <div className="px-4 py-5 sm:p-6 space-y-8 divide-y divide-gray-200">
                 {/* Phần Ảnh đại diện */}
                 <div>
-                    <h3 className="text-lg font-medium leading-6 text-gray-900">Ảnh đại diện</h3>
-                    <div className="mt-6 flex items-center gap-x-5">
-                        <img className="h-20 w-20 rounded-full object-cover" src={newAvatarPreview || currentAvatarUrl} alt="Current Avatar" />
-                        <label htmlFor="avatar-upload" className="cursor-pointer rounded-md bg-white py-1.5 px-2.5 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-                            <CameraIcon className="inline h-5 w-5 mr-1 align-text-bottom" aria-hidden="true" />
-                            Thay đổi
-                        </label>
-                        <input id="avatar-upload" name="avatar" type="file" className="sr-only" onChange={handleAvatarChange} accept="image/png, image/jpeg, image/gif" />
-                        {newAvatarFile && <span className="text-sm text-gray-500">Đã chọn: {newAvatarFile.name}</span>}
+                    <h3 className="text-base font-semibold leading-7 text-gray-900">Ảnh đại diện</h3>
+                    <div className="mt-4 flex items-center gap-x-4">
+                        <img className="h-20 w-20 rounded-full object-cover bg-gray-200" src={newAvatarPreview || currentAvatarUrl} alt="Avatar Preview" onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.png' }} />
+                        <div className='flex flex-col sm:flex-row gap-3'>
+                            <label htmlFor="avatar-upload" className="cursor-pointer rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 inline-flex items-center justify-center">
+                                <CameraIcon className="h-5 w-5 mr-1.5 text-gray-500" aria-hidden="true" />
+                                <span>{user?.avatar || newAvatarFile ? 'Thay đổi' : 'Tải lên'}</span>
+                            </label>
+                            <input id="avatar-upload" name="avatar" type="file" className="sr-only" onChange={handleAvatarChange} accept="image/*" ref={fileInputRef} />
+                            {/* Nút xóa/reset avatar */}
+                            {(user?.avatar || newAvatarFile) && (
+                                <Button type="button" variant="outline" size="sm" onClick={handleRemoveAvatar} disabled={isSaving || isUploading}>
+                                    Xóa ảnh
+                                </Button>
+                            )}
+                        </div>
                     </div>
+                    {newAvatarFile && <p className="mt-2 text-xs text-gray-500">Đã chọn: {newAvatarFile.name}</p>}
+                    <p className="mt-1 text-xs leading-5 text-gray-500">Cho phép JPG, GIF hoặc PNG. Tối đa 5MB.</p>
                 </div>
 
                 {/* Phần Thông tin cá nhân */}
                 <div className="pt-8">
-                    <h3 className="text-lg font-medium leading-6 text-gray-900">Thông tin cá nhân</h3>
+                    <h3 className="text-base font-semibold leading-7 text-gray-900">Thông tin cá nhân</h3>
+                    <p className="mt-1 text-sm leading-6 text-gray-600">Cập nhật thông tin cá nhân của bạn.</p>
                     <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                        {/* Sử dụng component Input */}
                         <div className="sm:col-span-3">
-                            <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">Họ và tên *</label>
-                            <input type="text" name="fullName" id="fullName" required value={formData.fullName} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                            <Input label="Họ và tên *" id="fullName" name="fullName" required value={formData.fullName} onChange={handleChange} disabled={isSaving} />
                         </div>
                         <div className="sm:col-span-3">
-                            <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email</label>
-                            <input type="email" name="email" id="email" value={user?.email || ''} disabled className="mt-1 block w-full rounded-md border-gray-300 bg-gray-100 shadow-sm cursor-not-allowed sm:text-sm" />
+                            <Input label="Email" id="email" type="email" value={user?.email || ''} disabled readOnly hint="Email không thể thay đổi." />
                         </div>
                         <div className="sm:col-span-3">
-                            <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700">Số điện thoại *</label>
-                            <input type="tel" name="phoneNumber" id="phoneNumber" required value={formData.phoneNumber} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                            <Input label="Số điện thoại *" id="phoneNumber" name="phoneNumber" type="tel" required value={formData.phoneNumber} onChange={handleChange} disabled={isSaving} />
                         </div>
                         <div className="sm:col-span-3">
-                            <label className="block text-sm font-medium text-gray-700">Giới tính *</label>
-                            <fieldset className="mt-2">
-                                <legend className="sr-only">Giới tính</legend>
-                                <div className="space-y-4 sm:flex sm:items-center sm:space-y-0 sm:space-x-10">
-                                    <div className="flex items-center">
-                                        <input id="gender-male" name="gender" type="radio" value="MALE" checked={formData.gender === 'MALE'} onChange={handleChange} required className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600" />
-                                        <label htmlFor="gender-male" className="ml-3 block text-sm font-medium leading-6 text-gray-900">Nam</label>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <input id="gender-female" name="gender" type="radio" value="FEMALE" checked={formData.gender === 'FEMALE'} onChange={handleChange} required className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-600" />
-                                        <label htmlFor="gender-female" className="ml-3 block text-sm font-medium leading-6 text-gray-900">Nữ</label>
-                                    </div>
-                                </div>
-                            </fieldset>
+                            {/* Sử dụng component Select cho Gender */}
+                            <Select label="Giới tính *" id="gender" name="gender" required value={formData.gender} onChange={handleChange} options={genderOptions} disabled={isSaving} placeholder="-- Chọn giới tính --" />
                         </div>
                         <div className="sm:col-span-3">
-                            <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700">Ngày sinh *</label>
-                            <input type="date" name="birthDate" id="birthDate" required value={formData.birthDate} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                            <Input label="Ngày sinh *" id="birthDate" name="birthDate" type="date" required value={formData.birthDate} onChange={handleChange} disabled={isSaving} max={new Date().toISOString().split("T")[0]} />
                         </div>
                         <div className="sm:col-span-3">
-                            <label htmlFor="identityCardNumber" className="block text-sm font-medium text-gray-700">Số CCCD/CMND *</label>
-                            <input type="text" name="identityCardNumber" id="identityCardNumber" required value={formData.identityCardNumber} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                            <Input label="Số CCCD/CMND *" id="identityCardNumber" name="identityCardNumber" required value={formData.identityCardNumber} onChange={handleChange} disabled={isSaving} />
                         </div>
                     </div>
                 </div>
 
-                {/* --- Các trường riêng --- */}
+                {/* --- Các trường riêng cho STUDENT --- */}
                 {user?.role === 'STUDENT' && (
                     <div className="pt-8">
-                        <h3 className="text-lg font-medium leading-6 text-gray-900">Thông tin Sinh viên</h3>
-                        {/* BẠN CẦN THÊM CÁC INPUT CHO TẤT CẢ CÁC TRƯỜNG STUDENT Ở ĐÂY */}
-                        {/* Ví dụ: studentId, faculty, courseYear, className, personalEmail... */}
-                        {/* ... */}
-                        <p className="text-center text-red-500 my-4">(Thêm các trường input cho sinh viên ở đây)</p>
+                        <h3 className="text-base font-semibold leading-7 text-gray-900">Thông tin Sinh viên</h3>
+                        <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                            {/* --- BỔ SUNG CÁC TRƯỜNG INPUT/SELECT/TEXTAREA CHO STUDENT TẠI ĐÂY --- */}
+                            <div className="sm:col-span-2">
+                                <Input label="Mã Sinh viên *" id="studentId" name="studentId" required value={formData.studentId} onChange={handleChange} disabled={isSaving} />
+                            </div>
+                            <div className="sm:col-span-2">
+                                <Input label="Lớp" id="className" name="className" value={formData.className} onChange={handleChange} disabled={isSaving} />
+                            </div>
+                            <div className="sm:col-span-2">
+                                <Input label="Khóa học (năm)" id="courseYear" name="courseYear" type="number" value={formData.courseYear} onChange={handleChange} disabled={isSaving} />
+                            </div>
+                            <div className="sm:col-span-3">
+                                <Input label="Khoa/Viện" id="faculty" name="faculty" value={formData.faculty} onChange={handleChange} disabled={isSaving} />
+                            </div>
+                            <div className="sm:col-span-3">
+                                <Input label="Email cá nhân" id="personalEmail" name="personalEmail" type="email" value={formData.personalEmail} onChange={handleChange} disabled={isSaving} />
+                            </div>
+                            {/* Thêm các trường khác tương tự: ethnicity, religion, priorityObject, địa chỉ, thông tin phụ huynh... */}
+                            <div className="sm:col-span-full">
+                                <Textarea label="Địa chỉ thường trú" id="permanentAddress" name="permanentAddress" value={formData.permanentAddress} onChange={handleChange} disabled={isSaving} rows={3} />
+                            </div>
+                            {/* ... các trường khác ... */}
+                        </div>
                     </div>
                 )}
-                {user?.role !== 'STUDENT' && user?.profile && (
+
+                {/* --- Các trường riêng cho STAFF --- */}
+                {user?.role === 'STAFF' && (
                     <div className="pt-8">
-                        <h3 className="text-lg font-medium leading-6 text-gray-900">Thông tin Nhân viên</h3>
-                        {/* BẠN CẦN THÊM CÁC INPUT CHO CÁC TRƯỜNG STAFF Ở ĐÂY */}
-                        {/* Ví dụ: position, address... */}
-                        {/* ... */}
-                        <p className="text-center text-red-500 my-4">(Thêm các trường input cho nhân viên ở đây)</p>
+                        <h3 className="text-base font-semibold leading-7 text-gray-900">Thông tin Nhân viên</h3>
+                        <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                            {/* --- BỔ SUNG CÁC TRƯỜNG INPUT/SELECT CHO STAFF TẠI ĐÂY --- */}
+                            <div className="sm:col-span-3">
+                                <Input label="Chức vụ" id="position" name="position" value={formData.position} onChange={handleChange} disabled={isSaving} />
+                            </div>
+                            <div className="sm:col-span-full">
+                                <Textarea label="Địa chỉ liên hệ" id="address" name="address" value={formData.address} onChange={handleChange} disabled={isSaving} rows={3} />
+                            </div>
+                        </div>
                     </div>
                 )}
-
-
             </div>
 
             {/* Nút Lưu/Hủy */}
-            <div className="pt-5">
-                <div className="flex justify-end gap-x-3">
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        disabled={isSaving || isUploading}
-                        className="rounded-md bg-white py-2 px-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:opacity-50"
-                    >
-                        Hủy
-                    </button>
-                    <button
-                        type="submit"
-                        disabled={isSaving || isUploading}
-                        className="inline-flex justify-center rounded-md bg-indigo-600 py-2 px-3 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
-                    >
-                        {isUploading ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-                        {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
-                    </button>
-                </div>
+            <div className="flex items-center justify-end gap-x-3 border-t border-gray-900/10 px-4 py-4 sm:px-6">
+                <Button type="button" variant="secondary" onClick={onCancel} disabled={isSaving || isUploading}>
+                    Hủy
+                </Button>
+                <Button type="submit" disabled={isSaving || isUploading} isLoading={isSaving || isUploading}>
+                    Lưu thay đổi
+                </Button>
             </div>
         </form>
     );
 };
 
+export default ProfileEditForm;

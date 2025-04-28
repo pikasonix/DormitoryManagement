@@ -1,42 +1,66 @@
 import axios from 'axios';
-import { toast } from 'react-hot-toast'; // Hoặc thư viện notification khác
+import { toast } from 'react-hot-toast'; // Đảm bảo đã cài đặt react-hot-toast
 
-// Lấy baseURL từ biến môi trường, có giá trị mặc định cho development
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5002/api';
+// Lấy Base URL từ biến môi trường Vite, có giá trị mặc định nếu không được đặt
+// Sử dụng VITE_API_URL như đã thảo luận trước đó
+const API_BASE_URL = import.meta.env.VITE_API_URL;
+
+// Kiểm tra xem VITE_API_URL đã được định nghĩa chưa
+if (!API_BASE_URL) {
+  console.error("Lỗi cấu hình: VITE_API_URL chưa được định nghĩa trong file .env");
+  // Có thể hiển thị lỗi cho người dùng hoặc dừng ứng dụng
+  toast.error("Lỗi cấu hình phía client: Không tìm thấy địa chỉ máy chủ API.");
+}
 
 // Tạo một instance Axios mới với cấu hình tùy chỉnh
 const apiClient = axios.create({
+  // Chỉ định baseURL là gốc của server API (ví dụ: http://localhost:5002)
+  // Các service sẽ thêm phần path cụ thể (ví dụ: /api/auth/login)
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    // Không nên đặt 'Authorization' mặc định ở đây vì không phải request nào cũng cần
   },
   // timeout: 10000, // Timeout sau 10 giây (tùy chọn)
 });
 
 // --- Request Interceptor ---
-// Tự động thêm token vào header Authorization cho các request cần xác thực
+// Tự động thêm token vào header Authorization cho các request
 apiClient.interceptors.request.use(
   (config) => {
-    // Lấy token từ localStorage (hoặc nơi bạn lưu trữ)
-    // Bạn có thể cần một hàm helper hoặc lấy trực tiếp từ AuthContext nếu có thể
-    const token = localStorage.getItem('authToken'); // Ví dụ tên key là 'authToken'
+    // Lấy token từ localStorage (nơi AuthContext đã lưu)
+    const token = localStorage.getItem('authToken');
 
-    // Chỉ thêm header nếu token tồn tại và request không phải là đến các endpoint public
-    // (Có thể làm cách kiểm tra URL tinh vi hơn nếu cần)
-    const publicPaths = ['/auth/login', '/auth/register', '/auth/request-password-reset', '/auth/reset-password'];
-    if (token && config.url && !publicPaths.some(path => config.url.endsWith(path))) {
-      console.log('[Axios Request Interceptor] Adding token to header for URL:', config.url);
-      config.headers['Authorization'] = `Bearer ${token}`;
-    } else {
-      console.log('[Axios Request Interceptor] No token added for URL:', config.url);
+    // Thêm header Authorization nếu token tồn tại
+    // Không cần kiểm tra public path ở đây nữa vì nếu request cần xác thực mà không có token hợp lệ,
+    // backend sẽ trả về lỗi 401 và response interceptor sẽ xử lý.
+    if (token) {
+      // Đảm bảo không ghi đè header Authorization đã tồn tại nếu có (hiếm khi)
+      if (!config.headers['Authorization']) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+        // console.log('[Axios Request Interceptor] Added token for URL:', config.url);
+      }
     }
+    // else {
+    // console.log('[Axios Request Interceptor] No token found for URL:', config.url);
+    // }
+
+    // Luôn thêm /api vào trước URL nếu chưa có (để nhất quán với cấu trúc backend)
+    // Kiểm tra xem URL đã bắt đầu bằng /api chưa
+    if (config.url && !config.url.startsWith('/api')) {
+      // Nếu config.url là relative path (ví dụ: 'auth/login')
+      if (!config.url.startsWith('http://') && !config.url.startsWith('https://')) {
+        config.url = `/api${config.url.startsWith('/') ? '' : '/'}${config.url}`;
+      }
+      // Nếu là absolute path nhưng không trỏ đến API của chúng ta thì bỏ qua
+    }
+
 
     return config; // Trả về config đã được sửa đổi
   },
   (error) => {
-    // Xử lý lỗi trước khi request được gửi đi (hiếm khi xảy ra)
+    // Xử lý lỗi trước khi request được gửi đi
     console.error('[Axios Request Interceptor] Error:', error);
+    toast.error('Lỗi khi chuẩn bị gửi yêu cầu.'); // Thông báo lỗi chung
     return Promise.reject(error);
   }
 );
@@ -46,36 +70,43 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => {
     // Bất kỳ status code nào nằm trong khoảng 2xx sẽ đi vào đây
-    // Bạn có thể thêm logic xử lý data response chung ở đây nếu muốn
+    // Có thể thêm logic kiểm tra response.data.success ở đây nếu muốn xử lý tập trung
     return response; // Trả về response gốc
   },
   (error) => {
     // Bất kỳ status code nào ngoài khoảng 2xx sẽ đi vào đây
     console.error('[Axios Response Interceptor] API Call Error:', error.response || error.message || error);
 
+    // Biến để đánh dấu tránh xử lý lỗi 401 nhiều lần nếu có retry (hiện tại chưa có retry)
+    const originalRequest = error.config;
+    originalRequest._retry = originalRequest._retry || false; // Khởi tạo nếu chưa có
+
     if (error.response) {
       // Request đã được gửi và server trả về với status code không thành công
       const { status, data } = error.response;
 
-      // Xử lý các lỗi cụ thể
-      if (status === 401) {
-        // Lỗi Unauthorized (Token sai, hết hạn, hoặc chưa đăng nhập)
+      // Xử lý lỗi 401 (Unauthorized) - Quan trọng nhất
+      if (status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true; // Đánh dấu đã xử lý lỗi 401 này
+
         console.error('[Axios Response Interceptor] Unauthorized (401). Logging out...');
-        // Xóa token và thông tin user khỏi localStorage/context
+
+        // Xóa token và thông tin user khỏi localStorage.
+        // AuthContext sẽ tự động cập nhật state trong lần render tiếp theo hoặc khi reload.
         localStorage.removeItem('authToken');
-        localStorage.removeItem('user'); // Ví dụ
-        // Có thể gọi hàm logout từ AuthContext ở đây nếu cần thiết
-        // authContext.logout();
+        localStorage.removeItem('authUser'); // Giả sử user info cũng lưu ở đây
 
         // Thông báo cho người dùng và chuyển hướng về trang login
-        // Tránh chuyển hướng nếu đang ở trang login rồi
+        // Chỉ chuyển hướng nếu chưa ở trang login
         if (window.location.pathname !== '/login') {
-          toast.error(data?.message || 'Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.');
+          toast.error(data?.message || 'Phiên đăng nhập hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.', { id: 'auth-error-toast' }); // Dùng id để tránh toast trùng lặp nếu lỗi xảy ra nhanh
           // Delay chuyển hướng để toast kịp hiển thị
           setTimeout(() => {
-            window.location.href = '/login'; // Chuyển hướng cứng
+            window.location.href = '/login'; // Chuyển hướng cứng để reset toàn bộ state ứng dụng
           }, 1500);
         }
+        // Không reject lỗi này nữa vì đã xử lý bằng redirect, trả về 1 promise pending để dừng chuỗi hiện tại
+        return new Promise(() => { });
 
       } else if (status === 403) {
         // Lỗi Forbidden (Không có quyền truy cập)
@@ -83,23 +114,24 @@ apiClient.interceptors.response.use(
 
       } else if (status === 404) {
         // Lỗi Not Found (Endpoint hoặc tài nguyên không tồn tại)
-        // Thường thì nên xử lý lỗi 404 tại component gọi API thay vì ở đây
+        // Thường xử lý tại component, nhưng có thể log ở đây
         console.warn('[Axios Response Interceptor] Resource not found (404):', error.config.url);
-        // toast.error(data?.message || 'Không tìm thấy tài nguyên được yêu cầu.');
+        // Không hiển thị toast chung cho 404 trừ khi có yêu cầu cụ thể
 
-      } else if (status === 400 && data?.errors) {
-        // Lỗi Validation (từ middleware Zod/validate)
-        // Hiển thị lỗi validation chi tiết nếu có
+      } else if (status === 400 && data?.errors && Array.isArray(data.errors)) {
+        // Lỗi Validation (ví dụ từ Zod middleware của backend)
+        // Giả sử data.errors là [{ field: 'fieldName', message: 'error message' }]
         console.error('[Axios Response Interceptor] Validation Error (400):', data.errors);
-        const errorMsg = data.errors.map(err => `${err.field}: ${err.message}`).join('\n');
-        toast.error(`Lỗi dữ liệu:\n${errorMsg}`, { duration: 5000 });
+        // Format lỗi validation để hiển thị
+        const errorMessages = data.errors.map(err => `- ${err.field ? `${err.field}: ` : ''}${err.message}`);
+        toast.error(`Lỗi dữ liệu đầu vào:\n${errorMessages.join('\n')}`, { duration: 6000 }); // Tăng thời gian hiển thị
 
       } else if (status >= 500) {
         // Lỗi Server (Internal Server Error, etc.)
         toast.error(data?.message || 'Lỗi hệ thống phía máy chủ. Vui lòng thử lại sau.');
 
       } else {
-        // Các lỗi client-side khác (4xx)
+        // Các lỗi client-side khác (4xx) chưa được xử lý cụ thể
         toast.error(data?.message || `Đã xảy ra lỗi (${status}).`);
       }
 
@@ -113,8 +145,9 @@ apiClient.interceptors.response.use(
       toast.error('Đã xảy ra lỗi khi gửi yêu cầu.');
     }
 
-    // Quan trọng: Reject promise để component gọi API biết rằng đã có lỗi
-    return Promise.reject(error);
+    // Quan trọng: Reject promise để component gọi API biết rằng đã có lỗi và xử lý tiếp nếu cần
+    // Trả về data lỗi từ server nếu có, nếu không thì trả về đối tượng lỗi gốc
+    return Promise.reject(error.response?.data || error);
   }
 );
 

@@ -38080,7 +38080,6 @@ D:.
     |   |       
     |   +---buildings
     |   |       BuildingCard.jsx
-    |   |       BuildingFormInputs.jsx
     |   |       
     |   +---invoices
     |   |       InvoiceListItem.jsx
@@ -38095,8 +38094,12 @@ D:.
     |   |       ImageUpload.jsx
     |   |       MediaSelector.jsx
     |   |       
+    |   +---profile
+    |   |       ProfileEditForm.jsx
+    |   |       ProfileInfo.jsx
+    |   |       SecuritySettings.jsx
+    |   |       
     |   +---rooms
-    |   |       RoomAmenityList.jsx
     |   |       RoomCard.jsx
     |   |       
     |   +---shared

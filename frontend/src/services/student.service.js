@@ -1,97 +1,127 @@
 import apiClient from '../api/axios';
 import { toast } from 'react-hot-toast';
 
-// Lấy danh sách sinh viên (có filter, pagination)
+// --- Các hàm gọi API cho Student ---
+
+/**
+ * Lấy danh sách sinh viên (có phân trang và tìm kiếm).
+ * @param {object} params - Query parameters (vd: page, limit, keyword)
+ * @returns {Promise<object>} Dữ liệu trả về từ API { students: [...], meta: {...} }
+ */
 const getAllStudents = async (params = {}) => {
-  // params: roomId, buildingId, status, faculty, courseYear, search, page, limit, sortBy, sortOrder
   try {
-    console.log('[Student Service] Fetching students with params:', params);
     const response = await apiClient.get('/students', { params });
-    console.log('[Student Service] Response:', response.data);
-    // API trả về { status: 'success', results: number, total: number, data: StudentProfile[] }
-    return response.data;
+    // API doc: { success: true, data: { students: [...], meta: {...} } }
+    if (response.data?.success) {
+      return response.data.data; // Trả về { students, meta }
+    } else {
+      throw new Error(response.data?.message || 'Lấy danh sách sinh viên thất bại.');
+    }
   } catch (error) {
-    console.error('[Student Service] Error fetching students:', error);
-    throw error;
+    console.error('Lỗi service getAllStudents:', error.response?.data || error.message);
+    throw error.response?.data || error;
   }
 };
 
-// Lấy chi tiết một sinh viên bằng Profile ID
+/**
+ * Lấy thông tin chi tiết một sinh viên bằng ID hồ sơ (profile ID).
+ * @param {string|number} id - ID của hồ sơ sinh viên (StudentProfile ID).
+ * @returns {Promise<object>} Dữ liệu chi tiết của sinh viên.
+ */
 const getStudentById = async (id) => {
-  if (!id) throw new Error('Student Profile ID is required');
   try {
-    console.log(`[Student Service] Fetching student by ID: ${id}`);
     const response = await apiClient.get(`/students/${id}`);
-    console.log('[Student Service] Response:', response.data);
-    // API trả về { status: 'success', data: StudentProfile }
-    return response.data.data;
-  } catch (error) {
-    console.error(`[Student Service] Error fetching student ${id}:`, error);
-    if (error.response?.status === 404) {
-      toast.error('Không tìm thấy hồ sơ sinh viên này.');
+    // API doc: { success: true, data: { student_profile_object } }
+    if (response.data?.success && response.data?.data) {
+      return response.data.data;
+    } else {
+      throw new Error(response.data?.message || `Không tìm thấy sinh viên với ID ${id}.`);
     }
-    throw error;
+  } catch (error) {
+    console.error(`Lỗi service getStudentById (${id}):`, error.response?.data || error.message);
+    throw error.response?.data || error;
   }
 };
 
-// Tạo sinh viên mới (User + StudentProfile)
+/**
+ * Tạo một hồ sơ sinh viên mới.
+ * Lưu ý: API này có thể yêu cầu tạo User trước hoặc tự tạo User liên kết.
+ * Cần làm rõ logic này với backend. Giả sử API này tạo cả User và Profile.
+ * Hoặc có thể API này chỉ tạo Profile và cần userId có sẵn?
+ * => Giả định API này tạo cả User (với email/pass mặc định?) và Profile.
+ * @param {object} studentData - Dữ liệu hồ sơ sinh viên (bao gồm các trường trong API doc).
+ * @returns {Promise<object>} Dữ liệu hồ sơ sinh viên vừa tạo.
+ */
 const createStudent = async (studentData) => {
-  // studentData: chứa email, password, và tất cả các trường của StudentProfile
   try {
-    console.log('[Student Service] Creating student:', studentData);
-    // Backend API POST /students đã xử lý việc tạo User và Profile
+    // **Cần làm rõ:** API `/students` có tạo cả User không, hay cần `userId`?
+    // Nếu cần tạo user riêng, thì luồng sẽ phức tạp hơn.
+    // Giả sử gửi thẳng data profile lên /students
     const response = await apiClient.post('/students', studentData);
-    console.log('[Student Service] Response:', response.data);
-    toast.success('Tạo hồ sơ sinh viên thành công!');
-    // API trả về { status: 'success', data: StudentProfile }
-    return response.data.data;
-  } catch (error) {
-    console.error('[Student Service] Error creating student:', error);
-    // Lỗi validation hoặc trùng lặp đã được interceptor hoặc controller xử lý toast
-    throw error;
-  }
-};
-
-// Cập nhật thông tin sinh viên (Profile ID)
-const updateStudent = async (profileId, updateData) => {
-  // updateData: chứa các trường có thể cập nhật của StudentProfile và có thể cả avatarId
-  if (!profileId) throw new Error('Student Profile ID is required for update');
-  try {
-    console.log(`[Student Service] Updating student profile ${profileId}:`, updateData);
-    // Sử dụng endpoint PUT /students/:id để cập nhật profile
-    const response = await apiClient.put(`/students/${profileId}`, updateData);
-    // Nếu cập nhật avatarId thì dùng PUT /users/:userId/profile?
-    // => Cần thống nhất API endpoint cho việc cập nhật.
-    // => GIẢ SỬ API PUT /students/:id xử lý cả profile và avatarId (nếu có)
-    console.log('[Student Service] Response:', response.data);
-    toast.success('Cập nhật thông tin sinh viên thành công!');
-    // API trả về { status: 'success', data: StudentProfile }
-    return response.data.data;
-  } catch (error) {
-    console.error(`[Student Service] Error updating student ${profileId}:`, error);
-    throw error;
-  }
-};
-
-// Xóa sinh viên (Profile ID)
-const deleteStudent = async (profileId) => {
-  if (!profileId) throw new Error('Student Profile ID is required for delete');
-  try {
-    console.log(`[Student Service] Deleting student profile ${profileId}`);
-    // API DELETE /students/:id xử lý việc xóa User, Profile và các liên kết
-    await apiClient.delete(`/students/${profileId}`);
-    toast.success('Xóa sinh viên thành công!');
-    return true;
-  } catch (error) {
-    console.error(`[Student Service] Error deleting student ${profileId}:`, error);
-    if (error.response?.status === 400 || error.response?.status === 409) {
-      toast.error(error.response?.data?.message || 'Không thể xóa sinh viên.');
+    // API doc: { success: true, data: { new_student_profile_object } }
+    if (response.data?.success && response.data?.data) {
+      return response.data.data;
+    } else {
+      throw new Error(response.data?.message || 'Tạo hồ sơ sinh viên thất bại.');
     }
-    throw error;
+  } catch (error) {
+    console.error('Lỗi service createStudent:', error.response?.data || error.message);
+    if (error.response?.data?.errors) {
+      throw error.response.data;
+    }
+    throw error.response?.data || error;
   }
 };
 
-// Export thành một object
+/**
+ * Cập nhật thông tin hồ sơ sinh viên.
+ * @param {string|number} id - ID của hồ sơ sinh viên cần cập nhật.
+ * @param {object} studentData - Dữ liệu cần cập nhật.
+ * @returns {Promise<object>} Dữ liệu hồ sơ sinh viên sau khi cập nhật.
+ */
+const updateStudent = async (id, studentData) => {
+  try {
+    // Chỉ gửi các trường cần cập nhật
+    const response = await apiClient.put(`/students/${id}`, studentData);
+    // API doc: { success: true, data: { updated_student_profile_object } }
+    if (response.data?.success && response.data?.data) {
+      return response.data.data;
+    } else {
+      throw new Error(response.data?.message || 'Cập nhật hồ sơ sinh viên thất bại.');
+    }
+  } catch (error) {
+    console.error(`Lỗi service updateStudent (${id}):`, error.response?.data || error.message);
+    if (error.response?.data?.errors) {
+      throw error.response.data;
+    }
+    throw error.response?.data || error;
+  }
+};
+
+/**
+ * Xóa một hồ sơ sinh viên.
+ * Lưu ý: Việc xóa này có thể cần xóa cả User liên kết hoặc chỉ xóa Profile.
+ * @param {string|number} id - ID của hồ sơ sinh viên cần xóa.
+ * @returns {Promise<object>} Response từ API (thường chứa message).
+ */
+const deleteStudent = async (id) => {
+  try {
+    const response = await apiClient.delete(`/students/${id}`);
+    // API doc: { success: true, message: "..." }
+    if (response.data?.success) {
+      return response.data;
+    } else {
+      throw new Error(response.data?.message || 'Xóa hồ sơ sinh viên thất bại.');
+    }
+  } catch (error) {
+    console.error(`Lỗi service deleteStudent (${id}):`, error.response?.data || error.message);
+    // Có thể có lỗi ràng buộc khóa ngoại nếu sinh viên còn hợp đồng, hóa đơn,...
+    throw error.response?.data || error;
+  }
+};
+
+
+// Export service object
 export const studentService = {
   getAllStudents,
   getStudentById,

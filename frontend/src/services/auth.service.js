@@ -1,56 +1,107 @@
-import apiClient from '../api/axios'; // THÊM DÒNG NÀY (Kiểm tra lại đường dẫn)
+// src/services/auth.service.js
+import apiClient from '../api/axios';
 
-const login = async (credentials) => {
+/**
+ * Gọi API endpoint đăng nhập.
+ * @param {string} email - Email người dùng
+ * @param {string} password - Mật khẩu người dùng
+ * @returns {Promise<{user: object, token: string}>} Dữ liệu gồm user object và token nếu thành công.
+ * @throws {Error} Nếu đăng nhập thất bại hoặc API trả về lỗi.
+ */
+const login = async (email, password) => {
     try {
-        const response = await apiClient.post('/auth/login', credentials);
-        // Lưu token và user vào localStorage/context sau khi thành công
-        if (response.data.token && response.data.user) {
-            localStorage.setItem('authToken', response.data.token);
-            localStorage.setItem('user', JSON.stringify(response.data.user)); // Lưu thông tin user
-            // Cập nhật context nếu cần
+        const response = await apiClient.post('/auth/login', { email, password });
+
+        // Kiểm tra nếu có dữ liệu và thành công
+        if (response.data?.success) {
+            // Nếu success nhưng thiếu user/token thì log cảnh báo
+            if (!response.data?.data?.user || !response.data?.data?.token) {
+                console.warn('Cảnh báo: Đăng nhập thành công nhưng thiếu user/token.');
+            }
+            return response.data.data;
         }
-        return response.data; // Trả về dữ liệu từ API
+        // Trường hợp đặc biệt: thông báo là "Đăng nhập thành công" nhưng không có success flag
+        else if (response.data?.message === 'Đăng nhập thành công') {
+            console.log('Đăng nhập thành công, trích xuất dữ liệu.');
+            // Tùy vào cấu trúc API, có thể dữ liệu nằm trong response.data hoặc response.data.data
+            return response.data.data || response.data;
+        }
+        else {
+            throw new Error(response.data?.message || 'Đăng nhập thất bại.');
+        }
     } catch (error) {
-        // Interceptor đã xử lý lỗi và hiển thị toast, chỉ cần ném lại lỗi
-        // để component gọi biết là có lỗi xảy ra
-        console.error('Login service error:', error); // Log thêm nếu muốn
-        throw error;
+        // Đặc biệt xử lý trường hợp lỗi nhưng message là "Đăng nhập thành công"
+        if (error.message === 'Đăng nhập thành công' ||
+            error.response?.data?.message === 'Đăng nhập thành công') {
+            console.log('Phát hiện đăng nhập thành công được trả về dưới dạng lỗi');
+
+            // Trả về dữ liệu từ response nếu có, hoặc tạo đối tượng mặc định
+            const userData = error.response?.data?.data || {};
+            return userData;
+        }
+
+        const errorMessage = error.response?.data?.message || error.message || 'Lỗi không xác định';
+        console.error('Lỗi dịch vụ đăng nhập:', errorMessage);
+        throw new Error(errorMessage);
     }
 };
 
+/**
+ * Hàm logout trong service.
+ */
 const logout = () => {
-    // Khi logout, client chỉ cần xóa token và user data
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    // Không cần gọi API /auth/logout vì nó không thực sự làm gì ở backend
-    // Nếu muốn gọi để server biết (vd: log), thì gọi như các API khác:
-    // try {
-    //    await apiClient.post('/auth/logout');
-    // } catch(error) {
-    //     console.error("Error calling logout API (mostly informational):", error);
-    // }
+    console.log("AuthService: Logout function called (no backend API call implemented).");
 };
 
+/**
+ * Gọi API để lấy thông tin người dùng đang đăng nhập.
+ * @returns {Promise<object>} User object nếu thành công.
+ */
 const getMe = async () => {
     try {
         const response = await apiClient.get('/auth/me');
-        // Cập nhật lại thông tin user trong localStorage/context nếu cần
-        if (response.data.user) {
-            localStorage.setItem('user', JSON.stringify(response.data.user));
+
+        if (response.data?.success && response.data?.data) {
+            return response.data.data;
+        } else {
+            throw new Error(response.data?.message || 'Không thể lấy thông tin người dùng.');
         }
-        return response.data.user;
     } catch (error) {
-        console.error('GetMe service error:', error);
-        // Lỗi 401 sẽ tự động xử lý logout bởi interceptor
-        throw error;
+        const errorMessage = error.response?.data?.message || error.message || 'Lỗi không xác định';
+        console.error('Lỗi dịch vụ getMe:', errorMessage);
+        throw new Error(errorMessage);
     }
-}
+};
 
+/**
+ * Gọi API để thay đổi mật khẩu.
+ * @param {string} oldPassword
+ * @param {string} newPassword
+ * @returns {Promise<object>}
+ */
+const changePassword = async (oldPassword, newPassword) => {
+    try {
+        const response = await apiClient.put('/auth/change-password', {
+            oldPassword,
+            newPassword,
+        });
 
-// Export các hàm service
+        if (response.data?.success || response.status === 200 || response.status === 204) {
+            return response.data || { message: 'Đổi mật khẩu thành công.' };
+        } else {
+            throw new Error(response.data?.message || 'Đổi mật khẩu thất bại.');
+        }
+    } catch (error) {
+        const errorMessage = error.response?.data?.message || error.message || 'Lỗi không xác định';
+        console.error('Lỗi dịch vụ changePassword:', errorMessage);
+        throw new Error(errorMessage);
+    }
+};
+
+// Export các hàm service đã định nghĩa
 export const authService = {
     login,
     logout,
     getMe,
-    // Thêm các hàm khác: requestPasswordReset, resetPassword...
+    changePassword,
 };

@@ -1,53 +1,56 @@
-const Table = ({
-  columns,
-  data,
-  isLoading,
-  emptyMessage = 'Tidak ada data'
-}) => {
-  if (isLoading) {
-    return <div className="text-center py-4">Loading...</div>
-  }
+import React from 'react';
 
-  if (!data?.length) {
-    return (
-      <div className="text-center py-4 text-gray-500">
-        {emptyMessage}
-      </div>
-    )
+const Table = ({ columns = [], data = [], className = '' }) => {
+  if (!columns.length || !data.length) {
+    return <p className="text-center text-gray-500 py-4">Không có dữ liệu hiển thị.</p>;
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            {columns.map((column, idx) => (
-              <th
-                key={idx}
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                {column.header}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
-          {data.map((row, rowIdx) => (
-            <tr key={rowIdx}>
-              {columns.map((column, colIdx) => (
-                <td
-                  key={colIdx}
-                  className="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
-                >
-                  {column.render ? column.render(row) : row[column.accessor]}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
+    <div className={`flow-root shadow border border-gray-200 sm:rounded-lg ${className}`}>
+      <div className="-my-2 -mx-4 overflow-x-auto sm:-mx-6 lg:-mx-8">
+        <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+          <div className="overflow-hidden ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+            <table className="min-w-full divide-y divide-gray-300">
+              <thead className="bg-gray-50">
+                <tr>
+                  {columns.map((column, index) => (
+                    <th
+                      key={column.accessor || index}
+                      scope="col"
+                      className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6"
+                    >
+                      {column.Header}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {data.map((row, rowIndex) => (
+                  <tr key={rowIndex} className="hover:bg-gray-50">
+                    {columns.map((column, colIndex) => {
+                      // Lấy giá trị: ưu tiên Cell render function, sau đó là accessor
+                      const cellValue = column.accessor
+                        ? column.accessor.split('.').reduce((o, k) => (o || {})[k], row) // Hỗ trợ nested accessor (vd: 'building.name')
+                        : null;
 
-export default Table 
+                      return (
+                        <td
+                          key={column.accessor || colIndex}
+                          className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-700 sm:pl-6"
+                        >
+                          {column.Cell ? column.Cell({ row, value: cellValue }) : (cellValue ?? '-')}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Table;

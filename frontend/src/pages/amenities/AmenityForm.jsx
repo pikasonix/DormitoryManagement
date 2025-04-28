@@ -1,172 +1,167 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import api from '../../services/api'
-import { Alert, Button, Card, Input, Select } from '../../components/shared'
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { amenityService } from '../../services/amenity.service';
+import { Input, Button, Textarea } from '../../components/shared'; // Import component chung
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
+import { toast } from 'react-hot-toast';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
-const FacilityForm = () => {
-  const navigate = useNavigate()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+const AmenityForm = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const isEditMode = Boolean(id);
 
   const [formData, setFormData] = useState({
     name: '',
-    type: '',
-    capacity: '',
-    status: 'available',
-    image: '',
     description: '',
-    location: '',
-    maintenanceSchedule: ''
-  })
+    icon: '', // URL của icon
+  });
+  const [isLoading, setIsLoading] = useState(isEditMode);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState({});
 
+  // Fetch dữ liệu amenity nếu là edit mode
+  useEffect(() => {
+    if (isEditMode) {
+      setIsLoading(true);
+      amenityService.getAmenityById(id)
+        .then(data => {
+          setFormData({
+            name: data.name || '',
+            description: data.description || '',
+            icon: data.icon || '',
+          });
+        })
+        .catch(err => {
+          toast.error(`Không thể tải thông tin tiện nghi (ID: ${id}).`);
+          console.error(err);
+          navigate('/amenities');
+        })
+        .finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false); // Không cần load gì khi tạo mới
+    }
+  }, [id, isEditMode, navigate]);
+
+  // Xử lý thay đổi input
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
+  };
+
+  // Xử lý submit form
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
+    setIsSaving(true);
+    setErrors({});
+
+    if (!formData.name.trim()) {
+      setErrors({ name: "Tên tiện nghi là bắt buộc." });
+      setIsSaving(false);
+      return;
+    }
 
     try {
-      setLoading(true)
-      console.log('Submitting facility data:', formData)
+      // Chỉ gửi các trường có giá trị
+      const payload = {
+        name: formData.name,
+        description: formData.description || null, // Gửi null nếu rỗng
+        icon: formData.icon || null,
+      };
 
-      const response = await api.post('/api/facilities', formData, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      })
-      console.log('Facility created:', response.data)
-
-      navigate('/dashboard/facilities', {
-        state: { message: 'Cơ sở vật chất đã được thêm thành công' }
-      })
-    } catch (error) {
-      console.error('Error creating facility:', error)
-      setError(
-        error.response?.data?.message ||
-        'Thêm cơ sở vật chất thất bại. Vui lòng thử lại.'
-      )
+      if (isEditMode) {
+        await amenityService.updateAmenity(id, payload);
+        toast.success('Cập nhật tiện nghi thành công!');
+      } else {
+        await amenityService.createAmenity(payload);
+        toast.success('Thêm tiện nghi mới thành công!');
+      }
+      navigate('/amenities');
+    } catch (err) {
+      console.error("Lỗi lưu tiện nghi:", err);
+      const errorMsg = err?.message || (isEditMode ? 'Cập nhật thất bại.' : 'Thêm mới thất bại.');
+      if (err?.errors && Array.isArray(err.errors)) {
+        const serverErrors = {};
+        err.errors.forEach(fieldError => { if (fieldError.field) serverErrors[fieldError.field] = fieldError.message; });
+        setErrors(serverErrors);
+        toast.error("Vui lòng kiểm tra lại thông tin.", { id: 'validation-error' });
+      } else {
+        toast.error(errorMsg);
+      }
     } finally {
-      setLoading(false)
+      setIsSaving(false);
     }
-  }
+  };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
-  }
+  // --- Render ---
+  if (isLoading) return <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>;
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">Thêm Cơ Sở Vật Chất</h2>
+    <div className="space-y-6 max-w-lg mx-auto"> {/* Giảm max-width */}
+      <div>
+        <Button variant="link" onClick={() => navigate('/amenities')} icon={ArrowLeftIcon} className="text-sm mb-4">
+          Quay lại danh sách tiện nghi
+        </Button>
+        <h1 className="text-2xl font-semibold">
+          {isEditMode ? 'Chỉnh sửa Tiện nghi' : 'Thêm Tiện nghi mới'}
+        </h1>
+      </div>
 
-      {error && <Alert type="error" message={error} />}
-
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <Input
-              label="Tên Cơ Sở Vật Chất"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-            />
-
-            <Select
-              label="Loại"
-              name="type"
-              value={formData.type}
-              onChange={handleChange}
-              required
-            >
-              <option value="">Chọn Loại</option>
-              <option value="Study Room">Phòng Học</option>
-              <option value="Computer Lab">Phòng Máy Tính</option>
-              <option value="Multi-purpose Hall">Hội Trường</option>
-              <option value="Library">Thư Viện</option>
-              <option value="Meeting Room">Phòng Họp</option>
-            </Select>
-
-            <Input
-              label="Sức Chứa"
-              type="number"
-              name="capacity"
-              value={formData.capacity}
-              onChange={handleChange}
-              required
-              min="1"
-            />
-
-            <Input
-              label="Vị Trí"
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              placeholder="Ví dụ: Tầng 1"
-            />
-
-            <Input
-              label="URL Hình Ảnh"
-              name="image"
-              value={formData.image}
-              onChange={handleChange}
-              placeholder="https://example.com/image.jpg"
-            />
-
-            <Select
-              label="Trạng Thái"
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              required
-            >
-              <option value="available">Có Sẵn</option>
-              <option value="maintenance">Bảo Trì</option>
-              <option value="booked">Đã Đặt</option>
-            </Select>
+      <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">
+        <Input
+          label="Tên Tiện nghi *"
+          id="name"
+          name="name"
+          value={formData.name}
+          onChange={handleChange}
+          required
+          disabled={isSaving}
+          error={errors.name}
+        />
+        <Textarea
+          label="Mô tả"
+          id="description"
+          name="description"
+          rows={3}
+          value={formData.description}
+          onChange={handleChange}
+          disabled={isSaving}
+          error={errors.description}
+        />
+        <Input
+          label="URL Icon (Tùy chọn)"
+          id="icon"
+          name="icon"
+          type="url" // Kiểu url để có validation cơ bản
+          value={formData.icon}
+          onChange={handleChange}
+          disabled={isSaving}
+          error={errors.icon}
+          placeholder="https://example.com/icon.png"
+          hint="Dán đường dẫn URL đến hình ảnh icon."
+        />
+        {/* Preview Icon nếu có */}
+        {formData.icon && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Xem trước Icon</label>
+            <img src={formData.icon} alt="Icon Preview" className="h-16 w-16 object-contain border rounded" onError={(e) => e.target.style.display = 'none'} />
           </div>
+        )}
 
-          <div className="mt-4">
-            <Input
-              label="Lịch Bảo Trì"
-              name="maintenanceSchedule"
-              value={formData.maintenanceSchedule}
-              onChange={handleChange}
-              placeholder="Ví dụ: Mỗi Tuần"
-            />
-          </div>
 
-          <div className="mt-4">
-            <Input
-              label="Mô Tả"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              multiline
-              rows={3}
-              placeholder="Mô tả cơ sở vật chất..."
-            />
-          </div>
-        </Card>
-
-        <div className="flex justify-end space-x-3">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => navigate('/dashboard/facilities')}
-          >
+        {/* Nút Submit */}
+        <div className="flex justify-end gap-3 pt-5 border-t border-gray-200">
+          <Button variant="secondary" onClick={() => navigate('/amenities')} disabled={isSaving}>
             Hủy
           </Button>
-          <Button
-            type="submit"
-            loading={loading}
-          >
-            Lưu
+          <Button type="submit" isLoading={isSaving} disabled={isSaving}>
+            {isEditMode ? 'Lưu thay đổi' : 'Thêm Tiện nghi'}
           </Button>
         </div>
       </form>
     </div>
-  )
-}
+  );
+};
 
-export default FacilityForm 
+export default AmenityForm;

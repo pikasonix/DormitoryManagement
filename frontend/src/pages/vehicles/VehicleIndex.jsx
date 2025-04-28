@@ -1,0 +1,177 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { vehicleService } from '../../services/vehicle.service';
+import { studentService } from '../../services/student.service'; // Lấy tên chủ xe (nếu ownerId là studentId)
+// import { userService } from '../../services/user.service'; // Hoặc lấy user nếu ownerId là userId
+import { Button, Table, Input, Pagination, Badge, Select } from '../../components/shared';
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
+import { toast } from 'react-hot-toast';
+import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useDebounce } from '../../hooks/useDebounce';
+
+// Options loại xe
+const vehicleTypeOptions = [
+    { value: '', label: 'Tất cả loại xe' },
+    { value: 'car', label: 'Ô tô' },
+    { value: 'motorcycle', label: 'Xe máy' },
+    { value: 'bicycle', label: 'Xe đạp' },
+    { value: 'electric_scooter', label: 'Xe máy điện' }, // Ví dụ
+];
+
+// Options trạng thái
+const vehicleStatusOptions = [
+    { value: '', label: 'Tất cả trạng thái' },
+    { value: 'active', label: 'Đang hoạt động' },
+    { value: 'inactive', label: 'Không hoạt động' },
+    // Thêm status khác nếu có
+];
+
+// Màu badge
+const getStatusBadgeColor = (status) => {
+    switch (status?.toLowerCase()) {
+        case 'active': return 'green';
+        case 'inactive': return 'gray';
+        default: return 'gray';
+    }
+}
+
+const VehicleIndex = () => {
+    const [vehicles, setVehicles] = useState([]);
+    const [owners, setOwners] = useState({}); // Cache thông tin chủ xe { ownerId: name }
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [meta, setMeta] = useState({ currentPage: 1, totalPages: 1, limit: 10, total: 0 });
+    const [currentPage, setCurrentPage] = useState(1);
+    const [filters, setFilters] = useState({
+        type: '',
+        status: '',
+        search: '', // Tìm theo biển số, model?
+    });
+    const debouncedSearch = useDebounce(filters.search, 500);
+    const navigate = useNavigate();
+
+    // Fetch danh sách xe
+    const fetchVehicles = useCallback(async (page = 1, currentFilters, search = '') => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const params = {
+                page: page,
+                limit: meta.limit,
+                type: currentFilters.type || undefined,
+                status: currentFilters.status || undefined,
+                search: search || undefined, // API cần hỗ trợ search
+            };
+            const data = await vehicleService.getAllVehicles(params);
+            const vehicleList = data.vehicles || [];
+            setVehicles(vehicleList);
+            setMeta(prev => ({ ...prev, ...data.meta }));
+            setCurrentPage(data.meta?.page || 1);
+
+            // Fetch thông tin chủ xe nếu chưa có trong cache
+            const ownerIdsToFetch = [...new Set(vehicleList.map(v => v.ownerId).filter(id => id && !owners[id]))];
+            if (ownerIdsToFetch.length > 0) {
+                // **Xác định ownerId là userId hay studentId để gọi service đúng**
+                // Giả sử ownerId là studentId (StudentProfile ID)
+                const ownerPromises = ownerIdsToFetch.map(id => studentService.getStudentById(id).catch(() => null));
+                const ownerResults = await Promise.all(ownerPromises);
+                setOwners(prev => {
+                    const newOwners = { ...prev };
+                    ownerResults.forEach(owner => { if (owner) newOwners[owner.id] = owner.fullName || `ID: ${owner.id}`; });
+                    return newOwners;
+                });
+            }
+
+        } catch (err) {
+            setError('Không thể tải danh sách xe.');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [meta.limit, owners]); // Thêm owners dependency
+
+    useEffect(() => {
+        fetchVehicles(currentPage, filters, debouncedSearch);
+    }, [fetchVehicles, currentPage, filters, debouncedSearch]);
+
+    // Handlers
+    const handleFilterChange = (e) => {
+        setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        setCurrentPage(1);
+    };
+    const handlePageChange = (page) => setCurrentPage(page);
+    const handleDelete = async (id, licensePlate) => {
+        if (window.confirm(`Bạn có chắc muốn xóa thông tin xe có biển số "${licensePlate || 'N/A'}" không?`)) {
+            try {
+                await vehicleService.deleteVehicle(id);
+                toast.success(`Đã xóa thông tin xe "${licensePlate || 'N/A'}"!`);
+                fetchVehicles(currentPage, filters, debouncedSearch);
+            } catch (err) {
+                toast.error(err?.message || `Xóa thông tin xe thất bại.`);
+            }
+        }
+    };
+
+    // --- Cấu hình bảng ---
+    const columns = useMemo(() => [
+        { Header: 'Biển số', accessor: 'licensePlate', Cell: ({ value }) => <span className='font-mono font-semibold'>{value}</span> },
+        { Header: 'Chủ xe', accessor: 'ownerId', Cell: ({ value }) => owners[value] || `ID: ${value}` },
+        { Header: 'Loại xe', accessor: 'type', Cell: ({ value }) => vehicleTypeOptions.find(opt => opt.value === value)?.label || value }, // Hiển thị label
+        { Header: 'Hãng/Model', accessor: 'model' },
+        { Header: 'Màu sắc', accessor: 'color' },
+        { Header: 'Trạng thái', accessor: 'status', Cell: ({ value }) => <Badge color={getStatusBadgeColor(value)}>{value?.toUpperCase() || 'N/A'}</Badge> },
+        { Header: 'Ngày ĐK', accessor: 'createdAt', Cell: ({ value }) => format(parseISO(value), 'dd/MM/yyyy') }, // Giả sử có createdAt
+        {
+            Header: 'Hành động',
+            accessor: 'actions',
+            Cell: ({ row }) => (
+                <div className="flex space-x-2 justify-center">
+                    <Button variant="icon" onClick={() => navigate(`/vehicles/${row.original.id}/edit`)} tooltip="Chỉnh sửa">
+                        <PencilSquareIcon className="h-5 w-5 text-yellow-600 hover:text-yellow-800" />
+                    </Button>
+                    <Button variant="icon" onClick={() => handleDelete(row.original.id, row.original.licensePlate)} tooltip="Xóa">
+                        <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
+                    </Button>
+                </div>
+            ),
+        },
+    ], [navigate, owners, currentPage, filters, debouncedSearch]);
+
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-wrap justify-between items-center gap-4">
+                <h1 className="text-2xl font-semibold">Quản lý Xe đăng ký</h1>
+                {/* Nút Thêm xe (Admin/Staff tạo hộ?) */}
+                {/* <Button onClick={() => navigate('/vehicles/new')} icon={PlusIcon}>Thêm Xe</Button> */}
+                <p className='text-sm text-gray-600'>Sinh viên đăng ký xe tại trang cá nhân hoặc mục "Đăng ký xe (SV)".</p>
+            </div>
+
+            {/* Bộ lọc */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
+                <Input label="Tìm biển số/Model" id="search" name="search" placeholder="Nhập biển số, model..." value={filters.search} onChange={handleFilterChange} />
+                <Select label="Loại xe" id="type" name="type" value={filters.type} onChange={handleFilterChange} options={vehicleTypeOptions} />
+                <Select label="Trạng thái" id="status" name="status" value={filters.status} onChange={handleFilterChange} options={vehicleStatusOptions} />
+                {/* Thêm filter theo chủ xe nếu cần */}
+            </div>
+
+            {/* Bảng dữ liệu */}
+            {isLoading ? (
+                <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
+            ) : error ? (
+                <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
+            ) : (
+                <>
+                    <Table columns={columns} data={vehicles} />
+                    {meta.totalPages > 1 && (
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={meta.totalPages}
+                            onPageChange={handlePageChange}
+                        />
+                    )}
+                </>
+            )}
+        </div>
+    );
+};
+
+export default VehicleIndex;

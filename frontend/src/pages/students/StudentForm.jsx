@@ -1,299 +1,238 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { studentService } from '../../services/student.service';
-import { roomService } from '../../services/room.service'; // Lấy ds phòng để chọn
-import apiClient from '../../api/axios'; // Để upload avatar
+import { roomService } from '../../services/room.service'; // Cần lấy ds phòng để chọn
+import { Input, Button, Select, Textarea, DatePicker } from '../../components/shared'; // Thêm DatePicker nếu có
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import Select from '../../components/shared/Select';
-import { ArrowLeftIcon, CameraIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
-import { StudentStatus, Gender } from '@prisma/client'; // Import Enums nếu cần
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
-// Định nghĩa lại Enums nếu không import được
-const STUDENT_STATUSES = [ /* ... giống StudentIndex ... */];
-const GENDERS = [{ value: 'MALE', label: 'Nam' }, { value: 'FEMALE', label: 'Nữ' }];
-
-const API_ASSET_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || '';
+// Options ví dụ (cần định nghĩa đầy đủ hơn)
+const genderOptions = [{ value: 'MALE', label: 'Nam' }, { value: 'FEMALE', label: 'Nữ' }, { value: 'OTHER', label: 'Khác' }];
+const studentStatusOptions = [{ value: 'ACTIVE', label: 'Đang hoạt động' }, { value: 'INACTIVE', label: 'Ngừng hoạt động' }, /* Thêm các status khác */];
 
 const StudentForm = () => {
-  const { id: profileId } = useParams(); // Lấy profileId nếu là edit
+  const { id } = useParams(); // ID của StudentProfile
   const navigate = useNavigate();
-  const isEditMode = Boolean(profileId);
+  const isEditMode = Boolean(id);
 
   const [formData, setFormData] = useState({
-    // User fields (chỉ cần khi tạo mới)
-    email: '',
-    password: '',
-    confirmPassword: '', // Để xác nhận password khi tạo
-    // StudentProfile fields
-    studentId: '', fullName: '', gender: '', birthDate: '', identityCardNumber: '',
-    phoneNumber: '', faculty: '', courseYear: '', className: '', permanentProvince: '',
-    permanentDistrict: '', permanentAddress: '', status: 'PENDING_APPROVAL', startDate: '', contractEndDate: '',
-    personalEmail: '', ethnicity: '', religion: '', priorityObject: '',
-    fatherName: '', fatherDobYear: '', fatherPhone: '', fatherAddress: '',
-    motherName: '', motherDobYear: '', motherPhone: '', motherAddress: '',
-    emergencyContactRelation: '', emergencyContactPhone: '', emergencyContactAddress: '',
-    roomId: '', // ID phòng
-    avatarId: null, // ID avatar đã upload
-    // Chỉ lưu trữ thông tin avatar hiện có khi edit
-    currentAvatarPath: null,
+    // Các trường khớp với API POST /students và PUT /students/:id
+    // Lưu ý: Cần làm rõ API tạo mới có cần email/password không, hay backend tự tạo?
+    // Giả sử chỉ cần thông tin Profile ở đây
+    studentId: '',
+    firstName: '', // API yêu cầu firstName, lastName riêng
+    lastName: '',
+    email: '', // Có cần email ở đây không? Hay lấy từ User? API yêu cầu email.
+    phone: '',
+    address: '', // API yêu cầu address tổng
+    dateOfBirth: '', // YYYY-MM-DD
+    gender: '',
+    roomId: '', // ID phòng đang ở (optional)
+    status: 'ACTIVE', // Mặc định
+    // Thêm các trường khác từ API doc (nếu form này quản lý tất cả)
+    faculty: '',
+    courseYear: '',
+    className: '',
+    //... các trường khác
+    permanentAddress: '', // Tách địa chỉ nếu backend hỗ trợ
+    // ... thông tin phụ huynh, khẩn cấp ...
   });
   const [rooms, setRooms] = useState([]); // Danh sách phòng để chọn
-  const [newAvatarFile, setNewAvatarFile] = useState(null);
-  const [newAvatarPreview, setNewAvatarPreview] = useState(null);
-  const [loading, setLoading] = useState(isEditMode);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(isEditMode);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState({});
 
-  // Fetch dữ liệu phòng và student cũ (nếu edit)
+  // --- Fetch dữ liệu phòng và student (nếu edit) ---
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
-      setError(null);
+      setIsLoading(true);
       try {
-        // Luôn lấy danh sách phòng (có thể lọc phòng còn trống?)
-        const roomRes = await roomService.getAllRooms({ limit: 1000, hasVacancy: !isEditMode }); // Lấy phòng còn trống khi tạo mới
-        setRooms([{ value: '', label: 'Chưa xếp phòng' }, ...roomRes.data.map(r => ({ value: r.id, label: `${r.number} (${r.building.name}) - ${r.actualOccupancy}/${r.capacity}` }))]);
+        // Fetch danh sách phòng (chỉ phòng trống?)
+        const roomData = await roomService.getAllRooms({ status: 'AVAILABLE', limit: 1000 }); // Lấy phòng trống
+        setRooms(roomData || []);
 
+        // Fetch student data nếu edit
         if (isEditMode) {
-          const studentData = await studentService.getStudentById(profileId);
+          const studentData = await studentService.getStudentById(id);
           setFormData({
-            // Không lấy email/password ở đây vì không cho sửa trực tiếp
             studentId: studentData.studentId || '',
-            fullName: studentData.fullName || '',
+            // **Quan trọng: API trả về firstName, lastName nhưng state đang là fullName?**
+            // Cần thống nhất. Giả sử state cũng dùng firstName, lastName
+            firstName: studentData.firstName || '',
+            lastName: studentData.lastName || '',
+            email: studentData.email || '',
+            phone: studentData.phone || '',
+            address: studentData.address || '', // Địa chỉ tổng
+            dateOfBirth: studentData.dateOfBirth ? new Date(studentData.dateOfBirth).toISOString().split('T')[0] : '',
             gender: studentData.gender || '',
-            birthDate: studentData.birthDate ? new Date(studentData.birthDate).toISOString().split('T')[0] : '',
-            identityCardNumber: studentData.identityCardNumber || '',
-            phoneNumber: studentData.phoneNumber || '',
+            roomId: studentData.roomId?.toString() || '', // Chuyển ID phòng sang string
+            status: studentData.status || 'ACTIVE',
+            // Map các trường khác từ studentData vào formData
             faculty: studentData.faculty || '',
             courseYear: studentData.courseYear || '',
             className: studentData.className || '',
-            permanentProvince: studentData.permanentProvince || '',
-            permanentDistrict: studentData.permanentDistrict || '',
-            permanentAddress: studentData.permanentAddress || '',
-            status: studentData.status || 'PENDING_APPROVAL',
-            startDate: studentData.startDate ? new Date(studentData.startDate).toISOString().split('T')[0] : '',
-            contractEndDate: studentData.contractEndDate ? new Date(studentData.contractEndDate).toISOString().split('T')[0] : '',
-            personalEmail: studentData.personalEmail || '',
-            ethnicity: studentData.ethnicity || '',
-            religion: studentData.religion || '',
-            priorityObject: studentData.priorityObject || '',
-            fatherName: studentData.fatherName || '',
-            fatherDobYear: studentData.fatherDobYear || '',
-            fatherPhone: studentData.fatherPhone || '',
-            fatherAddress: studentData.fatherAddress || '',
-            motherName: studentData.motherName || '',
-            motherDobYear: studentData.motherDobYear || '',
-            motherPhone: studentData.motherPhone || '',
-            motherAddress: studentData.motherAddress || '',
-            emergencyContactRelation: studentData.emergencyContactRelation || '',
-            emergencyContactPhone: studentData.emergencyContactPhone || '',
-            emergencyContactAddress: studentData.emergencyContactAddress || '',
-            roomId: studentData.roomId || '',
-            avatarId: studentData.user?.avatarId || null, // Lấy avatarId hiện tại
-            currentAvatarPath: studentData.user?.avatar?.path || null, // Lấy path avatar hiện tại
+            permanentAddress: studentData.permanentAddress || '', // Ví dụ
+            // ... map các trường khác ...
           });
-          setNewAvatarPreview(null); // Reset preview khi load data edit
-          setNewAvatarFile(null);
         }
       } catch (err) {
-        setError(isEditMode ? 'Không thể tải dữ liệu sinh viên.' : 'Không thể tải danh sách phòng.');
-        console.error(err);
-        toast.error(isEditMode ? 'Không thể tải dữ liệu sinh viên.' : 'Không thể tải danh sách phòng.');
-        if (isEditMode) navigate('/students'); // Quay lại nếu lỗi load data edit
+        console.error("Lỗi tải dữ liệu form sinh viên:", err);
+        toast.error("Không thể tải dữ liệu cần thiết.");
+        if (isEditMode) navigate('/students');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
     fetchData();
-  }, [profileId, isEditMode, navigate]);
+  }, [id, isEditMode, navigate]);
 
 
-  // --- Các hàm xử lý input, file, ảnh (Tương tự Building/Room Form) ---
-  const handleChange = (e) => { /* ... */ };
-  const handleAvatarChange = (e) => { /* ... (Giống ProfileEditForm) ... */ };
+  // --- Handlers ---
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
+  };
 
-  // Xử lý Submit
+  // Hàm xử lý submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
+    setIsSaving(true);
+    setErrors({});
 
-    // Validate password khi tạo mới
-    if (!isEditMode && formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu và xác nhận mật khẩu không khớp.');
-      setIsSubmitting(false);
-      return;
-    }
-    if (!isEditMode && formData.password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự.');
-      setIsSubmitting(false);
-      return;
-    }
+    // --- Client Validation (Cần bổ sung) ---
+    if (!formData.studentId.trim()) { /* ... */ }
+    if (!formData.firstName.trim()) { /* ... */ }
+    if (!formData.lastName.trim()) { /* ... */ }
+    // ... thêm validation cho các trường bắt buộc khác ...
+    // --- End Validation ---
 
-
-    // --- Upload Avatar mới (nếu có) ---
-    let uploadedAvatarId = formData.avatarId; // Giữ ID cũ mặc định khi edit
-    if (newAvatarFile) {
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', newAvatarFile);
-      uploadFormData.append('mediaType', 'USER_AVATAR');
-      try {
-        const response = await apiClient.post('/media/upload', uploadFormData, { headers: { 'Content-Type': 'multipart/form-data' } });
-        uploadedAvatarId = response.data?.media?.id; // Lấy ID mới
-        toast.success('Tải ảnh đại diện mới thành công!');
-      } catch (uploadError) {
-        console.error("Lỗi tải ảnh đại diện:", uploadError);
-        toast.error(uploadError.response?.data?.message || 'Tải ảnh đại diện thất bại.');
-        setIsSubmitting(false);
-        return;
-      }
-    }
-    // --- Kết thúc Upload ---
-
-
-    // --- Chuẩn bị Payload ---
-    // Tách các trường của User và Profile
-    const { email, password, confirmPassword, currentAvatarPath, ...profilePayload } = formData;
-
-    // Chuyển đổi kiểu dữ liệu và gán avatarId
-    const finalPayload = {
-      ...profilePayload,
-      courseYear: parseInt(profilePayload.courseYear) || null,
-      fatherDobYear: parseInt(profilePayload.fatherDobYear) || null,
-      motherDobYear: parseInt(profilePayload.motherDobYear) || null,
-      birthDate: profilePayload.birthDate || null,
-      startDate: profilePayload.startDate || null,
-      contractEndDate: profilePayload.contractEndDate || null,
-      roomId: parseInt(profilePayload.roomId) || null, // Chuyển thành số hoặc null
-      avatarId: uploadedAvatarId, // Gán ID avatar mới (hoặc cũ nếu không đổi)
+    // Chuẩn bị payload (chuyển đổi kiểu nếu cần)
+    const payload = {
+      ...formData,
+      roomId: formData.roomId ? parseInt(formData.roomId, 10) : null, // Chuyển về số hoặc null
+      courseYear: formData.courseYear ? parseInt(formData.courseYear, 10) : null,
+      dateOfBirth: formData.dateOfBirth || null, // Gửi null nếu rỗng
     };
+    // Xóa các trường không cần gửi hoặc không hợp lệ nếu cần
+    // delete payload.address; // Nếu backend dùng permanentAddress
 
-    // Thêm email, password chỉ khi tạo mới
-    if (!isEditMode) {
-      finalPayload.email = email;
-      finalPayload.password = password;
-    }
-
-
-    // --- Gọi API ---
     try {
       if (isEditMode) {
-        // Gọi API Update (PUT /students/:id hoặc PUT /users/:userId/profile)
-        // Cần thống nhất API endpoint. Tạm dùng /students/:id
-        await studentService.updateStudent(profileId, finalPayload);
+        await studentService.updateStudent(id, payload);
+        toast.success('Cập nhật hồ sơ sinh viên thành công!');
       } else {
-        // Gọi API Create (POST /students)
-        await studentService.createStudent(finalPayload);
+        // **Làm rõ API tạo mới có cần tạo User không?**
+        // Giả sử API /students tự xử lý User
+        await studentService.createStudent(payload);
+        toast.success('Thêm sinh viên mới thành công!');
       }
       navigate('/students'); // Quay về danh sách
     } catch (err) {
-      setError(err.response?.data?.message || err.message || (isEditMode ? 'Cập nhật thất bại.' : 'Tạo mới thất bại.'));
-      console.error(err);
+      console.error("Lỗi lưu sinh viên:", err);
+      const errorMsg = err?.message || (isEditMode ? 'Cập nhật thất bại.' : 'Thêm mới thất bại.');
+      if (err?.errors && Array.isArray(err.errors)) {
+        const serverErrors = {};
+        err.errors.forEach(fieldError => {
+          if (fieldError.field) serverErrors[fieldError.field] = fieldError.message;
+          else serverErrors.general = fieldError.message; // Lỗi chung
+        });
+        setErrors(serverErrors);
+        if (serverErrors.general) toast.error(serverErrors.general);
+        else toast.error("Vui lòng kiểm tra lại thông tin đã nhập.", { id: 'validation-error' });
+      } else {
+        toast.error(errorMsg);
+      }
     } finally {
-      setIsSubmitting(false);
+      setIsSaving(false);
     }
   };
 
-  // Cleanup preview
-  useEffect(() => { /* ... Giống BuildingForm ... */ });
+  // --- Options cho Select phòng ---
+  const roomOptions = [
+    { value: '', label: '-- Chọn phòng --' },
+    // Chỉ hiển thị phòng còn trống? Hoặc tất cả?
+    ...rooms.map(room => ({ value: room.id.toString(), label: `Phòng ${room.number} (${room.building?.name}) - ${room.capacity} chỗ` }))
+  ];
 
-
-  if (loading) return <div className="text-center py-10"><LoadingSpinner /></div>;
-
+  // --- Render ---
+  if (isLoading) return <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Link to="/students" className="text-sm ..."><ArrowLeftIcon /> Quay lại Danh sách</Link>
-        <h1 className="text-2xl font-bold ...">{isEditMode ? 'Chỉnh sửa Sinh viên' : 'Thêm Sinh viên mới'}</h1>
-        <div></div>
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div>
+        <Button variant="link" onClick={() => navigate('/students')} icon={ArrowLeftIcon} className="text-sm mb-4">
+          Quay lại danh sách sinh viên
+        </Button>
+        <h1 className="text-2xl font-semibold">
+          {isEditMode ? 'Chỉnh sửa Hồ sơ Sinh viên' : 'Thêm Sinh viên mới'}
+        </h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8 ... bg-white p-6 shadow sm:rounded-lg">
-        {/* --- Phần Thông tin Tài khoản (Chỉ hiển thị khi tạo mới) --- */}
-        {!isEditMode && (
-          <div>
-            <h3 className="...">Thông tin Tài khoản Đăng nhập</h3>
-            <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-              <div className="sm:col-span-3">
-                <label htmlFor="email" className="...">Email đăng nhập *</label>
-                <input type="email" name="email" id="email" required value={formData.email} onChange={handleChange} className="mt-1 ..." />
-              </div>
-              <div className="sm:col-span-3"> {/* Placeholder */} </div>
-              <div className="sm:col-span-3">
-                <label htmlFor="password" className="...">Mật khẩu *</label>
-                <input type="password" name="password" id="password" required value={formData.password} onChange={handleChange} className="mt-1 ..." />
-                <p className="mt-1 text-xs text-gray-500">Ít nhất 6 ký tự.</p>
-              </div>
-              <div className="sm:col-span-3">
-                <label htmlFor="confirmPassword" className="...">Xác nhận Mật khẩu *</label>
-                <input type="password" name="confirmPassword" id="confirmPassword" required value={formData.confirmPassword} onChange={handleChange} className="mt-1 ..." />
-              </div>
-            </div>
-          </div>
-        )}
+      <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-8 divide-y divide-gray-200"> {/* Thêm divide */}
 
-        {/* --- Phần Ảnh đại diện (Giống ProfileEditForm) --- */}
-        <div className="pt-8">
-          <h3 className="...">Ảnh đại diện</h3>
-          {/* ... Logic hiển thị avatar cũ/mới, input upload giống ProfileEditForm ... */}
-          <p className="text-center text-red-500 my-4">(Thêm phần quản lý avatar giống ProfileEditForm ở đây)</p>
-        </div>
-
-
-        {/* --- Phần Thông tin Sinh viên (Giống ProfileEditForm) --- */}
-        <div className="pt-8">
-          <h3 className="...">Thông tin Sinh viên</h3>
+        {/* Phần Thông tin cơ bản */}
+        <div className="pt-0">
+          <h3 className="text-base font-semibold leading-7 text-gray-900">Thông tin Sinh viên</h3>
+          {errors.general && <p className='text-sm text-red-600 mt-1'>{errors.general}</p>}
           <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-            {/* ... Thêm tất cả các input cho StudentProfile như studentId, fullName, gender, birthDate, ... */}
-            {/* Ví dụ: */}
-            <div className="sm:col-span-3">
-              <label htmlFor="fullName" className="...">Họ và tên *</label>
-              <input type="text" name="fullName" id="fullName" required value={formData.fullName} onChange={handleChange} className="mt-1 ..." />
+            <div className="sm:col-span-2">
+              <Input label="Mã Sinh viên *" id="studentId" name="studentId" required value={formData.studentId} onChange={handleChange} disabled={isSaving} error={errors.studentId} />
+            </div>
+            <div className="sm:col-span-2">
+              <Input label="Họ *" id="lastName" name="lastName" required value={formData.lastName} onChange={handleChange} disabled={isSaving} error={errors.lastName} />
+            </div>
+            <div className="sm:col-span-2">
+              <Input label="Tên *" id="firstName" name="firstName" required value={formData.firstName} onChange={handleChange} disabled={isSaving} error={errors.firstName} />
             </div>
             <div className="sm:col-span-3">
-              <label htmlFor="studentId" className="...">Mã sinh viên *</label>
-              <input type="text" name="studentId" id="studentId" required value={formData.studentId} onChange={handleChange} className="mt-1 ..." />
+              {/* Email có cho sửa không? Nếu không thì disabled */}
+              <Input label="Email liên hệ *" id="email" name="email" type="email" required value={formData.email} onChange={handleChange} disabled={isSaving || isEditMode} error={errors.email} hint={isEditMode ? "Email liên kết với tài khoản, không thể sửa." : ""} />
             </div>
-            {/* ... THÊM RẤT NHIỀU INPUT KHÁC ... */}
-            <p className="sm:col-span-6 text-center text-red-500 my-4">(Thêm đầy đủ các trường input cho StudentProfile ở đây)</p>
+            <div className="sm:col-span-3">
+              <Input label="Số điện thoại *" id="phone" name="phone" type="tel" required value={formData.phone} onChange={handleChange} disabled={isSaving} error={errors.phone} />
+            </div>
+            <div className="sm:col-span-3">
+              {/* DatePicker hoặc Input type="date" */}
+              <Input label="Ngày sinh *" id="dateOfBirth" name="dateOfBirth" type="date" required value={formData.dateOfBirth} onChange={handleChange} disabled={isSaving} error={errors.dateOfBirth} />
+              {/* <DatePicker label="Ngày sinh *" selected={formData.dateOfBirth ? new Date(formData.dateOfBirth) : null} onChange={(date) => setFormData(prev => ({ ...prev, dateOfBirth: date ? date.toISOString().split('T')[0] : '' }))} required disabled={isSaving} error={errors.dateOfBirth} /> */}
+            </div>
+            <div className="sm:col-span-3">
+              <Select label="Giới tính *" id="gender" name="gender" required value={formData.gender} onChange={handleChange} options={genderOptions} disabled={isSaving} error={errors.gender} placeholder="-- Chọn giới tính --" />
+            </div>
+            <div className="sm:col-span-3">
+              <Select label="Phòng ở" id="roomId" name="roomId" value={formData.roomId} onChange={handleChange} options={roomOptions} disabled={isSaving} error={errors.roomId} />
+            </div>
+            <div className="sm:col-span-3">
+              <Select label="Trạng thái *" id="status" name="status" required value={formData.status} onChange={handleChange} options={studentStatusOptions} disabled={isSaving} error={errors.status} />
+            </div>
+            {/* Thêm các trường khác: faculty, courseYear, className */}
+            <div className="sm:col-span-full">
+              <Textarea label="Địa chỉ (Tổng quát)" id="address" name="address" rows={3} value={formData.address} onChange={handleChange} disabled={isSaving} error={errors.address} hint="Địa chỉ liên hệ hoặc địa chỉ tổng quát." />
+            </div>
+            {/* Có thể tách ra thành địa chỉ thường trú chi tiết nếu backend hỗ trợ */}
+            {/* <div className="sm:col-span-full">
+                             <Textarea label="Địa chỉ thường trú" id="permanentAddress" name="permanentAddress" ... />
+                         </div> */}
           </div>
         </div>
 
-        {/* --- Phần Thông tin Phòng --- */}
-        <div className="pt-8">
-          <h3 className="...">Thông tin Phòng ở</h3>
-          <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-            <div className="sm:col-span-3">
-              <Select label="Phòng hiện tại" name="roomId" value={formData.roomId} onChange={handleChange} options={rooms} disabled={rooms.length <= 1} />
-            </div>
-            <div className="sm:col-span-3">
-              <Select label="Trạng thái ở *" name="status" required value={formData.status} onChange={handleChange} options={STUDENT_STATUSES} />
-            </div>
-            {/* Thêm input cho startDate, contractEndDate, checkInDate, checkOutDate */}
-            {/* ... */}
-            <p className="sm:col-span-6 text-center text-red-500 my-4">(Thêm input cho ngày bắt đầu, kết thúc, checkin, checkout)</p>
-          </div>
-        </div>
-
-        {/* --- Các phần thông tin khác (Gia đình, Khẩn cấp - nếu cần sửa) --- */}
-        {/* ... Thêm các section và input tương ứng ... */}
+        {/* Có thể thêm các section khác cho thông tin học vấn, gia đình, liên hệ khẩn cấp */}
+        {/* <div className="pt-8"> <h3...>Thông tin Học vấn</h3> ... </div> */}
+        {/* <div className="pt-8"> <h3...>Thông tin Gia đình</h3> ... </div> */}
 
 
         {/* Nút Submit */}
-        <div className="pt-5">
-          <div className="flex justify-end gap-x-3">
-            <Link to="/students" className="rounded-md bg-white ...">Hủy</Link>
-            <button type="submit" disabled={isSubmitting} className="inline-flex justify-center rounded-md bg-indigo-600 ... disabled:opacity-50">
-              {isSubmitting ? <LoadingSpinner size="sm" className="mr-2" /> : null}
-              {isSubmitting ? 'Đang xử lý...' : (isEditMode ? 'Lưu thay đổi' : 'Tạo Sinh viên')}
-            </button>
-          </div>
-          {error && <p className="text-sm text-red-600 mt-2 text-right">{error}</p>}
+        <div className="flex items-center justify-end gap-x-3 pt-8 border-t border-gray-200">
+          <Button type="button" variant="secondary" onClick={() => navigate('/students')} disabled={isSaving}>
+            Hủy
+          </Button>
+          <Button type="submit" isLoading={isSaving} disabled={isSaving}>
+            {isEditMode ? 'Lưu thay đổi' : 'Thêm Sinh viên'}
+          </Button>
         </div>
       </form>
-
     </div>
   );
 };

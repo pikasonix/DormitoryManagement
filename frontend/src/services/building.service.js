@@ -1,95 +1,120 @@
-// src/services/building.service.js
-import apiClient from '../api/axios'; // Import instance Axios đã cấu hình
-import { toast } from 'react-hot-toast'; // Để hiển thị thông báo (tùy chọn)
+import apiClient from '../api/axios'; // Instance Axios đã cấu hình
+import { toast } from 'react-hot-toast';
 
-// Hàm lấy danh sách tòa nhà (có phân trang, tìm kiếm, sắp xếp)
+// --- Các hàm gọi API cho Building/Dormitory ---
+
+/**
+ * Lấy danh sách tất cả tòa nhà (dormitories).
+ * @param {object} params - Query parameters (vd: page, limit, search)
+ * @returns {Promise<object>} Dữ liệu trả về từ API (bao gồm danh sách buildings và meta nếu có)
+ */
 const getAllBuildings = async (params = {}) => {
-    // params có thể chứa: page, limit, sortBy, sortOrder, search
     try {
-        console.log('[Building Service] Fetching buildings with params:', params);
-        const response = await apiClient.get('/buildings', { params });
-        console.log('[Building Service] Response:', response.data);
-        // API trả về { status: 'success', results: number, total: number, data: Building[] }
-        return response.data; // Trả về toàn bộ object response từ API
+        const response = await apiClient.get('/dormitories', { params });
+        // API doc trả về { success: true, data: { dormitories: [...], meta: {...} } }
+        if (response.data?.success) {
+            return response.data.data; // Trả về { dormitories, meta }
+        } else {
+            throw new Error(response.data?.message || 'Lấy danh sách tòa nhà thất bại.');
+        }
     } catch (error) {
-        console.error('[Building Service] Error fetching buildings:', error);
-        // Lỗi đã được interceptor xử lý, chỉ cần ném lại để component biết
-        throw error;
+        console.error('Lỗi service getAllBuildings:', error.response?.data || error.message);
+        // Toast lỗi đã được xử lý bởi interceptor
+        throw error.response?.data || error;
     }
 };
 
-// Hàm lấy chi tiết một tòa nhà bằng ID
+/**
+ * Lấy thông tin chi tiết một tòa nhà bằng ID.
+ * @param {string|number} id - ID của tòa nhà.
+ * @returns {Promise<object>} Dữ liệu chi tiết của tòa nhà.
+ */
 const getBuildingById = async (id) => {
-    if (!id) throw new Error('Building ID is required');
     try {
-        console.log(`[Building Service] Fetching building by ID: ${id}`);
-        const response = await apiClient.get(`/buildings/${id}`);
-        console.log('[Building Service] Response:', response.data);
-        // API trả về { status: 'success', data: Building }
-        return response.data.data; // Trả về chỉ object Building
-    } catch (error) {
-        console.error(`[Building Service] Error fetching building ${id}:`, error);
-        if (error.response?.status === 404) {
-            toast.error('Không tìm thấy tòa nhà này.');
+        const response = await apiClient.get(`/dormitories/${id}`);
+        // API doc trả về { success: true, data: { dormitory_object } }
+        if (response.data?.success && response.data?.data) {
+            return response.data.data; // Trả về object tòa nhà
+        } else {
+            throw new Error(response.data?.message || `Không tìm thấy tòa nhà với ID ${id}.`);
         }
-        throw error;
+    } catch (error) {
+        console.error(`Lỗi service getBuildingById (${id}):`, error.response?.data || error.message);
+        throw error.response?.data || error;
     }
 };
 
-// Hàm tạo tòa nhà mới
+/**
+ * Tạo một tòa nhà mới.
+ * @param {object} buildingData - Dữ liệu tòa nhà mới { name, address, description?, totalRooms? }.
+ * @returns {Promise<object>} Dữ liệu tòa nhà vừa tạo.
+ */
 const createBuilding = async (buildingData) => {
-    // buildingData nên là object: { name, address?, description?, imageIds? }
     try {
-        console.log('[Building Service] Creating building:', buildingData);
-        const response = await apiClient.post('/buildings', buildingData);
-        console.log('[Building Service] Response:', response.data);
-        toast.success('Tạo tòa nhà thành công!');
-        // API trả về { status: 'success', data: Building }
-        return response.data.data;
-    } catch (error) {
-        console.error('[Building Service] Error creating building:', error);
-        // Lỗi validation hoặc lỗi khác đã được interceptor hoặc controller xử lý toast
-        throw error;
-    }
-};
-
-// Hàm cập nhật tòa nhà
-const updateBuilding = async (id, updateData) => {
-    // updateData nên là object: { name?, address?, description?, imageIds? }
-    if (!id) throw new Error('Building ID is required for update');
-    try {
-        console.log(`[Building Service] Updating building ${id}:`, updateData);
-        const response = await apiClient.put(`/buildings/${id}`, updateData);
-        console.log('[Building Service] Response:', response.data);
-        toast.success('Cập nhật tòa nhà thành công!');
-        // API trả về { status: 'success', data: Building }
-        return response.data.data;
-    } catch (error) {
-        console.error(`[Building Service] Error updating building ${id}:`, error);
-        throw error;
-    }
-};
-
-// Hàm xóa tòa nhà
-const deleteBuilding = async (id) => {
-    if (!id) throw new Error('Building ID is required for delete');
-    try {
-        console.log(`[Building Service] Deleting building ${id}`);
-        // API trả về 200 OK với message hoặc 204 No Content
-        await apiClient.delete(`/buildings/${id}`);
-        toast.success('Xóa tòa nhà thành công!');
-        return true; // Trả về true nếu thành công
-    } catch (error) {
-        console.error(`[Building Service] Error deleting building ${id}:`, error);
-        // Kiểm tra lỗi cụ thể (vd: không thể xóa do còn phòng)
-        if (error.response?.status === 400 || error.response?.status === 409) {
-            toast.error(error.response?.data?.message || 'Không thể xóa tòa nhà.');
+        const response = await apiClient.post('/dormitories', buildingData);
+        // API doc trả về { success: true, data: { new_dormitory_object } }
+        if (response.data?.success && response.data?.data) {
+            return response.data.data;
+        } else {
+            throw new Error(response.data?.message || 'Tạo tòa nhà mới thất bại.');
         }
-        throw error;
+    } catch (error) {
+        console.error('Lỗi service createBuilding:', error.response?.data || error.message);
+        // Xử lý lỗi validation chi tiết nếu có
+        if (error.response?.data?.errors) {
+            // Ném lại lỗi để component form xử lý errors
+            throw error.response.data;
+        }
+        throw error.response?.data || error;
     }
 };
 
-// Export thành một object
+/**
+ * Cập nhật thông tin một tòa nhà.
+ * @param {string|number} id - ID của tòa nhà cần cập nhật.
+ * @param {object} buildingData - Dữ liệu cần cập nhật.
+ * @returns {Promise<object>} Dữ liệu tòa nhà sau khi cập nhật.
+ */
+const updateBuilding = async (id, buildingData) => {
+    try {
+        const response = await apiClient.put(`/dormitories/${id}`, buildingData);
+        // API doc trả về { success: true, data: { updated_dormitory_object } }
+        if (response.data?.success && response.data?.data) {
+            return response.data.data;
+        } else {
+            throw new Error(response.data?.message || 'Cập nhật tòa nhà thất bại.');
+        }
+    } catch (error) {
+        console.error(`Lỗi service updateBuilding (${id}):`, error.response?.data || error.message);
+        if (error.response?.data?.errors) {
+            throw error.response.data;
+        }
+        throw error.response?.data || error;
+    }
+};
+
+/**
+ * Xóa một tòa nhà.
+ * @param {string|number} id - ID của tòa nhà cần xóa.
+ * @returns {Promise<object>} Response từ API (thường chứa message).
+ */
+const deleteBuilding = async (id) => {
+    try {
+        const response = await apiClient.delete(`/dormitories/${id}`);
+        // API doc trả về { success: true, message: "..." }
+        if (response.data?.success) {
+            return response.data;
+        } else {
+            throw new Error(response.data?.message || 'Xóa tòa nhà thất bại.');
+        }
+    } catch (error) {
+        console.error(`Lỗi service deleteBuilding (${id}):`, error.response?.data || error.message);
+        throw error.response?.data || error;
+    }
+};
+
+
+// Export service object
 export const buildingService = {
     getAllBuildings,
     getBuildingById,

@@ -1,223 +1,243 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { roomService } from '../../services/room.service';
 import { buildingService } from '../../services/building.service'; // Cần lấy danh sách tòa nhà để lọc
-import RoomCard from '../../components/rooms/RoomCard';
-import Pagination from '../../components/shared/Pagination';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import { PlusIcon, FunnelIcon } from '@heroicons/react/24/outline';
+import { Button, Table, Select, Input, Badge } from '../../components/shared'; // Thêm Select, Badge
+import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import Select from '../../components/shared/Select'; // Import Select component
+import { PlusIcon, PencilSquareIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../../contexts/AuthContext'; // Import useAuth để kiểm tra quyền
 
-// Các option cho filter
-const roomStatuses = [
+// Định nghĩa các tùy chọn cho bộ lọc status và type (phải khớp với Enum trong backend)
+const roomStatusOptions = [
   { value: '', label: 'Tất cả trạng thái' },
-  { value: 'AVAILABLE', label: 'Còn chỗ' },
+  { value: 'AVAILABLE', label: 'Còn trống' },
+  { value: 'OCCUPIED', label: 'Đang ở' },
   { value: 'FULL', label: 'Đã đầy' },
   { value: 'UNDER_MAINTENANCE', label: 'Đang bảo trì' },
 ];
-const roomTypes = [
+
+const roomTypeOptions = [
   { value: '', label: 'Tất cả loại phòng' },
-  { value: 'ROOM_12', label: 'Phòng 12' },
-  { value: 'ROOM_10', label: 'Phòng 10' },
-  { value: 'ROOM_8', label: 'Phòng 8' },
-  { value: 'ROOM_6', label: 'Phòng 6' },
-  { value: 'MANAGEMENT', label: 'Phòng QL' },
+  { value: 'NORMAL', label: 'Thường' },
+  { value: 'VIP', label: 'Vip' },
+  // Thêm các loại khác nếu có
 ];
 
+// Hàm helper để lấy màu badge theo status
+const getStatusBadgeColor = (status) => {
+  switch (status) {
+    case 'AVAILABLE': return 'green';
+    case 'OCCUPIED': return 'blue';
+    case 'FULL': return 'indigo';
+    case 'UNDER_MAINTENANCE': return 'yellow';
+    default: return 'gray';
+  }
+};
 
 const RoomIndex = () => {
+  const { user } = useAuth(); // Lấy user để kiểm tra quyền
   const [rooms, setRooms] = useState([]);
-  const [buildings, setBuildings] = useState([]); // State cho danh sách tòa nhà
-  const [loading, setLoading] = useState(true);
+  const [buildings, setBuildings] = useState([]); // Danh sách tòa nhà để lọc
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalItems: 0,
-    limit: 12, // Tăng limit để hiển thị nhiều card hơn
-  });
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState({ // State cho bộ lọc
     buildingId: '',
     status: '',
     type: '',
-    hasVacancy: '', // Thêm filter còn chỗ trống
+    // hasVacancy: '', // Bộ lọc này có vẻ phức tạp, tạm ẩn
+    search: '', // Thêm tìm kiếm theo số phòng?
   });
 
-  // Fetch danh sách tòa nhà để lọc
-  useEffect(() => {
-    buildingService.getAllBuildings({ limit: 100 }) // Lấy nhiều tòa nhà
-      .then(response => {
-        setBuildings([{ value: '', label: 'Tất cả tòa nhà' }, ...response.data.map(b => ({ value: b.id, label: b.name }))]);
-      })
-      .catch(err => {
-        console.error("Lỗi lấy danh sách tòa nhà:", err);
-        toast.error("Không thể tải danh sách tòa nhà để lọc.");
-      });
-  }, []);
-
+  const navigate = useNavigate();
 
   // Hàm fetch dữ liệu phòng
-  const fetchRooms = useCallback(async (page = 1, limit = 12, currentFilters = {}) => {
-    setLoading(true);
+  const fetchRooms = useCallback(async () => {
+    setIsLoading(true);
     setError(null);
-    // Chỉ gửi filter có giá trị
-    const activeFilters = Object.entries(currentFilters)
-      .filter(([, value]) => value !== '')
-      .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
     try {
-      const params = { page, limit, ...activeFilters, sortBy: 'number', sortOrder: 'asc' };
-      const response = await roomService.getAllRooms(params);
-      setRooms(response.data || []);
-      setPagination({
-        currentPage: page,
-        totalPages: Math.ceil(response.total / limit),
-        totalItems: response.total,
-        limit: limit,
+      // Tạo params từ filters, loại bỏ các giá trị rỗng
+      const params = {};
+      Object.keys(filters).forEach(key => {
+        if (filters[key]) {
+          params[key] = filters[key];
+        }
       });
+      const roomsData = await roomService.getAllRooms(params);
+      setRooms(roomsData);
     } catch (err) {
       setError('Không thể tải danh sách phòng.');
-      console.error(err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+    }
+  }, [filters]); // Fetch lại khi filters thay đổi
+
+  // Hàm fetch danh sách tòa nhà cho bộ lọc
+  const fetchBuildings = useCallback(async () => {
+    try {
+      const data = await buildingService.getAllBuildings({ limit: 1000 }); // Lấy nhiều tòa nhà
+      setBuildings(data.dormitories || []);
+    } catch (err) {
+      console.error("Lỗi tải danh sách tòa nhà cho bộ lọc:", err);
+      // Không cần set lỗi chính, chỉ log
     }
   }, []);
 
-  // Fetch dữ liệu lần đầu và khi filter/pagination thay đổi
+  // Fetch dữ liệu khi component mount hoặc filters thay đổi
   useEffect(() => {
-    fetchRooms(pagination.currentPage, pagination.limit, filters);
-  }, [pagination.currentPage, pagination.limit, filters, fetchRooms]);
+    fetchRooms();
+  }, [fetchRooms]);
 
-  // Hàm xử lý thay đổi filter
+  // Fetch buildings chỉ một lần khi mount
+  useEffect(() => {
+    fetchBuildings();
+  }, [fetchBuildings]);
+
+
+  // Hàm xử lý thay đổi bộ lọc
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => ({ ...prev, [name]: value }));
-    setPagination(prev => ({ ...prev, currentPage: 1 })); // Reset về trang 1 khi lọc
-  };
-
-  // Hàm xử lý thay đổi trang
-  const handlePageChange = (newPage) => {
-    if (newPage > 0 && newPage <= pagination.totalPages) {
-      setPagination(prev => ({ ...prev, currentPage: newPage }));
-    }
   };
 
   // Hàm xử lý xóa phòng
-  const handleDeleteRoom = async (id, number, buildingName) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa phòng ${number} (${buildingName}) không? Sinh viên trong phòng sẽ bị gán ra khỏi phòng.`)) {
+  const handleDelete = async (id, roomNumber, buildingName) => {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa phòng ${roomNumber} (Tòa nhà ${buildingName}) không?`)) {
       try {
         await roomService.deleteRoom(id);
-        // Tải lại trang hiện tại sau khi xóa
-        fetchRooms(pagination.currentPage, pagination.limit, filters);
-        // toast.success đã có trong service
+        toast.success(`Đã xóa phòng ${roomNumber} thành công!`);
+        fetchRooms(); // Tải lại danh sách
       } catch (err) {
-        // Lỗi đã được service log và toast
-        console.error("Lỗi khi xóa phòng từ Index:", err);
+        toast.error(err?.message || `Xóa phòng ${roomNumber} thất bại.`);
       }
     }
   };
 
+  // Kiểm tra quyền sửa/xóa (ví dụ: chỉ Admin/Staff)
+  const canEditDelete = user && (user.role === 'ADMIN' || user.role === 'STAFF');
+
+  // --- Cấu hình bảng ---
+  const columns = useMemo(() => [
+    {
+      Header: 'Số phòng',
+      accessor: 'number',
+      Cell: ({ value }) => <span className="font-semibold">{value}</span>
+    },
+    { Header: 'Tòa nhà', accessor: 'building.name' }, // Truy cập nested data
+    { Header: 'Tầng', accessor: 'floor' },
+    { Header: 'Loại phòng', accessor: 'type' }, // Cần format lại nếu muốn hiển thị tiếng Việt
+    {
+      Header: 'Sức chứa',
+      accessor: 'capacity',
+      Cell: ({ row }) => `${row.original.actualOccupancy ?? 0} / ${row.original.capacity}`
+    },
+    { Header: 'Giá (VND)', accessor: 'price', Cell: ({ value }) => value ? parseFloat(value).toLocaleString('vi-VN') : '-' }, // Format tiền tệ
+    {
+      Header: 'Trạng thái',
+      accessor: 'status',
+      Cell: ({ value }) => (
+        <Badge color={getStatusBadgeColor(value)}>
+          {value} {/* Cần map sang tiếng Việt */}
+        </Badge>
+      )
+    },
+    {
+      Header: 'Hành động',
+      accessor: 'actions',
+      Cell: ({ row }) => (
+        <div className="flex space-x-1 justify-center">
+          {/* Nút xem chi tiết (nếu có trang chi tiết) */}
+          {/* <Button variant="icon" onClick={() => navigate(`/rooms/${row.original.id}`)} tooltip="Xem chi tiết">
+                        <EyeIcon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
+                    </Button> */}
+          {canEditDelete && ( // Chỉ hiển thị nút sửa/xóa nếu có quyền
+            <>
+              <Button
+                variant="icon"
+                onClick={() => navigate(`/rooms/${row.original.id}/edit`)}
+                tooltip="Chỉnh sửa"
+              >
+                <PencilSquareIcon className="h-5 w-5 text-yellow-600 hover:text-yellow-800" />
+              </Button>
+              <Button
+                variant="icon"
+                onClick={() => handleDelete(row.original.id, row.original.number, row.original.building?.name)}
+                tooltip="Xóa"
+              >
+                <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
+              </Button>
+            </>
+          )}
+        </div>
+      ),
+    },
+  ], [navigate, canEditDelete]); // Thêm canEditDelete vào dependencies
+
+  // Tạo options cho Select tòa nhà
+  const buildingOptions = [
+    { value: '', label: 'Tất cả tòa nhà' },
+    ...buildings.map(b => ({ value: b.id.toString(), label: b.name }))
+  ];
+
+
+  // --- Render ---
   return (
-    <div className="space-y-6">
-      {/* Header và Filter */}
-      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Quản lý Phòng ở</h1>
-        <Link
-          to="/rooms/new"
-          className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 whitespace-nowrap order-first md:order-last"
-        >
-          <PlusIcon className="h-5 w-5 mr-1" />
-          Thêm Phòng
-        </Link>
+    <div className="space-y-4">
+      <div className="flex flex-wrap justify-between items-center gap-4">
+        <h1 className="text-2xl font-semibold">Quản lý Phòng ở</h1>
+        {canEditDelete && ( // Chỉ hiển thị nút Thêm nếu có quyền
+          <Button onClick={() => navigate('/rooms/new')} icon={PlusIcon}>
+            Thêm phòng mới
+          </Button>
+        )}
       </div>
 
-      {/* Khu vực Filter */}
-      <div className="bg-white p-4 rounded-lg shadow space-y-4 md:space-y-0 md:flex md:items-end md:gap-4">
-        <div className="flex-1 min-w-[150px]">
-          <Select
-            label="Tòa nhà"
-            name="buildingId"
-            value={filters.buildingId}
-            onChange={handleFilterChange}
-            options={buildings}
-          />
-        </div>
-        <div className="flex-1 min-w-[150px]">
-          <Select
-            label="Loại phòng"
-            name="type"
-            value={filters.type}
-            onChange={handleFilterChange}
-            options={roomTypes}
-          />
-        </div>
-        <div className="flex-1 min-w-[150px]">
-          <Select
-            label="Trạng thái"
-            name="status"
-            value={filters.status}
-            onChange={handleFilterChange}
-            options={roomStatuses}
-          />
-        </div>
-        <div className="flex-1 min-w-[150px]">
-          <Select
-            label="Tình trạng chỗ"
-            name="hasVacancy" // Filter theo chỗ trống
-            value={filters.hasVacancy}
-            onChange={handleFilterChange}
-            options={[
-              { value: '', label: 'Tất cả' },
-              { value: 'true', label: 'Còn chỗ trống' },
-              { value: 'false', label: 'Hết chỗ/Bảo trì' }
-            ]}
-          />
-        </div>
-        {/* <button
-                     onClick={() => fetchRooms(1, pagination.limit, filters)} // Nút lọc thủ công nếu không muốn tự động lọc
-                     className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                 >
-                      <FunnelIcon className="h-5 w-5 mr-1 text-gray-400"/>
-                      Lọc
-                 </button> */}
-      </div>
-
-
-      {/* Hiển thị Loading/Error */}
-      {loading && <div className="text-center py-10"><LoadingSpinner /></div>}
-      {!loading && error && <div className="text-center py-10 text-red-600 bg-red-50 p-4 rounded">{error}</div>}
-
-      {/* Hiển thị danh sách phòng */}
-      {!loading && !error && rooms.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {rooms.map((room) => (
-            <RoomCard
-              key={room.id}
-              room={room}
-              onDelete={handleDeleteRoom}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Thông báo khi không có dữ liệu */}
-      {!loading && !error && rooms.length === 0 && (
-        <div className="text-center py-10 text-gray-500 border-2 border-dashed border-gray-300 rounded-lg">
-          <Square2StackIcon className="mx-auto h-12 w-12 text-gray-400" />
-          <h3 className="mt-2 text-sm font-semibold text-gray-900">Không tìm thấy phòng nào</h3>
-          <p className="mt-1 text-sm text-gray-500">Hãy thử điều chỉnh bộ lọc hoặc thêm phòng mới.</p>
-          {/* Nút thêm mới ở đây nữa */}
-        </div>
-      )}
-
-      {/* Phân trang */}
-      {!loading && !error && rooms.length > 0 && pagination.totalPages > 1 && (
-        <Pagination
-          currentPage={pagination.currentPage}
-          totalPages={pagination.totalPages}
-          onPageChange={handlePageChange}
+      {/* Bộ lọc */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
+        <Input
+          label="Tìm số phòng"
+          id="search"
+          name="search"
+          placeholder="Nhập số phòng..."
+          value={filters.search}
+          onChange={handleFilterChange}
         />
+        <Select
+          label="Tòa nhà"
+          id="buildingId"
+          name="buildingId"
+          value={filters.buildingId}
+          onChange={handleFilterChange}
+          options={buildingOptions}
+        />
+        <Select
+          label="Trạng thái"
+          id="status"
+          name="status"
+          value={filters.status}
+          onChange={handleFilterChange}
+          options={roomStatusOptions}
+        />
+        <Select
+          label="Loại phòng"
+          id="type"
+          name="type"
+          value={filters.type}
+          onChange={handleFilterChange}
+          options={roomTypeOptions}
+        />
+      </div>
+
+      {/* Bảng dữ liệu */}
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
+      ) : error ? (
+        <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
+      ) : (
+        <Table columns={columns} data={rooms} />
       )}
+
+      {/* Lưu ý: Không có Pagination vì API không hỗ trợ */}
     </div>
   );
 };
