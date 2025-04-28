@@ -43,8 +43,8 @@ const SidebarContent = ({ navigation, pathname }) => {
             key={item.name}
             to={item.href}
             className={`group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-150 ease-in-out ${pathname === item.href || pathname.startsWith(item.href + '/')
-                ? 'bg-indigo-100 text-indigo-700 font-semibold shadow-sm' // Thêm shadow nhẹ khi active
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              ? 'bg-indigo-100 text-indigo-700 font-semibold shadow-sm' // Thêm shadow nhẹ khi active
+              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             aria-current={pathname === item.href ? 'page' : undefined}
           >
@@ -104,8 +104,42 @@ const DashboardLayout = () => {
   };
 
   // --- URL Base cho Uploads ---
-  // Lấy URL này từ biến môi trường, loại bỏ /api nếu có
-  const UPLOADS_BASE_URL = (import.meta.env.VITE_UPLOADS_URL || import.meta.env.VITE_API_URL)?.replace('/api', '');
+  // Lấy URL gốc API từ biến môi trường, loại bỏ endpoint cuối nếu có
+  const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+  // Xử lý đường dẫn uploads - nếu có VITE_UPLOADS_URL thì dùng, nếu không thì dùng API_BASE_URL
+  const UPLOADS_BASE_URL = import.meta.env.VITE_UPLOADS_URL || API_BASE_URL.replace(/\/api\/?$/, '');
+
+  // Helper function để xử lý đường dẫn avatar
+  const getAvatarUrl = (avatarPath) => {
+    if (!avatarPath) return '/default-avatar.png';
+
+    // Nếu là URL đầy đủ thì trả về nguyên vẹn
+    if (avatarPath.startsWith('http')) {
+      return avatarPath;
+    }
+
+    // Nếu không, ghép với base URL
+    // Đảm bảo không có // trùng lặp giữa base URL và path
+    const baseUrl = UPLOADS_BASE_URL.endsWith('/') ? UPLOADS_BASE_URL.slice(0, -1) : UPLOADS_BASE_URL;
+    const path = avatarPath.startsWith('/') ? avatarPath : `/${avatarPath}`;
+
+    return `${baseUrl}${path}`;
+  };
+
+  // Hàm debug - có thể bỏ sau khi giải quyết vấn đề
+  const logAvatarInfo = () => {
+    console.log('Avatar Info:', {
+      userAvatar: user?.avatar,
+      apiBaseUrl: API_BASE_URL,
+      uploadsBaseUrl: UPLOADS_BASE_URL,
+      finalUrl: user?.avatar?.path ? getAvatarUrl(user.avatar.path) : '/default-avatar.png'
+    });
+  };
+
+  // Gọi hàm log khi component mount hoặc user thay đổi
+  // useEffect(() => {
+  //   if (user) logAvatarInfo();
+  // }, [user]);
 
   // --- Render Layout ---
   return (
@@ -158,9 +192,6 @@ const DashboardLayout = () => {
               <Bars3Icon className="h-6 w-6" aria-hidden="true" />
             </button>
 
-            {/* Separator (optional) */}
-            {/* <div className="h-6 w-px bg-gray-900/10 lg:hidden" aria-hidden="true" /> */}
-
             {/* Profile Dropdown (đẩy sang phải) */}
             <div className="flex flex-1 justify-end gap-x-4 self-stretch lg:gap-x-6">
               <div className="flex items-center gap-x-4 lg:gap-x-6">
@@ -174,25 +205,28 @@ const DashboardLayout = () => {
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
                   >
                     <span className="sr-only">Mở menu người dùng</span>
-                    {/* **Sửa cách lấy URL Avatar:** */}
+                    {/* **Phần hiển thị avatar đã được sửa:** */}
                     {user?.avatar?.path ? (
                       <img
-                        className="h-8 w-8 rounded-full bg-gray-200 object-cover"
-                        // Sử dụng VITE_UPLOADS_URL nếu có, nếu không fallback về VITE_API_URL (loại bỏ /api)
-                        src={user.avatar.path.startsWith('http') ? user.avatar.path : `${UPLOADS_BASE_URL || ''}${user.avatar.path.startsWith('/') ? '' : '/'}${user.avatar.path}`}
+                        className="h-8 w-8 rounded-full bg-gray-200 object-cover border border-gray-200"
+                        src={getAvatarUrl(user.avatar.path)}
                         alt="User Avatar"
-                        onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.png' }} // Fallback nếu ảnh lỗi
+                        onError={(e) => {
+                          console.error('Avatar load error:', e);
+                          e.target.onerror = null;
+                          e.target.src = '/default-avatar.png';
+                        }}
                       />
                     ) : (
-                      <img className="h-8 w-8 rounded-full bg-gray-200" src="/default-avatar.png" alt="Default Avatar" /> // Luôn có ảnh default
-                      // <UserCircleIcon className="h-8 w-8 rounded-full text-gray-400 bg-gray-100" />
+                      <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                        <UserCircleIcon className="h-7 w-7 text-gray-500" aria-hidden="true" />
+                      </div>
                     )}
                     <span className="hidden lg:flex lg:items-center">
                       <span className="ml-3 text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">
                         {/* Ưu tiên fullName từ profile nếu có */}
                         {user?.profile?.fullName || user?.name || user?.email || 'Người dùng'}
                       </span>
-                      {/* <ChevronDownIcon className="ml-2 h-5 w-5 text-gray-400" aria-hidden="true" /> */}
                     </span>
                   </button>
 

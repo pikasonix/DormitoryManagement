@@ -17,6 +17,25 @@ const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret';
 // **QUAN TRỌNG:** Đảm bảo giá trị trong .env là một chuỗi thời gian hợp lệ (vd: '1d', '24h')
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
+// Cấu hình URL cho avatar
+const AVATAR_BASE_URL = process.env.AVATAR_BASE_URL || '/uploads/avatars/';
+const DEFAULT_AVATAR = '/default-avatar.png';
+
+// --- Helpers ---
+const formatUserResponse = (user: any) => {
+  // Bỏ mật khẩu khỏi đối tượng user
+  const { password: _, ...userWithoutPassword } = user;
+
+  // Thêm URL avatar
+  const avatarUrl = user.avatar
+    ? `${AVATAR_BASE_URL}${user.avatar.filename}`
+    : DEFAULT_AVATAR;
+
+  return {
+    ...userWithoutPassword,
+    avatarUrl
+  };
+};
 
 // --- Controller ---
 export class AuthController {
@@ -69,18 +88,25 @@ export class AuthController {
         });
       }
 
-      const { password: _, ...userWithoutPassword } = user;
+      // Format user response with avatar URL
+      const formattedUser = formatUserResponse(user);
 
       return res.json({
-        message: 'Đăng nhập thành công',
-        token,
-        user: userWithoutPassword,
-        profile
+        success: true, // Thêm flag success để frontend dễ xử lý
+        data: {
+          message: 'Đăng nhập thành công',
+          token,
+          user: formattedUser,
+          profile
+        }
       });
 
     } catch (error) {
       console.error('Login error:', error);
-      return res.status(500).json({ message: 'Đã xảy ra lỗi trong quá trình đăng nhập' });
+      return res.status(500).json({
+        success: false,
+        message: 'Đã xảy ra lỗi trong quá trình đăng nhập'
+      });
     }
   }
 
@@ -90,50 +116,69 @@ export class AuthController {
       const userRole = req.user?.role;
 
       if (!userId || !userRole) {
-        return res.status(401).json({ message: 'Thông tin xác thực không đầy đủ' });
+        return res.status(401).json({
+          success: false,
+          message: 'Thông tin xác thực không đầy đủ'
+        });
       }
 
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          isActive: true,
-          createdAt: true,
-          updatedAt: true,
+        include: {
           avatar: true,
           staffProfile: userRole !== Role.STUDENT ? {
             select: {
               id: true, fullName: true, phoneNumber: true, position: true, managedBuildingId: true,
+              managedBuilding: true
             }
           } : undefined,
           studentProfile: userRole === Role.STUDENT ? {
             select: {
               id: true, studentId: true, fullName: true, roomId: true,
+              room: { include: { building: true } }
             }
           } : undefined
         }
       });
 
       if (!user) {
-        return res.status(404).json({ message: 'Người dùng không tồn tại' });
+        return res.status(404).json({
+          success: false,
+          message: 'Người dùng không tồn tại'
+        });
       }
 
-      return res.json({ user });
+      // Format user response with avatar URL
+      const formattedUser = formatUserResponse(user);
+
+      return res.json({
+        success: true,
+        data: {
+          user: formattedUser
+        }
+      });
 
     } catch (error) {
       console.error('Get user error:', error);
-      return res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy thông tin người dùng' });
+      return res.status(500).json({
+        success: false,
+        message: 'Đã xảy ra lỗi khi lấy thông tin người dùng'
+      });
     }
   }
 
   static async logout(_req: Request, res: Response): Promise<Response> {
     try {
-      return res.json({ message: 'Đăng xuất thành công' });
+      return res.json({
+        success: true,
+        message: 'Đăng xuất thành công'
+      });
     } catch (error) {
       console.error('Logout error:', error);
-      return res.status(500).json({ message: 'Đã xảy ra lỗi khi đăng xuất' });
+      return res.status(500).json({
+        success: false,
+        message: 'Đã xảy ra lỗi khi đăng xuất'
+      });
     }
   }
 }

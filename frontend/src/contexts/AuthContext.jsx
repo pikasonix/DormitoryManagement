@@ -43,7 +43,10 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const userData = await authService.getMe();
+      const response = await authService.getMe();
+
+      // Xử lý cấu trúc phản hồi mới (có data.user)
+      const userData = response.data?.user || response.user;
 
       if (userData) {
         setUser(userData);
@@ -73,7 +76,17 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     setIsLoading(true);
     try {
-      const { user: userData, token } = await authService.login(credentials.email, credentials.password);
+      const response = await authService.login(credentials.email, credentials.password);
+
+      // Xử lý cấu trúc phản hồi mới
+      const data = response.data || response;
+      const userData = data.user;
+      const token = data.token;
+
+      if (!userData || !token) {
+        throw new Error('Dữ liệu đăng nhập không hợp lệ');
+      }
+
       setTokenInStorage(token);
       setUserInStorage(userData);
       setUser(userData);
@@ -85,10 +98,19 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (error) {
       console.error("[AuthContext] Login failed:", error);
+      toast.error(error.message || 'Đăng nhập thất bại');
       return false;
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // --- Update User (dùng cho cập nhật thông tin, kể cả avatar) ---
+  const updateUserInfo = (newUserData) => {
+    const updatedUser = { ...user, ...newUserData };
+    setUser(updatedUser);
+    setUserInStorage(updatedUser);
+    return updatedUser;
   };
 
   // --- Logout Function ---
@@ -120,6 +142,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     register,
     checkAuthStatus,
+    updateUserInfo,  // Thêm hàm cập nhật thông tin người dùng
   };
 
   return (

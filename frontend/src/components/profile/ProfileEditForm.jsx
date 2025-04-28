@@ -230,23 +230,33 @@ const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
                     <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                         {/* Sử dụng component Input */}
                         <div className="sm:col-span-3">
-                            <Input label="Họ và tên *" id="fullName" name="fullName" required value={formData.fullName} onChange={handleChange} disabled={isSaving} />
+                            <Input label="Họ và tên" id="fullName" name="fullName" required value={formData.fullName} onChange={handleChange} disabled={isSaving} />
                         </div>
                         <div className="sm:col-span-3">
                             <Input label="Email" id="email" type="email" value={user?.email || ''} disabled readOnly hint="Email không thể thay đổi." />
                         </div>
                         <div className="sm:col-span-3">
-                            <Input label="Số điện thoại *" id="phoneNumber" name="phoneNumber" type="tel" required value={formData.phoneNumber} onChange={handleChange} disabled={isSaving} />
+                            <Input label="Số điện thoại" id="phoneNumber" name="phoneNumber" type="tel" required value={formData.phoneNumber} onChange={handleChange} disabled={isSaving} />
                         </div>
                         <div className="sm:col-span-3">
                             {/* Sử dụng component Select cho Gender */}
-                            <Select label="Giới tính *" id="gender" name="gender" required value={formData.gender} onChange={handleChange} options={genderOptions} disabled={isSaving} placeholder="-- Chọn giới tính --" />
+                            <Select
+                                label="Giới tính"
+                                id="gender"
+                                name="gender"
+                                value={formData.gender}
+                                onChange={handleChange}
+                                options={genderOptions}
+                                disabled={isSaving}
+                                placeholder="-- Chọn giới tính --"
+                                required
+                            />
                         </div>
                         <div className="sm:col-span-3">
-                            <Input label="Ngày sinh *" id="birthDate" name="birthDate" type="date" required value={formData.birthDate} onChange={handleChange} disabled={isSaving} max={new Date().toISOString().split("T")[0]} />
+                            <Input label="Ngày sinh" id="birthDate" name="birthDate" type="date" required value={formData.birthDate} onChange={handleChange} disabled={isSaving} max={new Date().toISOString().split("T")[0]} />
                         </div>
                         <div className="sm:col-span-3">
-                            <Input label="Số CCCD/CMND *" id="identityCardNumber" name="identityCardNumber" required value={formData.identityCardNumber} onChange={handleChange} disabled={isSaving} />
+                            <Input label="Số CCCD/CMND" id="identityCardNumber" name="identityCardNumber" required value={formData.identityCardNumber} onChange={handleChange} disabled={isSaving} />
                         </div>
                     </div>
                 </div>
