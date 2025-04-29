@@ -225,7 +225,7 @@ const ImageUpload = ({
                                     src={displayUrl}
                                     alt={`Preview ${index + 1}`}
                                     className="object-cover w-full h-full bg-gray-100"
-                                    onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.png'; }} // Fallback
+                                    onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png'; }} // Fallback
                                 />
                                 {/* Nút xóa */}
                                 {!disabled && !isProcessing && (

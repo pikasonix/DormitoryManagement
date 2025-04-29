@@ -195,7 +195,7 @@ const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
     const UPLOADS_BASE_URL = (import.meta.env.VITE_UPLOADS_URL || import.meta.env.VITE_API_URL)?.replace('/api', '');
     const currentAvatarUrl = user?.avatar?.path
         ? (user.avatar.path.startsWith('http') ? user.avatar.path : `${UPLOADS_BASE_URL || ''}${user.avatar.path.startsWith('/') ? '' : '/'}${user.avatar.path}`)
-        : '/default-avatar.png'; // Đặt ảnh default ở public
+        : 'src/assets/default-avatar.png'; // Đặt ảnh default ở public
 
     return (
         <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg">
@@ -204,7 +204,7 @@ const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
                 <div>
                     <h3 className="text-base font-semibold leading-7 text-gray-900">Ảnh đại diện</h3>
                     <div className="mt-4 flex items-center gap-x-4">
-                        <img className="h-20 w-20 rounded-full object-cover bg-gray-200" src={newAvatarPreview || currentAvatarUrl} alt="Avatar Preview" onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.png' }} />
+                        <img className="h-20 w-20 rounded-full object-cover bg-gray-200" src={newAvatarPreview || currentAvatarUrl} alt="Avatar Preview" onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png' }} />
                         <div className='flex flex-col sm:flex-row gap-3'>
                             <label htmlFor="avatar-upload" className="cursor-pointer rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 inline-flex items-center justify-center">
                                 <CameraIcon className="h-5 w-5 mr-1.5 text-gray-500" aria-hidden="true" />

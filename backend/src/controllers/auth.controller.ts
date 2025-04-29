@@ -19,7 +19,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 // Cấu hình URL cho avatar
 const AVATAR_BASE_URL = process.env.AVATAR_BASE_URL || '/uploads/avatars/';
-const DEFAULT_AVATAR = '/default-avatar.png';
+const DEFAULT_AVATAR = 'src/assets/default-avatar.png';
 
 // --- Helpers ---
 const formatUserResponse = (user: any) => {

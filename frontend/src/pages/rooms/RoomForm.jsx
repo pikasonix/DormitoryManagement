@@ -437,7 +437,7 @@ const RoomForm = () => {
                                         <img src={src.startsWith('blob:') ? src : `${UPLOADS_BASE_URL || ''}${src.startsWith('/') ? '' : '/'}${src}`} // Xử lý cả blob và path
                                             alt={`Preview ${index + 1}`}
                                             className="object-cover w-full h-full rounded-md border"
-                                            onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.png' }} // Fallback ảnh lỗi
+                                            onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png' }} // Fallback ảnh lỗi
                                         />
                                         <button
                                             type="button"

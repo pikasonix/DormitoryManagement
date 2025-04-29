@@ -2,11 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Calendar Styles */
-.rbc-calendar {
-  @apply font-sans;
-}
-
 .rbc-toolbar button {
   @apply text-gray-700;
 }
@@ -44,4 +39,4 @@
   background-image: url('./assets/default-avatar.png');
   background-size: cover;
   background-position: center;
-} 
+}

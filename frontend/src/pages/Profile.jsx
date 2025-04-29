@@ -44,7 +44,7 @@ const Profile = () => {
   const UPLOADS_BASE_URL = (import.meta.env.VITE_UPLOADS_URL || import.meta.env.VITE_API_URL)?.replace('/api', '');
   const avatarUrl = user.avatar?.path
     ? (user.avatar.path.startsWith('http') ? user.avatar.path : `${UPLOADS_BASE_URL || ''}${user.avatar.path.startsWith('/') ? '' : '/'}${user.avatar.path}`)
-    : '/default-avatar.png'; // **Sửa đường dẫn ảnh default về public**
+    : '/src/assets/default-avatar.png'; // **Sửa đường dẫn ảnh default về public**
 
 
   // --- Render ---
@@ -62,7 +62,7 @@ const Profile = () => {
             className="h-16 w-16 rounded-full object-cover ring-2 ring-offset-2 ring-indigo-500 sm:h-20 sm:w-20" // Thay đổi ring style
             src={avatarUrl}
             alt="User Avatar"
-            onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.png' }} // Fallback nếu ảnh lỗi
+            onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png' }} // Fallback nếu ảnh lỗi
           />
           <div>
             {/* **Kiểm tra user.profile trước khi dùng fullName** */}

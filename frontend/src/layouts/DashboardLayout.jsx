@@ -111,7 +111,7 @@ const DashboardLayout = () => {
 
   // Helper function để xử lý đường dẫn avatar
   const getAvatarUrl = (avatarPath) => {
-    if (!avatarPath) return '/default-avatar.png';
+    if (!avatarPath) return 'src/assets/default-avatar.png';
 
     // Nếu là URL đầy đủ thì trả về nguyên vẹn
     if (avatarPath.startsWith('http')) {
@@ -132,7 +132,7 @@ const DashboardLayout = () => {
       userAvatar: user?.avatar,
       apiBaseUrl: API_BASE_URL,
       uploadsBaseUrl: UPLOADS_BASE_URL,
-      finalUrl: user?.avatar?.path ? getAvatarUrl(user.avatar.path) : '/default-avatar.png'
+      finalUrl: user?.avatar?.path ? getAvatarUrl(user.avatar.path) : 'src/assets/default-avatar.png'
     });
   };
 
@@ -196,6 +196,7 @@ const DashboardLayout = () => {
             <div className="flex flex-1 justify-end gap-x-4 self-stretch lg:gap-x-6">
               <div className="flex items-center gap-x-4 lg:gap-x-6">
                 <div className="relative">
+
                   <button
                     type="button"
                     className="-m-1.5 flex items-center p-1.5 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" // Thêm focus style
@@ -207,6 +208,7 @@ const DashboardLayout = () => {
                     <span className="sr-only">Mở menu người dùng</span>
                     {/* **Phần hiển thị avatar đã được sửa:** */}
                     {user?.avatar?.path ? (
+
                       <img
                         className="h-8 w-8 rounded-full bg-gray-200 object-cover border border-gray-200"
                         src={getAvatarUrl(user.avatar.path)}
@@ -214,7 +216,7 @@ const DashboardLayout = () => {
                         onError={(e) => {
                           console.error('Avatar load error:', e);
                           e.target.onerror = null;
-                          e.target.src = '/default-avatar.png';
+                          e.target.src = 'src/assets/default-avatar.png';
                         }}
                       />
                     ) : (
@@ -275,6 +277,7 @@ const DashboardLayout = () => {
           {/* Main Page Content */}
           <main className="flex-1 py-6 lg:py-8"> {/* Tăng padding */}
             <div className="px-4 sm:px-6 lg:px-8">
+
               {/* ---- Nội dung chính của trang sẽ được render ở đây ---- */}
               <Outlet />
               {/* ------------------------------------------------------- */}

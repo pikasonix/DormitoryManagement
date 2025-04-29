@@ -89,8 +89,8 @@ const StudentIndex = () => {
       accessor: 'user.avatar.path', // Đường dẫn avatar từ user liên kết
       Cell: ({ value }) => {
         const UPLOADS_BASE_URL = (import.meta.env.VITE_UPLOADS_URL || import.meta.env.VITE_API_URL)?.replace('/api', '');
-        const avatarUrl = value ? (value.startsWith('http') ? value : `${UPLOADS_BASE_URL || ''}${value.startsWith('/') ? '' : '/'}${value}`) : '/default-avatar.png';
-        return <img src={avatarUrl} alt="Avatar" className="h-8 w-8 rounded-full object-cover mx-auto" onError={(e) => { e.target.onerror = null; e.target.src = '/default-avatar.png' }} />;
+        const avatarUrl = value ? (value.startsWith('http') ? value : `${UPLOADS_BASE_URL || ''}${value.startsWith('/') ? '' : '/'}${value}`) : 'src/assets/default-avatar.png';
+        return <img src={avatarUrl} alt="Avatar" className="h-8 w-8 rounded-full object-cover mx-auto" onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png' }} />;
       }
     },
     { Header: 'Mã SV', accessor: 'studentId', Cell: ({ value }) => <span className='font-mono'>{value}</span> },
