@@ -187,7 +187,7 @@ const ImageUpload = ({
     };
 
     // --- Xác định URL base cho ảnh cũ ---
-    const UPLOADS_BASE_URL = (import.meta.env.VITE_UPLOADS_URL || import.meta.env.VITE_API_URL)?.replace('/api', '');
+    const UPLOADS_BASE_URL = import.meta.env.VITE_UPLOADS_URL || '';
 
     return (
         <div className={`space-y-3 ${className}`}>

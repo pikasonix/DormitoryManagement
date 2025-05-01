@@ -152,7 +152,7 @@ const MaintenanceForm = () => {
     if (!request) return <div className="text-center p-6 text-gray-500">Không tìm thấy thông tin yêu cầu bảo trì.</div>;
 
     // Xác định URL base cho ảnh
-    const UPLOADS_BASE_URL = (import.meta.env.VITE_UPLOADS_URL || import.meta.env.VITE_API_URL)?.replace('/api', '');
+    const UPLOADS_BASE_URL = import.meta.env.VITE_UPLOADS_URL || '';
 
     // (Tùy chọn) Options cho Select Staff
     // const staffOptions = [{ value: '', label: '-- Chưa gán --' }, ...staffList.map(s => ({ value: s.id, label: s.profile?.fullName || s.email }))];

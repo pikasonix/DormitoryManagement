@@ -18,7 +18,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret';
 // **QUAN TRỌNG:** Đảm bảo giá trị trong .env là một chuỗi thời gian hợp lệ (vd: '1d', '24h')
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 // Cấu hình URL cho avatar
-const AVATAR_BASE_URL = process.env.AVATAR_BASE_URL || '/uploads/avatars/';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5002';
 const DEFAULT_AVATAR = 'src/assets/default-avatar.png';
 
 // --- Helpers ---
@@ -26,9 +26,9 @@ const formatUserResponse = (user: any) => {
   // Bỏ mật khẩu khỏi đối tượng user
   const { password: _, ...userWithoutPassword } = user;
 
-  // Thêm URL avatar
-  const avatarUrl = user.avatar
-    ? `${AVATAR_BASE_URL}${user.avatar.filename}`
+  // Thêm URL avatar - ghép backend URL với path từ DB
+  const avatarUrl = user.avatar?.path
+    ? `${BACKEND_URL}${user.avatar.path}`
     : DEFAULT_AVATAR;
 
   return {

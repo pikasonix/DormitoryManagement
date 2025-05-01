@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import path from 'path';
 // import morgan from 'morgan'; // (Optional) Logging
 
 // Import router chính
@@ -36,13 +37,24 @@ const corsOptions: cors.CorsOptions = {
 };
 
 // --- Áp dụng Middleware Cơ bản ---
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+      "img-src": ["'self'", "data:", "blob:", "http://localhost:5002", "*"]
+    }
+  },
+  crossOriginEmbedderPolicy: false // Cho phép các tài nguyên chéo origin
+}));
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Handle preflight
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // app.use(morgan('dev')); // (Optional) Logging
+
+// Serve uploaded files
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 // (Optional) Simple request logger
 app.use((req: Request, _res: Response, next: NextFunction) => {

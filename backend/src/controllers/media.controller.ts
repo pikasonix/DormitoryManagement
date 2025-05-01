@@ -1,7 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import { MediaService } from '../services/media.service';
 import { deleteFile } from '../services/file.service'; // Import hàm xóa file
-import { Prisma, MediaType, PrismaClient } from '@prisma/client';
+import { Prisma, MediaType, PrismaClient, Role } from '@prisma/client'; // Import Role type from Prisma client
+
+// Cập nhật interface RequestWithUser để bao gồm user từ auth middleware
+interface RequestWithUser extends Request {
+    user?: {
+        userId: number;
+        email: string;
+        role: Role; // Use the Role type here
+    };
+}
 
 const prisma = new PrismaClient(); // Initialize Prisma client
 
@@ -13,7 +22,7 @@ export class MediaController {
     /**
      * Xử lý upload file và tạo bản ghi Media.
      */
-    async uploadMedia(req: Request, res: Response, next: NextFunction) {
+    async uploadMedia(req: RequestWithUser, res: Response, next: NextFunction) {
         const uploadedFile = req.file; // File được multer xử lý và gán vào req.file
 
         try {
@@ -29,14 +38,21 @@ export class MediaController {
             if (!mediaType || !Object.values(MediaType).includes(mediaType as MediaType)) {
                 // Quan trọng: Nếu validate lỗi sau khi file đã upload, cần xóa file vật lý
                 if (typeof deleteFile === 'function') await deleteFile(`/uploads/${uploadedFile.filename}`);
-                // return next(new AppError(`Loại media không hợp lệ hoặc bị thiếu. Các loại hợp lệ: ${Object.values(MediaType).join(', ')}`, 400));
                 return next(new Error(`Loại media không hợp lệ hoặc bị thiếu. Các loại hợp lệ: ${Object.values(MediaType).join(', ')}`));
+            }
+
+            // Xác định đường dẫn dựa trên loại media
+            let filePath;
+            if (mediaType === MediaType.USER_AVATAR) {
+                filePath = `/uploads/avatar/${uploadedFile.filename}`;
+            } else {
+                filePath = `/uploads/${uploadedFile.filename}`;
             }
 
             const createData = {
                 filename: uploadedFile.filename,
                 originalFilename: uploadedFile.originalname,
-                path: `/uploads/${uploadedFile.filename}`, // Lưu đường dẫn tương đối
+                path: filePath, // Đường dẫn tương đối đã được điều chỉnh
                 mimeType: uploadedFile.mimetype,
                 size: uploadedFile.size,
                 mediaType: mediaType as MediaType,
@@ -45,7 +61,25 @@ export class MediaController {
                 // uploadedById: req.user?.userId // Gán ID người upload nếu cần
             };
 
-            const newMedia = await mediaService.create(createData);
+            // Thực hiện transaction để đảm bảo tính nhất quán giữa media và user
+            const newMedia = await prisma.$transaction(async (tx) => {
+                // 1. Tạo bản ghi media mới
+                const media = await tx.media.create({
+                    data: createData
+                });
+
+                // 2. Nếu là avatar và có userId, cập nhật avatarId trong bảng users
+                if (mediaType === MediaType.USER_AVATAR && req.user?.userId) {
+                    console.log(`[MediaController] Updating user ${req.user.userId} with new avatar ID ${media.id}`);
+
+                    await tx.user.update({
+                        where: { id: req.user.userId },
+                        data: { avatarId: media.id }
+                    });
+                }
+
+                return media;
+            });
 
             res.status(201).json({
                 status: 'success',
@@ -63,7 +97,6 @@ export class MediaController {
             next(error); // Chuyển lỗi đến global handler
         }
     }
-
 
     /**
      * Lấy danh sách Media (có thể lọc và phân trang).

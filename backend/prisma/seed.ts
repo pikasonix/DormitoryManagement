@@ -32,10 +32,19 @@ function getRandomDate(start: Date, end: Date): Date {
 function createPlaceholderMediaData(type: MediaType, namePrefix: string, index: number) {
   const ext = 'jpg'; // Giả sử là ảnh jpg
   const filename = `${namePrefix}_${index}_${Date.now()}.${ext}`;
+
+  // Xác định path dựa vào loại media
+  let path;
+  if (type === MediaType.USER_AVATAR) {
+    path = `/uploads/avatar/${filename}`; // Avatar lưu vào thư mục avatar
+  } else {
+    path = `/uploads/${filename}`; // Các loại khác lưu vào thư mục uploads gốc
+  }
+
   return {
     filename: filename,
     originalFilename: `${namePrefix}_${index}_original.${ext}`,
-    path: `/uploads/placeholders/${filename}`, // Đường dẫn giả lập
+    path: path,
     mimeType: `image/${ext}`,
     size: Math.floor(Math.random() * (2048 * 1024 - 100 * 1024) + 100 * 1024), // 100KB - 2MB
     mediaType: type,

@@ -13,6 +13,7 @@ import invoiceRoutes from './invoice.routes';     // CẦN TẠO/SỬA
 import utilityRoutes from './utility.routes';     // CẦN TẠO/SỬA
 import transferRoutes from './transfer.routes';    // CẦN TẠO/SỬA
 import vehicleRoutes from './vehicle.routes';     // CẦN TẠO/SỬA
+import dashboardRoutes from './dashboard.routes';  // Thêm import dashboard routes
 
 const router = express.Router();
 
@@ -37,6 +38,7 @@ router.use('/invoices', invoiceRoutes);
 router.use('/utilities', utilityRoutes);
 router.use('/transfers', transferRoutes);
 router.use('/vehicles', vehicleRoutes);
+router.use('/dashboard', dashboardRoutes);      // Thêm mount dashboard routes
 // router.use('/users', userRoutes);
 
 export default router;

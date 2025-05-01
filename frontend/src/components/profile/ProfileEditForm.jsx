@@ -191,11 +191,46 @@ const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
         }
     };
 
-    // --- Xác định Avatar URL ---
-    const UPLOADS_BASE_URL = (import.meta.env.VITE_UPLOADS_URL || import.meta.env.VITE_API_URL)?.replace('/api', '');
+    // --- Xử lý đường dẫn avatar chuẩn ---
+    const getAvatarUrl = (avatarPath) => {
+        if (!avatarPath) return '/src/assets/default-avatar.png';
+
+        // Nếu là URL đầy đủ thì trả về nguyên vẹn
+        if (avatarPath.startsWith('http')) {
+            return avatarPath;
+        }
+
+        // Xây dựng URL của backend
+        const API_BASE = import.meta.env.VITE_API_URL || '';
+        // Bỏ /api ở cuối nếu có để lấy được base URL chính xác
+        const baseUrl = API_BASE.replace(/\/api\/?$/, '');
+
+        // Đảm bảo avatarPath có đúng định dạng
+        // Nếu path không bắt đầu bằng /uploads, thêm vào
+        let relativePath = avatarPath;
+        if (!relativePath.startsWith('/')) {
+            relativePath = `/${relativePath}`;
+        }
+        if (!relativePath.startsWith('/uploads') && !relativePath.includes('/uploads/')) {
+            relativePath = `/uploads${relativePath}`;
+        }
+
+        // Ghép nối baseUrl và relativePath
+        const fullUrl = `${baseUrl}${relativePath}`;
+
+        console.log('ProfileEditForm Avatar URL:', {
+            original: avatarPath,
+            processed: fullUrl,
+            baseUrl,
+            relativePath
+        });
+
+        return fullUrl;
+    };
+
     const currentAvatarUrl = user?.avatar?.path
-        ? (user.avatar.path.startsWith('http') ? user.avatar.path : `${UPLOADS_BASE_URL || ''}${user.avatar.path.startsWith('/') ? '' : '/'}${user.avatar.path}`)
-        : 'src/assets/default-avatar.png'; // Đặt ảnh default ở public
+        ? getAvatarUrl(user.avatar.path)
+        : '/src/assets/default-avatar.png';
 
     return (
         <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg">

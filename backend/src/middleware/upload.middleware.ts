@@ -5,11 +5,12 @@ import fs from 'fs'; // Import fs để kiểm tra/tạo thư mục
 // --- Configuration Constants ---
 // Xác định thư mục uploads một cách đáng tin cậy, thường là ở gốc dự án
 const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
+const AVATAR_DIR = path.resolve(UPLOADS_DIR, 'avatar');
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (khớp với server.ts)
 // Regex cho các loại file được phép (linh hoạt hơn mảng mimetype)
 const ALLOWED_FILE_TYPES = /jpeg|jpg|png|gif|pdf|doc|docx|xls|xlsx/;
 
-// --- Ensure Upload Directory Exists ---
+// --- Ensure Upload Directories Exist ---
 // Thực hiện một lần khi middleware được load
 if (!fs.existsSync(UPLOADS_DIR)) {
   console.log(`[Multer Config] Creating uploads directory at: ${UPLOADS_DIR}`);
@@ -23,12 +24,29 @@ if (!fs.existsSync(UPLOADS_DIR)) {
   console.log(`[Multer Config] Uploads directory confirmed at: ${UPLOADS_DIR}`);
 }
 
+// Đảm bảo thư mục avatar tồn tại
+if (!fs.existsSync(AVATAR_DIR)) {
+  console.log(`[Multer Config] Creating avatar directory at: ${AVATAR_DIR}`);
+  try {
+    fs.mkdirSync(AVATAR_DIR, { recursive: true });
+  } catch (error) {
+    console.error(`[Multer Config] Failed to create avatar directory:`, error);
+    // Cân nhắc throw lỗi ở đây nếu thư mục avatar là bắt buộc để server hoạt động
+  }
+} else {
+  console.log(`[Multer Config] Avatar directory confirmed at: ${AVATAR_DIR}`);
+}
 
 // --- Multer Storage Configuration ---
 // Sử dụng diskStorage để lưu file vào thư mục uploads
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, UPLOADS_DIR); // Chỉ định thư mục lưu trữ
+  destination: (_req, file, cb) => {
+    // Nếu là avatar, lưu vào thư mục avatar
+    if (file.fieldname === 'avatar' || file.mimetype.startsWith('image/')) {
+      cb(null, AVATAR_DIR);
+    } else {
+      cb(null, UPLOADS_DIR); // Các file khác lưu vào uploads
+    }
   },
   filename: (_req, file, cb) => {
     // Tạo tên file duy nhất để tránh ghi đè

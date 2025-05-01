@@ -4,6 +4,7 @@ import fs from 'fs/promises'; // Sử dụng fs.promises cho async/await
 // Xác định thư mục uploads một cách đáng tin cậy hơn, thường là ở gốc dự án
 // process.cwd() trả về thư mục làm việc hiện tại nơi script được chạy
 const UPLOADS_DIR = path.resolve(process.cwd(), 'uploads');
+const AVATAR_DIR = path.resolve(UPLOADS_DIR, 'avatar');
 
 // Đảm bảo thư mục upload tồn tại khi service được load (chỉ chạy một lần)
 // Mặc dù multer cũng có thể làm điều này, thêm ở đây để chắc chắn.
@@ -15,11 +16,19 @@ fs.mkdir(UPLOADS_DIR, { recursive: true }).catch(error => {
   }
 });
 
+// Đảm bảo thư mục avatar tồn tại
+fs.mkdir(AVATAR_DIR, { recursive: true }).catch(error => {
+  if (error.code !== 'EEXIST') {
+    console.error(`[FileService] Failed to ensure avatar directory exists at ${AVATAR_DIR}:`, error);
+  } else {
+    console.log(`[FileService] Avatar directory confirmed at: ${AVATAR_DIR}`);
+  }
+});
 
 /**
  * Xóa file vật lý khỏi thư mục uploads một cách an toàn.
  * Chỉ log lỗi nếu không xóa được, không throw để tránh dừng luồng chính không cần thiết.
- * @param relativePath Đường dẫn tương đối của file cần xóa (vd: /uploads/image.jpg) như được lưu trong DB.
+ * @param relativePath Đường dẫn tương đối của file cần xóa (vd: /uploads/image.jpg hoặc /uploads/avatar/avatar.jpg) như được lưu trong DB.
  */
 export const deleteFile = async (relativePath: string): Promise<void> => {
   if (!relativePath || typeof relativePath !== 'string' || !relativePath.startsWith('/uploads/')) {
@@ -28,10 +37,18 @@ export const deleteFile = async (relativePath: string): Promise<void> => {
   }
 
   try {
-    // Lấy tên file thực sự từ đường dẫn tương đối
-    const filename = path.basename(relativePath);
-    // Tạo đường dẫn tuyệt đối đến file cần xóa
-    const absolutePath = path.join(UPLOADS_DIR, filename);
+    // Xác định đường dẫn tuyệt đối dựa trên cấu trúc path
+    let absolutePath;
+
+    if (relativePath.startsWith('/uploads/avatar/')) {
+      // File là avatar, nằm trong thư mục avatar
+      const filename = path.basename(relativePath);
+      absolutePath = path.join(AVATAR_DIR, filename);
+    } else {
+      // File thông thường trong thư mục uploads
+      const cleanPath = relativePath.replace('/uploads/', '');
+      absolutePath = path.join(UPLOADS_DIR, cleanPath);
+    }
 
     console.log(`[FileService] Attempting to delete file at: ${absolutePath}`);
 
@@ -53,11 +70,3 @@ export const deleteFile = async (relativePath: string): Promise<void> => {
     // throw new Error(`Không thể xóa file: ${relativePath}`); // Bỏ comment nếu muốn throw lỗi
   }
 };
-
-// --- Không cần class và phương thức uploadFile nữa ---
-// export class FileService {
-//   private uploadDir: string;
-//   constructor() { ... }
-//   async uploadFile(...) { ... } // Đã được xử lý bởi multer và /api/media/upload
-//   async deleteFile(...) { ... } // Đã chuyển thành hàm export trực tiếp ở trên
-// }

@@ -39,13 +39,33 @@ const Profile = () => {
     await checkAuthStatus();
   };
 
-  // --- Xác định avatar URL (đã sửa đường dẫn ảnh default) ---
-  // Ưu tiên VITE_UPLOADS_URL, fallback về VITE_API_URL (bỏ /api), cuối cùng là ảnh default
-  const UPLOADS_BASE_URL = (import.meta.env.VITE_UPLOADS_URL || import.meta.env.VITE_API_URL)?.replace('/api', '');
-  const avatarUrl = user.avatar?.path
-    ? (user.avatar.path.startsWith('http') ? user.avatar.path : `${UPLOADS_BASE_URL || ''}${user.avatar.path.startsWith('/') ? '' : '/'}${user.avatar.path}`)
-    : '/src/assets/default-avatar.png'; // **Sửa đường dẫn ảnh default về public**
+  // --- Xử lý đường dẫn avatar chuẩn ---
+  const getAvatarUrl = (avatarPath) => {
+    if (!avatarPath) return '/src/assets/default-avatar.png';
 
+    // Nếu là URL đầy đủ thì trả về nguyên vẹn
+    if (avatarPath.startsWith('http')) {
+      return avatarPath;
+    }
+
+    // Xây dựng URL của backend
+    const API_BASE = import.meta.env.VITE_API_URL || '';
+    const baseUrl = API_BASE.replace(/\/api\/?$/, ''); // Bỏ /api ở cuối nếu có
+
+    // Đảm bảo avatarPath bắt đầu bằng '/'
+    const relativePath = avatarPath.startsWith('/') ? avatarPath : `/${avatarPath}`;
+
+    // Ghép nối baseUrl và relativePath
+    const fullUrl = `${baseUrl}${relativePath}`;
+
+    console.log('Profile Avatar URL:', fullUrl);
+
+    return fullUrl;
+  };
+
+  const avatarUrl = user.avatar?.path
+    ? getAvatarUrl(user.avatar.path)
+    : '/src/assets/default-avatar.png';
 
   // --- Render ---
   return (

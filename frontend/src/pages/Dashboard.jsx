@@ -42,13 +42,13 @@ const Dashboard = () => {
         if (user.role === 'ADMIN' || user.role === 'STAFF') {
           // --- Fetch data cho Admin/Staff ---
           const [
-            studentRes,
+            dashboardRes,  // Add dashboard API call
             roomRes,
             maintenanceRes,
             invoiceRes
           ] = await Promise.allSettled([
-            // Lấy tổng số sinh viên (dùng limit=1 để lấy meta)
-            apiClient.get('/students?limit=1'),
+            // Use dashboard stats API to get the total students count
+            apiClient.get('/dashboard/stats'),
             // Lấy danh sách phòng để tính toán trạng thái
             apiClient.get('/rooms'), // API này chưa có phân trang, lấy hết
             // Lấy yêu cầu bảo trì đang chờ (dùng limit=1)
@@ -57,8 +57,8 @@ const Dashboard = () => {
             apiClient.get('/invoices?status=UNPAID&limit=1'),
           ]);
 
-          // Xử lý kết quả student
-          const totalStudents = studentRes.status === 'fulfilled' ? (studentRes.value.data?.meta?.total ?? 0) : 0;
+          // Xử lý kết quả student từ dashboard API
+          const totalStudents = dashboardRes.status === 'fulfilled' ? (dashboardRes.value.data?.data?.totalStudents ?? 0) : 0;
 
           // Xử lý kết quả room
           let roomStats = { total: 0, available: 0, occupied: 0, maintenance: 0 };
