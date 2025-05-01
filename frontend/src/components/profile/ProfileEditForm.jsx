@@ -105,86 +105,118 @@ const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
         setIsSaving(true);
         let uploadedAvatarId = user?.avatar?.id || null; // Giữ avatarId cũ mặc định
 
-        // 1. Upload avatar mới nếu có
-        if (newAvatarFile) {
-            setIsUploading(true);
-            const uploadFormData = new FormData();
-            uploadFormData.append('file', newAvatarFile);
-            // Thêm mediaType vào FormData (bắt buộc theo yêu cầu của backend)
-            uploadFormData.append('mediaType', 'USER_AVATAR');
-            try {
-                // **Sử dụng endpoint upload media chính xác**
-                const response = await apiClient.post('/media/upload', uploadFormData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
-                // **Lấy ID từ response upload chính xác** (Kiểm tra lại cấu trúc API /media/upload)
-                uploadedAvatarId = response.data?.data?.id; // Giả sử trả về { success: true, data: { id: '...' } }
-                if (!uploadedAvatarId) throw new Error("Không nhận được ID ảnh sau khi tải lên.");
-                toast.success('Tải ảnh đại diện mới thành công!');
-            } catch (uploadError) {
-                console.error("Lỗi tải ảnh đại diện:", uploadError);
-                toast.error(uploadError.response?.data?.message || 'Tải ảnh đại diện thất bại.');
-                setIsUploading(false);
-                setIsSaving(false);
-                return; // Dừng lại nếu upload lỗi
-            } finally {
-                setIsUploading(false);
-            }
-        } else if (newAvatarFile === null && newAvatarPreview === null && user?.avatar) {
-            // Trường hợp người dùng bấm xóa avatar hiện tại
-            uploadedAvatarId = null; // Gửi null để xóa
-        }
+        try {
+            // 1. Upload avatar mới nếu có
+            if (newAvatarFile) {
+                setIsUploading(true);
+                const uploadFormData = new FormData();
+                uploadFormData.append('file', newAvatarFile);
+                uploadFormData.append('mediaType', 'USER_AVATAR');
 
-        // 2. Chuẩn bị payload cập nhật profile
-        const updatePayload = { ...formData };
-        // Dọn dẹp payload: Chuyển đổi kiểu, loại bỏ undefined, xử lý rỗng -> null
-        Object.keys(updatePayload).forEach(key => {
-            if (updatePayload[key] === undefined) {
-                delete updatePayload[key];
-                return;
+                try {
+                    const response = await apiClient.post('/media/upload', uploadFormData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+
+                    uploadedAvatarId = response.data?.data?.id;
+                    if (!uploadedAvatarId) throw new Error("Không nhận được ID ảnh sau khi tải lên.");
+                    toast.success('Tải ảnh đại diện mới thành công!');
+                } catch (uploadError) {
+                    console.error("Lỗi tải ảnh đại diện:", uploadError);
+                    toast.error(uploadError.response?.data?.message || 'Tải ảnh đại diện thất bại.');
+                    setIsUploading(false);
+                    setIsSaving(false);
+                    return; // Dừng lại nếu upload lỗi
+                } finally {
+                    setIsUploading(false);
+                }
+            } else if (newAvatarFile === null && newAvatarPreview === null && user?.avatar) {
+                // Trường hợp người dùng bấm xóa avatar hiện tại
+                uploadedAvatarId = null; // Gửi null để xóa
             }
-            if (typeof updatePayload[key] === 'string') {
-                updatePayload[key] = updatePayload[key].trim(); // Trim khoảng trắng
-                if (updatePayload[key] === '') {
-                    // Chỉ chuyển thành null cho các trường không bắt buộc và date
-                    if (!['fullName', 'phoneNumber', 'gender', 'identityCardNumber', 'studentId'].includes(key) || key === 'birthDate') {
+
+            // 2. Chuẩn bị payload cập nhật profile
+            const updatePayload = { ...formData };
+
+            // Thêm avatarId vào payload (có thể là null nếu muốn xóa)
+            if (newAvatarFile || (newAvatarFile === null && newAvatarPreview === null)) {
+                updatePayload.avatarId = uploadedAvatarId;
+            }
+
+            // Dọn dẹp payload
+            Object.keys(updatePayload).forEach(key => {
+                // Xóa các trường undefined
+                if (updatePayload[key] === undefined) {
+                    delete updatePayload[key];
+                    return;
+                }
+
+                // Xử lý chuỗi rỗng
+                if (typeof updatePayload[key] === 'string') {
+                    updatePayload[key] = updatePayload[key].trim();
+
+                    // Chỉ chuyển thành null cho các trường không bắt buộc
+                    if (updatePayload[key] === '' &&
+                        !['fullName', 'phoneNumber', 'gender', 'identityCardNumber', 'studentId'].includes(key)) {
                         updatePayload[key] = null;
                     }
                 }
+
+                // Chuyển đổi các trường số nguyên
+                if (['courseYear', 'fatherDobYear', 'motherDobYear'].includes(key) && updatePayload[key] !== null && updatePayload[key] !== '') {
+                    const num = parseInt(updatePayload[key], 10);
+                    updatePayload[key] = isNaN(num) ? null : num;
+                }
+            });
+
+            // 3. Xác định API endpoint dựa theo vai trò của người dùng
+            let apiUrl;
+            let profileId;
+
+            if (user.role === 'STUDENT') {
+                // Nếu là sinh viên, sử dụng API student
+                profileId = user.studentProfile?.id;
+                apiUrl = `/students/${profileId}`;
+            } else if (user.role === 'STAFF' || user.role === 'ADMIN') {
+                // Nếu là nhân viên hoặc admin, sử dụng API staff
+                profileId = user.staffProfile?.id;
+                apiUrl = `/students/staff/${profileId}`; // Sử dụng API endpoint mới
+            } else {
+                // Fallback - sử dụng API chung (nếu có)
+                apiUrl = `/users/${user.id}/profile`;
             }
-            // Chuyển đổi các trường số nguyên
-            if (['courseYear', 'fatherDobYear', 'motherDobYear'].includes(key) && updatePayload[key] !== null) {
-                const num = parseInt(updatePayload[key], 10);
-                updatePayload[key] = isNaN(num) ? null : num;
+
+            // Log để debug
+            console.log("Dữ liệu gửi đi:", updatePayload);
+            console.log("API endpoint sử dụng:", apiUrl);
+
+            // Gọi API cập nhật profile
+            const response = await apiClient.put(apiUrl, updatePayload);
+            console.log("Phản hồi từ server:", response.data);
+
+            // Cập nhật trạng thái xác thực nếu thông tin user thay đổi
+            if (typeof checkAuthStatus === 'function') {
+                await checkAuthStatus();
             }
-        });
-
-        // Thêm avatarId vào payload (có thể là null nếu muốn xóa)
-        if (newAvatarFile || (newAvatarFile === null && newAvatarPreview === null)) {
-            updatePayload.avatarId = uploadedAvatarId;
-        }
-
-
-        // 3. Gọi API cập nhật profile
-        try {
-            // **Sử dụng endpoint cập nhật profile chính xác**
-            const apiUrl = `/users/${user.id}/profile`; // Hoặc `/profile` nếu API thiết kế vậy
-            await apiClient.put(apiUrl, updatePayload);
 
             // Thành công
-            onSaveSuccess(); // Gọi callback để Profile.jsx xử lý tiếp (đã bao gồm toast và refresh)
-
+            toast.success('Cập nhật thông tin cá nhân thành công!');
+            onSaveSuccess();
         } catch (error) {
             console.error("Lỗi cập nhật hồ sơ:", error);
             let errorMsg = 'Cập nhật hồ sơ thất bại.';
+
             if (error.response?.data?.message) {
                 errorMsg = error.response.data.message;
             }
+
             // Hiển thị lỗi validation chi tiết nếu có
             if (error.response?.data?.errors && Array.isArray(error.response.data.errors)) {
-                const validationErrors = error.response.data.errors.map(err => `- ${err.field ? `${err.field}: ` : ''}${err.message}`).join('\n');
+                const validationErrors = error.response.data.errors.map(err =>
+                    `- ${err.field ? `${err.field}: ` : ''}${err.message}`).join('\n');
                 errorMsg += `\nChi tiết:\n${validationErrors}`;
             }
+
             toast.error(errorMsg, { duration: 6000 });
         } finally {
             setIsSaving(false);

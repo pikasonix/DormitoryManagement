@@ -1,5 +1,5 @@
 import express from 'express';
-import { StudentController } from '../controllers/student.controller';
+import { StudentController, StaffController } from '../controllers/student.controller';
 import { authMiddleware, checkRole } from '../middleware/auth.middleware';
 import { Role } from '@prisma/client';
 import { validate } from '../middleware/validation.middleware'; // Import middleware validate
@@ -8,6 +8,7 @@ import { z } from 'zod'; // Import Zod để định nghĩa schema
 
 const router = express.Router();
 const studentController = new StudentController();
+const staffController = new StaffController(); // Initialize StaffController
 
 // --- Schemas Validation (Sử dụng Zod) ---
 
@@ -99,7 +100,6 @@ const updateStudentSchema = z.object({
   }),
 });
 
-
 // Schema cho việc lấy chi tiết hoặc xóa (chỉ cần validate ID)
 const studentIdParamSchema = z.object({
   params: z.object({
@@ -107,12 +107,40 @@ const studentIdParamSchema = z.object({
   }),
 });
 
+// Schema for staff update (PUT /staff/:id)
+const updateStaffSchema = z.object({
+  // Validate params.id
+  params: z.object({
+    id: z.coerce.number().int().positive("ID hồ sơ nhân viên không hợp lệ"),
+  }),
+  // Validate body (các trường có thể cập nhật)
+  body: z.object({
+    fullName: z.string().min(1, "Họ tên không được để trống").optional(),
+    gender: z.enum(['MALE', 'FEMALE']).optional(),
+    birthDate: z.coerce.date({ invalid_type_error: "Ngày sinh không hợp lệ" }).optional(),
+    identityCardNumber: z.string().min(1, "Số CCCD/CMND không được để trống").optional(),
+    phoneNumber: z.string().min(1, "Số điện thoại không được để trống").optional(),
+    position: z.string().optional().nullable(),
+    address: z.string().optional().nullable(),
+    managedBuildingId: z.coerce.number().int().positive("ID tòa nhà phải là số nguyên dương").optional().nullable(),
+    avatarId: z.coerce.number().int().positive("ID avatar phải là số nguyên dương").optional().nullable(),
+  }).partial().refine(data => Object.keys(data).length > 0, {
+    message: "Cần ít nhất một trường để cập nhật."
+  }),
+});
+
+// Schema for staff ID parameter validation
+const staffIdParamSchema = z.object({
+  params: z.object({
+    id: z.coerce.number().int().positive("ID hồ sơ nhân viên không hợp lệ"),
+  }),
+});
 
 // --- Áp dụng Middleware và Routes ---
 // Yêu cầu đăng nhập cho hầu hết các route
 router.use(authMiddleware);
 
-
+// STUDENT ROUTES
 // GET /api/students - Lấy danh sách tất cả sinh viên (Yêu cầu Staff hoặc Admin)
 router.get(
   '/',
@@ -150,6 +178,28 @@ router.delete(
   checkRole([Role.ADMIN]), // Chỉ Admin được xóa
   validate(studentIdParamSchema), // Validate ID từ params
   studentController.deleteStudent
+);
+
+// STAFF ROUTES - Adding these routes within the same file to avoid binary file issues
+// GET /api/students/staff - Lấy danh sách tất cả nhân viên (Yêu cầu Admin)
+router.get(
+  '/staff',
+  checkRole([Role.ADMIN]),
+  staffController.getAllStaff
+);
+
+// GET /api/students/staff/:id - Lấy chi tiết một nhân viên
+router.get(
+  '/staff/:id',
+  validate(staffIdParamSchema),
+  staffController.getStaffById
+);
+
+// PUT /api/students/staff/:id - Cập nhật thông tin nhân viên
+router.put(
+  '/staff/:id',
+  validate(updateStaffSchema),
+  staffController.updateStaff
 );
 
 export default router;
