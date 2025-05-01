@@ -5,13 +5,31 @@ import { toast } from 'react-hot-toast';
  * Upload một file media lên server.
  * @param {File} file - File cần upload (Image, PDF, etc.).
  * @param {string} [context] - (Tùy chọn) Ngữ cảnh upload, ví dụ: 'user-avatar', 'room-image', 'maintenance-request'. Backend có thể dùng thông tin này.
+ * @param {string} [mediaType] - Loại media cần upload. Các giá trị hợp lệ: USER_AVATAR, ROOM_IMAGE, BUILDING_IMAGE, VEHICLE_IMAGE, MAINTENANCE_IMAGE, OTHER
  * @returns {Promise<object>} Thông tin chi tiết của media đã được upload (vd: { id, url, path, filename, size, mimeType }).
  * @throws {Error} Nếu upload thất bại hoặc API trả về lỗi.
  */
-const uploadMedia = async (file, context = 'default') => {
+const uploadMedia = async (file, context = 'default', mediaType = null) => {
     const formData = new FormData();
     formData.append('file', file); // Key 'file' theo API doc
-    // formData.append('context', context); // Gửi context nếu backend cần xử lý
+
+    // Xác định mediaType dựa trên context nếu không được cung cấp trực tiếp
+    if (!mediaType) {
+        // Map context đến mediaType tương ứng
+        const contextToMediaType = {
+            'user-avatar': 'USER_AVATAR',
+            'room-image': 'ROOM_IMAGE',
+            'building-image': 'BUILDING_IMAGE',
+            'vehicle-image': 'VEHICLE_IMAGE',
+            'maintenance-request': 'MAINTENANCE_IMAGE',
+            'default': 'OTHER'
+        };
+
+        mediaType = contextToMediaType[context] || 'OTHER';
+    }
+
+    // Thêm mediaType vào formData (bắt buộc theo yêu cầu của backend)
+    formData.append('mediaType', mediaType);
 
     // Hiển thị toast loading khi bắt đầu upload
     const uploadToastId = toast.loading(`Đang tải lên: ${file.name}...`);

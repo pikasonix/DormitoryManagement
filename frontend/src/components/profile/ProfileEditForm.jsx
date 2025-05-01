@@ -110,8 +110,8 @@ const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
             setIsUploading(true);
             const uploadFormData = new FormData();
             uploadFormData.append('file', newAvatarFile);
-            // Thêm context nếu cần (vd: 'user-avatar')
-            // uploadFormData.append('context', 'user-avatar');
+            // Thêm mediaType vào FormData (bắt buộc theo yêu cầu của backend)
+            uploadFormData.append('mediaType', 'USER_AVATAR');
             try {
                 // **Sử dụng endpoint upload media chính xác**
                 const response = await apiClient.post('/media/upload', uploadFormData, {
