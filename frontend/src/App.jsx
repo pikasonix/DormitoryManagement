@@ -33,6 +33,8 @@ import VehicleIndex from './pages/vehicles/VehicleIndex';
 import VehicleForm from './pages/vehicles/VehicleForm';
 import TransferIndex from './pages/transfers/TransferIndex';
 import TransferRequestForm from './pages/transfers/TransferRequestForm';
+import NotFound from './pages/NotFound'; // Import trang 404 Not Found
+import ForgotPassword from './pages/ForgotPassword'; // Import trang Quên mật khẩu
 // LoadingSpinner không cần import ở đây nữa, các Route Guard tự xử lý
 
 
@@ -43,7 +45,7 @@ function App() {
       {/* Public Route */}
       <Route path="/login" element={<Login />} />
       {/* <Route path="/register" element={<Register />} /> */}
-      {/* <Route path="/forgot-password" element={<ForgotPassword />} /> */}
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       {/* <Route path="/reset-password/:token" element={<ResetPassword />} /> */}
 
 
@@ -139,7 +141,7 @@ function App() {
       </Route> {/* Kết thúc PrivateRoute Wrapper */}
 
       {/* Route 404 Not Found */}
-      <Route path="*" element={<div className='flex justify-center items-center min-h-screen'>404 Page Not Found</div>} />
+      <Route path="*" element={<NotFound />} />
 
     </Routes>
   );

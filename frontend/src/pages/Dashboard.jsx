@@ -52,9 +52,9 @@ const Dashboard = () => {
             // Lấy danh sách phòng để tính toán trạng thái
             apiClient.get('/rooms'), // API này chưa có phân trang, lấy hết
             // Lấy yêu cầu bảo trì đang chờ (dùng limit=1)
-            apiClient.get('/maintenance?status=pending&limit=1'),
+            apiClient.get('/maintenance?status=PENDING&limit=1'),
             // Lấy hóa đơn chưa thanh toán (dùng limit=1)
-            apiClient.get('/invoices?status=pending&limit=1'),
+            apiClient.get('/invoices?status=UNPAID&limit=1'),
           ]);
 
           // Xử lý kết quả student
@@ -99,7 +99,7 @@ const Dashboard = () => {
             // Lấy thông tin phòng dựa vào roomId trong profile student (nếu có)
             user.profile?.roomId ? apiClient.get(`/rooms/${user.profile.roomId}`) : Promise.resolve({ status: 'fulfilled', value: { data: { data: null } } }), // Nếu ko có roomId thì trả về null
             // Lấy hóa đơn chưa thanh toán của sinh viên này
-            apiClient.get(`/invoices?studentId=${studentProfileId}&status=pending`),
+            apiClient.get(`/invoices?studentId=${studentProfileId}&status=UNPAID`),
           ]);
 
           const currentRoom = roomRes.status === 'fulfilled' ? roomRes.value.data?.data : null;
