@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient, Role, StudentProfile, StaffProfile } from '@prisma/client';
+import { PrismaClient, Role, StudentProfile, StaffProfile, Gender, StudentStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions, Secret } from 'jsonwebtoken';
 
@@ -178,6 +178,90 @@ export class AuthController {
       return res.status(500).json({
         success: false,
         message: 'Đã xảy ra lỗi khi đăng xuất'
+      });
+    }
+  }
+
+  static async register(req: Request, res: Response): Promise<Response> {
+    try {
+      const { email, password, fullName, studentId, phoneNumber } = req.body;
+
+      // Validation
+      if (!email || !password || !fullName) {
+        return res.status(400).json({
+          success: false,
+          message: 'Vui lòng cung cấp email, mật khẩu và họ tên đầy đủ'
+        });
+      }
+
+      // Check if email already exists
+      const existingUser = await prisma.user.findUnique({
+        where: { email }
+      });
+
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message: 'Email đã được sử dụng'
+        });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create user and student profile in a transaction
+      const result = await prisma.$transaction(async (tx) => {
+        // Create user
+        const newUser = await tx.user.create({
+          data: {
+            email,
+            password: hashedPassword,
+            role: Role.STUDENT,
+            isActive: true,
+          }
+        });
+
+        // Create student profile with required fields
+        const today = new Date();
+        const defaultContractEndDate = new Date(today);
+        defaultContractEndDate.setFullYear(today.getFullYear() + 1); // Default contract: 1 year
+
+        const studentProfile = await tx.studentProfile.create({
+          data: {
+            userId: newUser.id,
+            fullName,
+            studentId: studentId || `S${Math.floor(10000 + Math.random() * 90000)}`, // Generate random student ID if not provided
+            phoneNumber: phoneNumber || "Chưa cập nhật", // Default phone number
+            gender: Gender.MALE, // Default gender
+            birthDate: new Date("2000-01-01"), // Default birthdate
+            identityCardNumber: `ID${Date.now()}`, // Temporary ID number
+            faculty: "Khoa chưa xác định", // Default faculty
+            courseYear: new Date().getFullYear() - 2000, // Default course year based on current year
+            status: StudentStatus.PENDING_APPROVAL, // Default status
+            startDate: today, // Default start date is today
+            contractEndDate: defaultContractEndDate // Default end date
+          }
+        });
+
+        return { user: newUser, profile: studentProfile };
+      });
+
+      // Format user response (remove password)
+      const { password: _, ...userWithoutPassword } = result.user;
+
+      return res.status(201).json({
+        success: true,
+        message: 'Đăng ký thành công',
+        data: {
+          user: userWithoutPassword,
+          profile: result.profile
+        }
+      });
+    } catch (error) {
+      console.error('Register error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Đã xảy ra lỗi trong quá trình đăng ký'
       });
     }
   }

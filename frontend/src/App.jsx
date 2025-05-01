@@ -35,6 +35,7 @@ import TransferIndex from './pages/transfers/TransferIndex';
 import TransferRequestForm from './pages/transfers/TransferRequestForm';
 import NotFound from './pages/NotFound'; // Import trang 404 Not Found
 import ForgotPassword from './pages/ForgotPassword'; // Import trang Quên mật khẩu
+import Register from './pages/Register'; // Import trang Đăng ký
 // LoadingSpinner không cần import ở đây nữa, các Route Guard tự xử lý
 
 
@@ -44,10 +45,9 @@ function App() {
     <Routes>
       {/* Public Route */}
       <Route path="/login" element={<Login />} />
-      {/* <Route path="/register" element={<Register />} /> */}
+      <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       {/* <Route path="/reset-password/:token" element={<ResetPassword />} /> */}
-
 
       {/* Protected Routes - Yêu cầu đăng nhập */}
       <Route element={<PrivateRoute />}> {/* Wrapper Layout và kiểm tra đăng nhập */}

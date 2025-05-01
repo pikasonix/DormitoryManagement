@@ -155,6 +155,17 @@ const Login = () => {
             </div>
           </form>
 
+          {/* Register Link */}
+          <div className="mt-6 text-sm text-center">
+            <span className="text-gray-600">Chưa có tài khoản? </span>
+            <Link
+              to="/register"
+              className="font-semibold text-indigo-600 hover:text-indigo-500"
+            >
+              Đăng ký ngay
+            </Link>
+          </div>
+
           {/* Demo Credentials (Optional) */}
           {/* (Giữ nguyên phần thông tin đăng nhập thử nghiệm nếu bạn muốn) */}
           <div className="mt-6 text-center text-xs text-gray-500 border-t border-gray-200 pt-4">

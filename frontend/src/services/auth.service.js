@@ -47,6 +47,30 @@ const login = async (email, password) => {
 };
 
 /**
+ * Gọi API endpoint đăng ký người dùng mới.
+ * @param {object} userData - Dữ liệu người dùng gồm email, password và các thông tin khác
+ * @returns {Promise<object>} - Dữ liệu người dùng đã đăng ký
+ * @throws {Error} Nếu đăng ký thất bại hoặc API trả về lỗi
+ */
+const register = async (userData) => {
+    try {
+        const response = await apiClient.post('/auth/register', userData);
+
+        if (response.data?.success) {
+            return response.data.data || response.data;
+        } else if (response.data?.message === 'Đăng ký thành công') {
+            return response.data.data || response.data;
+        } else {
+            throw new Error(response.data?.message || 'Đăng ký thất bại.');
+        }
+    } catch (error) {
+        const errorMessage = error.response?.data?.message || error.message || 'Lỗi không xác định';
+        console.error('Lỗi dịch vụ đăng ký:', errorMessage);
+        throw new Error(errorMessage);
+    }
+};
+
+/**
  * Hàm logout trong service.
  */
 const logout = () => {
@@ -104,4 +128,5 @@ export const authService = {
     logout,
     getMe,
     changePassword,
+    register, // Thêm hàm register vào export
 };

@@ -9,10 +9,12 @@ const Register = () => {
   const navigate = useNavigate();
   const { register, user, isLoading: isAuthLoading } = useAuth(); // Lấy register, user, isLoading từ context
   const [formData, setFormData] = useState({
-    name: '',
+    fullName: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    studentId: '',
+    phoneNumber: ''
   });
   const [errors, setErrors] = useState({}); // State cho lỗi validation
   const [isSubmitting, setIsSubmitting] = useState(false); // Loading cục bộ
@@ -38,7 +40,7 @@ const Register = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.name.trim()) newErrors.name = 'Vui lòng nhập họ tên.';
+    if (!formData.fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ tên.';
     if (!formData.email.trim()) newErrors.email = 'Vui lòng nhập email.';
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Địa chỉ email không hợp lệ.';
     if (!formData.password) newErrors.password = 'Vui lòng nhập mật khẩu.';
@@ -61,8 +63,11 @@ const Register = () => {
 
     setIsSubmitting(true);
     try {
+      // Loại bỏ confirmPassword trước khi gửi đi
+      const { confirmPassword, ...registerData } = formData;
+
       // Gọi hàm register từ context
-      const response = await register(formData);
+      const response = await register(registerData);
 
       // Hiển thị thông báo thành công từ response hoặc mặc định
       toast.success(response?.message || 'Đăng ký tài khoản thành công!');
@@ -143,14 +148,14 @@ const Register = () => {
             {/* Sử dụng component Input */}
             <Input
               label="Họ và tên *"
-              id="name"
-              name="name"
+              id="fullName"
+              name="fullName"
               type="text"
               required
-              value={formData.name}
+              value={formData.fullName}
               onChange={handleChange}
               disabled={isSubmitting}
-              error={errors.name}
+              error={errors.fullName}
               autoComplete="name"
             />
             <Input
@@ -164,6 +169,29 @@ const Register = () => {
               disabled={isSubmitting}
               error={errors.email}
               autoComplete="email"
+            />
+            <Input
+              label="Mã sinh viên"
+              id="studentId"
+              name="studentId"
+              type="text"
+              value={formData.studentId}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              error={errors.studentId}
+              placeholder="Nhập mã sinh viên (nếu có)"
+            />
+            <Input
+              label="Số điện thoại"
+              id="phoneNumber"
+              name="phoneNumber"
+              type="tel"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              error={errors.phoneNumber}
+              placeholder="Nhập số điện thoại của bạn"
+              autoComplete="tel"
             />
             <Input
               label="Mật khẩu *"
