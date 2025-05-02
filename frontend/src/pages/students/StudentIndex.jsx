@@ -50,7 +50,7 @@ const StudentIndex = () => {
       // Lấy tất cả sinh viên từ API (không giới hạn limit)
       const params = {
         // Không chỉ định limit để API trả về tất cả sinh viên
-        keyword: search || undefined,
+        keyword: undefined, // Không dùng keyword từ API nữa, sẽ lọc ở client
       };
 
       console.log('Fetching all students with params:', params);
@@ -59,7 +59,17 @@ const StudentIndex = () => {
 
       // Handle different response structures
       const allStudentsList = data.students || data.data || data;
-      const students = Array.isArray(allStudentsList) ? allStudentsList : [];
+      let students = Array.isArray(allStudentsList) ? allStudentsList : [];
+
+      // Lọc theo mã số sinh viên ở phía client nếu có từ khóa tìm kiếm
+      if (search && search.trim() !== '') {
+        const searchTerm = search.trim().toLowerCase();
+        students = students.filter(student => {
+          const studentId = (student.studentId || '').toLowerCase();
+          return studentId.includes(searchTerm);
+        });
+        console.log(`Filtered to ${students.length} students with student ID containing "${searchTerm}"`);
+      }
 
       // Extract and normalize metadata for pagination
       const total = students.length;
@@ -95,7 +105,7 @@ const StudentIndex = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);  // Đã loại bỏ meta.total từ dependencies
+  }, []);
 
   // Fetch khi trang thay đổi hoặc search term (đã debounce) thay đổi
   useEffect(() => {
@@ -276,11 +286,14 @@ const StudentIndex = () => {
 
       {/* Thanh tìm kiếm */}
       <div className="max-w-sm">
-        <Input
-          placeholder="Tìm theo tên, mã SV, email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">Tìm kiếm sinh viên</label>
+          <Input
+            placeholder="Nhập mã số sinh viên..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Bảng dữ liệu */}
