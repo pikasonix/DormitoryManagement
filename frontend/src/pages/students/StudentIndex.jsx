@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { studentService } from '../../services/student.service';
-import { Button, Table, Input, Pagination, Badge } from '../../components/shared'; // Thêm Pagination, Badge
+import { Button, Input, Badge } from '../../components/shared';
+import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import { PlusIcon, PencilSquareIcon, TrashIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { useDebounce } from '../../hooks/useDebounce'; // Giả sử có hook debounce
+import { useDebounce } from '../../hooks/useDebounce';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Helper format ngày
 const formatDate = (dateString) => {
@@ -18,11 +20,13 @@ const formatDate = (dateString) => {
 
 // Helper lấy màu badge status
 const getStatusBadgeColor = (status) => {
-  switch (status?.toUpperCase()) { // API trả về 'active' ?
+  switch (status?.toUpperCase()) {
     case 'ACTIVE': return 'green';
     case 'INACTIVE': return 'gray';
-    case 'GRADUATED': return 'blue'; // Ví dụ thêm status
-    case 'SUSPENDED': return 'yellow'; // Ví dụ
+    case 'PENDING_APPROVAL': return 'yellow';
+    case 'GRADUATED': return 'blue';
+    case 'SUSPENDED': return 'red';
+    case 'RENTING': return 'purple';
     default: return 'gray';
   }
 }
@@ -31,32 +35,67 @@ const StudentIndex = () => {
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [meta, setMeta] = useState({ currentPage: 1, totalPages: 1, limit: 10, total: 0 }); // State cho phân trang
+  const [meta, setMeta] = useState({ currentPage: 1, totalPages: 1, limit: 10, total: 0 });
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
-  const debouncedSearchTerm = useDebounce(searchTerm, 500); // Debounce search input
+  const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const navigate = useNavigate();
+  const { user } = useAuth(); // Get current user to check if admin
 
   // Hàm fetch dữ liệu
   const fetchStudents = useCallback(async (page = 1, search = '') => {
     setIsLoading(true);
     setError(null);
     try {
+      // Lấy tất cả sinh viên từ API (không giới hạn limit)
       const params = {
-        page: page,
-        limit: meta.limit,
-        keyword: search || undefined, // Gửi keyword nếu có giá trị
+        // Không chỉ định limit để API trả về tất cả sinh viên
+        keyword: search || undefined,
       };
+
+      console.log('Fetching all students with params:', params);
       const data = await studentService.getAllStudents(params);
-      setStudents(data.students || []);
-      setMeta(prev => ({ ...prev, ...data.meta })); // Cập nhật meta data
-      setCurrentPage(data.meta?.page || 1); // Cập nhật trang hiện tại
+      console.log('Students data received:', data);
+
+      // Handle different response structures
+      const allStudentsList = data.students || data.data || data;
+      const students = Array.isArray(allStudentsList) ? allStudentsList : [];
+
+      // Extract and normalize metadata for pagination
+      const total = students.length;
+
+      // Tính toán số trang dựa trên tổng số sinh viên và limit 10 sinh viên/trang
+      const calculatedTotalPages = Math.max(1, Math.ceil(total / 10));
+
+      // Phân trang phía client - chọn 10 sinh viên cho trang hiện tại
+      const startIndex = (page - 1) * 10;
+      const endIndex = Math.min(startIndex + 10, total);
+      const paginatedStudents = students.slice(startIndex, endIndex);
+
+      console.log('Client-side pagination:', {
+        total,
+        currentPage: page,
+        totalPages: calculatedTotalPages,
+        showing: `${startIndex + 1}-${endIndex} of ${total}`
+      });
+
+      // Cập nhật state với dữ liệu đã phân trang
+      setStudents(paginatedStudents);
+      setMeta({
+        currentPage: page,
+        totalPages: calculatedTotalPages,
+        limit: 10,
+        total: total
+      });
+      setCurrentPage(page);
     } catch (err) {
+      console.error('Error fetching students:', err);
       setError('Không thể tải danh sách sinh viên.');
+      toast.error('Không thể tải danh sách sinh viên.');
     } finally {
       setIsLoading(false);
     }
-  }, [meta.limit]); // Chỉ phụ thuộc vào limit để định nghĩa hàm
+  }, []);  // Đã loại bỏ meta.total từ dependencies
 
   // Fetch khi trang thay đổi hoặc search term (đã debounce) thay đổi
   useEffect(() => {
@@ -79,67 +118,160 @@ const StudentIndex = () => {
 
   // Xử lý chuyển trang
   const handlePageChange = (page) => {
-    setCurrentPage(page);
+    // Đảm bảo trang mới hợp lệ
+    if (page > 0 && page <= meta.totalPages) {
+      console.log(`Chuyển đến trang ${page}`);
+      setCurrentPage(page);
+
+      // Scroll lên đầu trang khi chuyển trang
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   // --- Cấu hình bảng ---
   const columns = useMemo(() => [
     {
       Header: 'Ảnh',
-      accessor: 'user.avatar.path', // Đường dẫn avatar từ user liên kết
-      Cell: ({ value }) => {
+      accessor: 'avatar',
+      Cell: ({ value, row }) => {
         const UPLOADS_BASE_URL = import.meta.env.VITE_UPLOADS_URL || '';
-        const avatarUrl = value ? (value.startsWith('http') ? value : `${UPLOADS_BASE_URL}${value.startsWith('/') ? '' : '/'}${value}`) : 'src/assets/default-avatar.png';
-        return <img src={avatarUrl} alt="Avatar" className="h-8 w-8 rounded-full object-cover mx-auto" onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png' }} />;
+        let avatarUrl = 'src/assets/default-avatar.png';
+
+        try {
+          // Try different avatar sources
+          const original = row?.original;
+          if (original?.user?.avatar?.path) {
+            avatarUrl = original.user.avatar.path.startsWith('http')
+              ? original.user.avatar.path
+              : `${UPLOADS_BASE_URL}${original.user.avatar.path.startsWith('/') ? '' : '/'}${original.user.avatar.path}`;
+          } else if (original?.user?.avatarUrl) {
+            avatarUrl = original.user.avatarUrl;
+          }
+        } catch (error) {
+          console.log('Avatar rendering error:', error);
+        }
+
+        return (
+          <img
+            src={avatarUrl}
+            alt="Avatar"
+            className="h-8 w-8 rounded-full object-cover mx-auto"
+            onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png' }}
+          />
+        );
       }
     },
-    { Header: 'Mã SV', accessor: 'studentId', Cell: ({ value }) => <span className='font-mono'>{value}</span> },
-    { Header: 'Họ và tên', accessor: 'fullName' }, // API trả về fullName
-    { Header: 'Email', accessor: 'email' }, // API trả về email
-    { Header: 'Số điện thoại', accessor: 'phone' }, // API trả về phone
-    { Header: 'Phòng', accessor: 'roomId', Cell: ({ value }) => value ? `Phòng ${value}` : '-' }, // Cần lấy tên phòng thực tế?
-    { Header: 'Ngày sinh', accessor: 'dateOfBirth', Cell: ({ value }) => formatDate(value) },
+    {
+      Header: 'Mã SV',
+      accessor: 'studentId',
+      Cell: ({ value }) => <span className='font-mono'>{value || '-'}</span>
+    },
+    {
+      Header: 'Họ và tên',
+      accessor: 'fullName',
+      Cell: ({ value }) => value || '-'
+    },
+    {
+      Header: 'Email',
+      accessor: 'email',
+      Cell: ({ row }) => row?.original?.user?.email || '-'
+    },
+    {
+      Header: 'Số điện thoại',
+      accessor: 'phoneNumber',
+      Cell: ({ value }) => value || '-'
+    },
+    {
+      Header: 'Phòng',
+      accessor: 'room',
+      Cell: ({ row }) => {
+        const value = row?.original?.room;
+        if (!value) return '-';
+        try {
+          const buildingName = value.building?.name || '';
+          const roomNumber = value.number || value.roomNumber || value.name || value.id;
+          return buildingName ? `${buildingName} - Phòng ${roomNumber}` : `Phòng ${roomNumber}`;
+        } catch (error) {
+          console.log('Room rendering error:', error);
+          return '-';
+        }
+      }
+    },
+    {
+      Header: 'Ngày sinh',
+      accessor: 'birthDate',
+      Cell: ({ value }) => formatDate(value)
+    },
     {
       Header: 'Trạng thái',
-      accessor: 'status', // API trả về status
-      Cell: ({ value }) => (
-        <Badge color={getStatusBadgeColor(value)}>{value?.toUpperCase() || 'N/A'}</Badge>
-      )
+      accessor: 'status',
+      Cell: ({ value }) => {
+        // Map status values to display text
+        const statusMap = {
+          'ACTIVE': 'Đang học',
+          'INACTIVE': 'Không hoạt động',
+          'PENDING_APPROVAL': 'Chờ duyệt',
+          'GRADUATED': 'Đã tốt nghiệp',
+          'SUSPENDED': 'Đình chỉ',
+          'RENTING': 'Đang thuê',
+        };
+
+        const statusText = statusMap[value] || value || 'N/A';
+
+        return (
+          <Badge color={getStatusBadgeColor(value)}>
+            {statusText}
+          </Badge>
+        );
+      }
     },
     {
       Header: 'Hành động',
       accessor: 'actions',
-      Cell: ({ row }) => (
-        <div className="flex space-x-2 justify-center">
-          {/* // TODO: Thêm nút xem chi tiết nếu có trang chi tiết */}
-          {/* <Button variant="icon" onClick={() => navigate(`/students/${row.original.id}`)} tooltip="Xem chi tiết">...</Button> */}
-          <Button
-            variant="icon"
-            onClick={() => navigate(`/students/${row.original.id}/edit`)} // ID ở đây là profile ID
-            tooltip="Chỉnh sửa"
-          >
-            <PencilSquareIcon className="h-5 w-5 text-yellow-600 hover:text-yellow-800" />
-          </Button>
-          <Button
-            variant="icon"
-            onClick={() => handleDelete(row.original.id, row.original.fullName)}
-            tooltip="Xóa"
-          >
-            <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
-          </Button>
-        </div>
-      ),
+      Cell: ({ row }) => {
+        const studentId = row?.original?.id;
+        if (!studentId) return null;
+
+        return (
+          <div className="flex space-x-2 justify-center">
+            <Button
+              variant="icon"
+              onClick={() => navigate(`/students/${studentId}`)}
+              tooltip="Xem chi tiết"
+            >
+              <EyeIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+            </Button>
+            <Button
+              variant="icon"
+              onClick={() => navigate(`/students/${studentId}/edit`)}
+              tooltip="Chỉnh sửa"
+            >
+              <PencilSquareIcon className="h-5 w-5 text-yellow-600 hover:text-yellow-800" />
+            </Button>
+            {user?.role === 'ADMIN' && (
+              <Button
+                variant="icon"
+                onClick={() => handleDelete(studentId, row.original.fullName || 'Sinh viên này')}
+                tooltip="Xóa"
+              >
+                <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
-  ], [navigate, currentPage, debouncedSearchTerm]); // Thêm dependencies cho handlePageChange nếu cần
+  ], [navigate, user, handleDelete]);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap justify-between items-center gap-4">
         <h1 className="text-2xl font-semibold">Quản lý Sinh viên</h1>
-        {/* Nút Thêm mới cần quyền Admin? */}
-        <Button onClick={() => navigate('/students/new')} icon={PlusIcon}>
-          Thêm Sinh viên mới
-        </Button>
+        {user?.role === 'ADMIN' && (
+          <Button onClick={() => navigate('/students/new')} icon={PlusIcon}>
+            Thêm Sinh viên mới
+          </Button>
+        )}
       </div>
 
       {/* Thanh tìm kiếm */}
@@ -153,21 +285,30 @@ const StudentIndex = () => {
 
       {/* Bảng dữ liệu */}
       {isLoading ? (
-        <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
+        <div className="flex justify-center items-center py-8">
+          <LoadingSpinner />
+        </div>
       ) : error ? (
-        <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
+        <div className="text-red-600 bg-red-50 p-4 rounded text-center">
+          {error}
+        </div>
+      ) : !students.length ? (
+        <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
+          Không tìm thấy sinh viên nào.
+        </div>
       ) : (
-        <>
-          <Table columns={columns} data={students} />
-          {/* Phân trang */}
-          {meta.totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={meta.totalPages}
-              onPageChange={handlePageChange}
-            />
-          )}
-        </>
+        <PaginationTable
+          columns={columns}
+          data={students}
+          currentPage={meta.currentPage}
+          totalPages={meta.totalPages}
+          onPageChange={handlePageChange}
+          totalRecords={meta.total}
+          recordsPerPage={meta.limit}
+          showingText={`Hiển thị sinh viên ${(meta.currentPage - 1) * meta.limit + 1} - ${Math.min(meta.currentPage * meta.limit, meta.total)}`}
+          recordsText="sinh viên"
+          pageText="Trang"
+        />
       )}
     </div>
   );

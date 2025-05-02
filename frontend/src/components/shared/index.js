@@ -6,7 +6,7 @@ import LoadingSpinner from './LoadingSpinner';
 import ImageUpload from './ImageUpload';
 import Badge from './Badge';
 import Table from './Table';
-import Pagination from './Pagination';
+import Pagination from './PaginationTable';
 import MultiSelectCheckbox from './MultiSelectCheckbox';
 import DatePicker from './DatePicker';
 // Import các component shared khác nếu có (vd: Modal, Card, Alert,...)

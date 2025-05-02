@@ -10,10 +10,38 @@ const prisma = new PrismaClient();
 export class StudentController {
 
   // Lấy danh sách tất cả sinh viên
-  async getAllStudents(_req: Request, res: Response, next: NextFunction) {
+  async getAllStudents(req: Request, res: Response, next: NextFunction) {
     try {
-      // Đổi model và include
+      // Pagination parameters
+      const page = parseInt(req.query.page as string) || 1;
+      // Allow fetching all by omitting limit or setting it <= 0
+      const limitQuery = req.query.limit as string;
+      const limit = limitQuery ? parseInt(limitQuery) : 0; // Default to 0 (no limit) if not provided
+      const applyPagination = limit > 0;
+      const offset = applyPagination ? (page - 1) * limit : 0;
+
+      // Search keyword
+      const keyword = req.query.keyword as string;
+
+      // Build where condition for search
+      const whereCondition: any = {};
+      if (keyword) {
+        whereCondition.OR = [
+          { fullName: { contains: keyword, mode: 'insensitive' } },
+          { studentId: { contains: keyword, mode: 'insensitive' } },
+          { user: { email: { contains: keyword, mode: 'insensitive' } } },
+          { phoneNumber: { contains: keyword, mode: 'insensitive' } }
+        ];
+      }
+
+      // Count total records matching the search criteria
+      const totalStudents = await prisma.studentProfile.count({
+        where: whereCondition
+      });
+
+      // Get students with or without pagination
       const students = await prisma.studentProfile.findMany({
+        where: whereCondition,
         include: {
           user: { // Bao gồm thông tin User liên quan
             select: {
@@ -27,20 +55,33 @@ export class StudentController {
               building: { select: { id: true, name: true } }
             }
           }
-          // Loại bỏ documents, bookings
-          // Cân nhắc include invoices hoặc payments nếu cần trong danh sách tổng quan
         },
         orderBy: {
-          // Sắp xếp theo tên hoặc ngày tạo tùy ý
           fullName: 'asc'
-          // createdAt: 'desc'
-        }
+        },
+        // Apply pagination only if limit is positive
+        ...(applyPagination && { skip: offset }),
+        ...(applyPagination && { take: limit })
       });
+
+      // Calculate pagination metadata only if pagination is applied
+      const meta = applyPagination ? {
+        total: totalStudents,
+        currentPage: page,
+        totalPages: Math.ceil(totalStudents / limit),
+        limit
+      } : {
+        total: totalStudents,
+        currentPage: 1,
+        totalPages: 1, // Only one page when fetching all
+        limit: totalStudents // Limit is the total count
+      };
 
       res.status(200).json({
         status: 'success',
         results: students.length,
-        data: students
+        data: students,
+        meta
       });
     } catch (error) {
       console.error('Lỗi khi lấy danh sách sinh viên:', error);

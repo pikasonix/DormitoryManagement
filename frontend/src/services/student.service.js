@@ -11,12 +11,38 @@ import { toast } from 'react-hot-toast';
 const getAllStudents = async (params = {}) => {
   try {
     const response = await apiClient.get('/students', { params });
-    // API doc: { success: true, data: { students: [...], meta: {...} } }
-    if (response.data?.success) {
-      return response.data.data; // Trả về { students, meta }
-    } else {
-      throw new Error(response.data?.message || 'Lấy danh sách sinh viên thất bại.');
+
+    // Handle different API response structures
+    if (response.data?.success || response.data?.status === 'success') {
+      // Handle data based on structure
+      if (response.data.data?.students) {
+        return response.data.data; // { students: [...], meta: {...} }
+      } else if (Array.isArray(response.data.data)) {
+        // If data is an array, assume it's the students array
+        return {
+          students: response.data.data,
+          meta: {
+            total: response.data.data.length,
+            currentPage: params.page || 1,
+            totalPages: Math.ceil(response.data.data.length / (params.limit || 10))
+          }
+        };
+      } else if (response.data.data) {
+        // If data is an object with no students field
+        return {
+          students: response.data.data,
+          meta: response.data.meta || {
+            total: response.data.results || response.data.data.length,
+            currentPage: params.page || 1,
+            totalPages: Math.ceil((response.data.results || response.data.data.length) / (params.limit || 10))
+          }
+        };
+      }
     }
+
+    // Fallback handling for unexpected response structure
+    console.warn('Unexpected API response structure:', response.data);
+    throw new Error(response.data?.message || 'Lấy danh sách sinh viên thất bại.');
   } catch (error) {
     console.error('Lỗi service getAllStudents:', error.response?.data || error.message);
     throw error.response?.data || error;
