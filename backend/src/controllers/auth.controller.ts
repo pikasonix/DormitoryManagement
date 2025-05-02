@@ -133,9 +133,18 @@ export class AuthController {
             }
           } : undefined,
           studentProfile: userRole === Role.STUDENT ? {
-            select: {
-              id: true, studentId: true, fullName: true, roomId: true,
-              room: { include: { building: true } }
+            include: {
+              room: {
+                include: {
+                  building: true,
+                  amenities: { include: { amenity: true } }
+                }
+              },
+              invoices: { orderBy: { issueDate: 'desc' }, take: 5 },
+              payments: { orderBy: { paymentDate: 'desc' }, take: 5 },
+              reportedMaintenances: { orderBy: { reportDate: 'desc' }, take: 3, include: { images: true } },
+              vehicleRegistrations: { include: { images: true } },
+              roomTransfers: { orderBy: { createdAt: 'desc' }, take: 3 }
             }
           } : undefined
         }

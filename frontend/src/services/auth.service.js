@@ -122,11 +122,127 @@ const changePassword = async (oldPassword, newPassword) => {
     }
 };
 
+/**
+ * Gọi API để cập nhật thông tin hồ sơ sinh viên.
+ * @param {object} profileData - Dữ liệu cập nhật hồ sơ sinh viên
+ * @returns {Promise<object>} - Kết quả cập nhật
+ * @throws {Error} Nếu cập nhật thất bại hoặc API trả về lỗi
+ */
+const updateProfile = async (profileData) => {
+    try {
+        // Ensure we have the student profile ID
+        if (!profileData.id) {
+            console.error('Missing profile ID for update');
+            throw new Error('Thiếu thông tin ID hồ sơ sinh viên');
+        }
+
+        const profileId = profileData.id;
+
+        // Create a sanitized copy of the data without the ID field (since it goes in the URL)
+        const sanitizedData = { ...profileData };
+        delete sanitizedData.id;  // Remove ID from body since it's in the URL
+
+        // Handle numeric fields that might be empty strings or undefined
+        if (sanitizedData.roomId === '' || sanitizedData.roomId === undefined) {
+            sanitizedData.roomId = null;
+        } else if (sanitizedData.roomId !== null) {
+            const roomIdNum = parseInt(sanitizedData.roomId);
+            sanitizedData.roomId = isNaN(roomIdNum) ? null : roomIdNum;
+        }
+
+        if (sanitizedData.avatarId === '' || sanitizedData.avatarId === undefined) {
+            sanitizedData.avatarId = null;
+        } else if (sanitizedData.avatarId !== null) {
+            const avatarIdNum = parseInt(sanitizedData.avatarId);
+            sanitizedData.avatarId = isNaN(avatarIdNum) ? null : avatarIdNum;
+        }
+
+        if (sanitizedData.courseYear === '' || sanitizedData.courseYear === undefined) {
+            sanitizedData.courseYear = null;
+        } else if (sanitizedData.courseYear !== null) {
+            const courseYearNum = parseInt(sanitizedData.courseYear);
+            sanitizedData.courseYear = isNaN(courseYearNum) ? null : courseYearNum;
+        }
+
+        if (sanitizedData.fatherDobYear === '' || sanitizedData.fatherDobYear === undefined) {
+            sanitizedData.fatherDobYear = null;
+        } else if (sanitizedData.fatherDobYear !== null) {
+            const fatherDobYearNum = parseInt(sanitizedData.fatherDobYear);
+            sanitizedData.fatherDobYear = isNaN(fatherDobYearNum) ? null : fatherDobYearNum;
+        }
+
+        if (sanitizedData.motherDobYear === '' || sanitizedData.motherDobYear === undefined) {
+            sanitizedData.motherDobYear = null;
+        } else if (sanitizedData.motherDobYear !== null) {
+            const motherDobYearNum = parseInt(sanitizedData.motherDobYear);
+            sanitizedData.motherDobYear = isNaN(motherDobYearNum) ? null : motherDobYearNum;
+        }
+
+        // Handle date fields that might be empty strings
+        const dateFields = ['birthDate', 'startDate', 'contractEndDate', 'checkInDate', 'checkOutDate'];
+        dateFields.forEach(field => {
+            if (sanitizedData[field] === '' || sanitizedData[field] === undefined) {
+                sanitizedData[field] = null;
+            } else if (sanitizedData[field] !== null) {
+                // Validate date format
+                const date = new Date(sanitizedData[field]);
+                if (isNaN(date.getTime())) {
+                    console.warn(`Invalid date format for ${field}: ${sanitizedData[field]}`);
+                    sanitizedData[field] = null;
+                }
+            }
+        });
+
+        // Log the data being sent for debugging
+        console.log('Sanitized profile data before update:', sanitizedData);
+        console.log('Updating profile ID:', profileId);
+
+        try {
+            // Use the correct endpoint with the profileId in the URL
+            const response = await apiClient.put(`/api/students/${profileId}`, sanitizedData);
+
+            if (response.data?.success || response.data?.status === 'success') {
+                return response.data;
+            } else {
+                console.error('API response error:', response.data);
+                throw new Error(response.data?.message || 'Cập nhật thông tin thất bại.');
+            }
+        } catch (apiError) {
+            // Log detailed information about the API error
+            console.error('API call failed:', apiError);
+
+            if (apiError.response) {
+                console.error('Error status:', apiError.response.status);
+                console.error('Error data:', apiError.response.data);
+
+                // Check for validation errors
+                if (apiError.response.data?.errors) {
+                    console.error('Validation errors:', apiError.response.data.errors);
+
+                    // Format validation errors for better readability
+                    const errorMessages = Object.entries(apiError.response.data.errors)
+                        .map(([field, message]) => `${field}: ${message}`)
+                        .join(', ');
+
+                    throw new Error(`Dữ liệu không hợp lệ. ${errorMessages}`);
+                }
+            }
+
+            const errorMessage = apiError.response?.data?.message || apiError.message || 'Lỗi không xác định';
+            throw new Error(errorMessage);
+        }
+    } catch (error) {
+        console.error('Lỗi dịch vụ updateProfile:', error);
+        throw error; // Rethrow the error with detailed information
+    }
+};
+
 // Export các hàm service đã định nghĩa
 export const authService = {
     login,
     logout,
     getMe,
     changePassword,
-    register, // Thêm hàm register vào export
+    register,
+    updateProfile, // Thêm hàm updateProfile vào export
 };

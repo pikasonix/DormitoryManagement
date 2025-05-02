@@ -34,9 +34,9 @@ const SidebarContent = ({ navigation, pathname }) => {
     <div className="flex flex-col flex-grow pt-5 overflow-y-auto"> {/* Thêm overflow-y-auto */}
       <div className="flex items-center justify-center flex-shrink-0 px-4 mb-5">
         <img
-          src="/LOGO.svg" // Đảm bảo logo ở trong /public
-          alt="Dormitory Management System Logo"
-          className="h-10 w-auto" // Giảm kích thước logo một chút
+          src="/LOGO.svg"
+          alt="Ký Túc Xá - Hệ Thống Quản Lý"
+          className="h-12 w-auto"
           loading="lazy"
         />
       </div>
@@ -78,22 +78,21 @@ const DashboardLayout = () => {
   // --- Định nghĩa cấu trúc menu (Đã tối ưu với useMemo và role filtering) ---
   const navigation = useMemo(() => {
     const allNavItems = [
-      // Các mục menu của bạn đã định nghĩa rất tốt, giữ nguyên
-      { name: 'Bảng điều khiển', href: '/dashboard', icon: HomeIcon, roles: ['ADMIN', 'STAFF', 'STUDENT'] },
+      { name: 'Trang chủ', href: '/dashboard', icon: HomeIcon, roles: ['ADMIN', 'STAFF', 'STUDENT'] },
       { name: 'Hồ sơ cá nhân', href: '/profile', icon: UserCircleIcon, roles: ['ADMIN', 'STAFF', 'STUDENT'] },
-      { name: 'DS Sinh viên', href: '/students', icon: UsersIcon, roles: ['ADMIN', 'STAFF'] },
-      { name: 'Tòa nhà', href: '/buildings', icon: BuildingOffice2Icon, roles: ['ADMIN', 'STAFF'] },
-      { name: 'Phòng ở', href: '/rooms', icon: RectangleGroupIcon, roles: ['ADMIN', 'STAFF', 'STUDENT'] },
-      { name: 'Tiện nghi', href: '/amenities', icon: Cog6ToothIcon, roles: ['ADMIN', 'STAFF'] },
-      { name: 'Bảo trì/Sửa chữa', href: '/maintenance', icon: WrenchScrewdriverIcon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Quản lý sinh viên', href: '/students', icon: UsersIcon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Quản lý tòa nhà', href: '/buildings', icon: BuildingOffice2Icon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Quản lý phòng ở', href: '/rooms', icon: RectangleGroupIcon, roles: ['ADMIN', 'STAFF', 'STUDENT'] },
+      { name: 'Tiện nghi KTX', href: '/amenities', icon: Cog6ToothIcon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Quản lý bảo trì', href: '/maintenance', icon: WrenchScrewdriverIcon, roles: ['ADMIN', 'STAFF'] },
       { name: 'Yêu cầu sửa chữa', href: '/maintenance/request', icon: WrenchScrewdriverIcon, roles: ['STUDENT'] },
-      { name: 'Hóa đơn', href: '/invoices', icon: DocumentTextIcon, roles: ['ADMIN', 'STAFF'] }, // Student xem hóa đơn ở Profile?
-      { name: 'Thanh toán', href: '/payments', icon: CurrencyDollarIcon, roles: ['ADMIN', 'STAFF'] }, // Student xem lịch sử ở Profile?
-      { name: 'Ghi điện nước', href: '/utilities', icon: CalculatorIcon, roles: ['ADMIN', 'STAFF'] },
-      { name: 'Quản lý xe', href: '/vehicles', icon: TruckIcon, roles: ['ADMIN', 'STAFF'] }, // Đổi tên rõ hơn
-      { name: 'Đăng ký xe (SV)', href: '/vehicles/register', icon: TruckIcon, roles: ['STUDENT'] },
-      { name: 'Quản lý chuyển phòng', href: '/transfers', icon: ArrowsRightLeftIcon, roles: ['ADMIN', 'STAFF'] }, // Đổi tên rõ hơn
-      { name: 'Yêu cầu chuyển phòng', href: '/transfers/request', icon: ArrowsRightLeftIcon, roles: ['STUDENT'] },
+      { name: 'Quản lý hóa đơn', href: '/invoices', icon: DocumentTextIcon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Quản lý thanh toán', href: '/payments', icon: CurrencyDollarIcon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Điện nước', href: '/utilities', icon: CalculatorIcon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Quản lý phương tiện', href: '/vehicles', icon: TruckIcon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Đăng ký phương tiện', href: '/vehicles/register', icon: TruckIcon, roles: ['STUDENT'] },
+      { name: 'Quản lý chuyển phòng', href: '/transfers', icon: ArrowsRightLeftIcon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Đăng ký chuyển phòng', href: '/transfers/request', icon: ArrowsRightLeftIcon, roles: ['STUDENT'] },
     ];
 
     if (!user || !user.role) return [];

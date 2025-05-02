@@ -36,6 +36,8 @@ import TransferRequestForm from './pages/transfers/TransferRequestForm';
 import NotFound from './pages/NotFound'; // Import trang 404 Not Found
 import ForgotPassword from './pages/ForgotPassword'; // Import trang Quên mật khẩu
 import Register from './pages/Register'; // Import trang Đăng ký
+import StudentProfilePage from './pages/profile/StudentProfilePage';
+import StudentProfileEditPage from './pages/profile/StudentProfileEditPage';
 // LoadingSpinner không cần import ở đây nữa, các Route Guard tự xử lý
 
 
@@ -55,7 +57,8 @@ function App() {
         {/* Route mặc định sau khi đăng nhập */}
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile" element={<StudentProfilePage />} />
+        <Route path="/profile/edit" element={<StudentProfileEditPage />} />
 
         {/* --- STUDENT ROUTES --- */}
         <Route path="/students">
