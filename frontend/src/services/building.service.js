@@ -4,21 +4,21 @@ import { toast } from 'react-hot-toast';
 // --- Các hàm gọi API cho Building/Dormitory ---
 
 /**
- * Lấy danh sách tất cả tòa nhà (dormitories).
+ * Lấy danh sách tất cả tòa nhà (buildings).
  * @param {object} params - Query parameters (vd: page, limit, search)
  * @returns {Promise<object>} Dữ liệu trả về từ API (bao gồm danh sách buildings và meta nếu có)
  */
 const getAllBuildings = async (params = {}) => {
     try {
-        const response = await apiClient.get('/dormitories', { params });
-        // API doc trả về { success: true, data: { dormitories: [...], meta: {...} } }
+        const response = await apiClient.get('/buildings', { params });
+        // API doc trả về { success: true, data: { buildings: [...], meta: {...} } }
         if (response.data?.success) {
-            return response.data.data; // Trả về { dormitories, meta }
+            return response.data.data; // Trả về { buildings, meta }
         } else {
             throw new Error(response.data?.message || 'Lấy danh sách tòa nhà thất bại.');
         }
     } catch (error) {
-        console.error('Lỗi service getAllBuildings:', error.response?.data || error.message);
+        console.error('Lỗi service getAllBuildings:', error.response?.data?.message || error.message);
         // Toast lỗi đã được xử lý bởi interceptor
         throw error.response?.data || error;
     }
@@ -31,15 +31,15 @@ const getAllBuildings = async (params = {}) => {
  */
 const getBuildingById = async (id) => {
     try {
-        const response = await apiClient.get(`/dormitories/${id}`);
-        // API doc trả về { success: true, data: { dormitory_object } }
+        const response = await apiClient.get(`/buildings/${id}`);
+        // API doc trả về { success: true, data: { building_object } }
         if (response.data?.success && response.data?.data) {
             return response.data.data; // Trả về object tòa nhà
         } else {
             throw new Error(response.data?.message || `Không tìm thấy tòa nhà với ID ${id}.`);
         }
     } catch (error) {
-        console.error(`Lỗi service getBuildingById (${id}):`, error.response?.data || error.message);
+        console.error(`Lỗi service getBuildingById (${id}):`, error.response?.data?.message || error.message);
         throw error.response?.data || error;
     }
 };
@@ -51,15 +51,15 @@ const getBuildingById = async (id) => {
  */
 const createBuilding = async (buildingData) => {
     try {
-        const response = await apiClient.post('/dormitories', buildingData);
-        // API doc trả về { success: true, data: { new_dormitory_object } }
+        const response = await apiClient.post('/buildings', buildingData);
+        // API doc trả về { success: true, data: { new_building_object } }
         if (response.data?.success && response.data?.data) {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Tạo tòa nhà mới thất bại.');
         }
     } catch (error) {
-        console.error('Lỗi service createBuilding:', error.response?.data || error.message);
+        console.error('Lỗi service createBuilding:', error.response?.data?.message || error.message);
         // Xử lý lỗi validation chi tiết nếu có
         if (error.response?.data?.errors) {
             // Ném lại lỗi để component form xử lý errors
@@ -77,15 +77,15 @@ const createBuilding = async (buildingData) => {
  */
 const updateBuilding = async (id, buildingData) => {
     try {
-        const response = await apiClient.put(`/dormitories/${id}`, buildingData);
-        // API doc trả về { success: true, data: { updated_dormitory_object } }
+        const response = await apiClient.put(`/buildings/${id}`, buildingData);
+        // API doc trả về { success: true, data: { updated_building_object } }
         if (response.data?.success && response.data?.data) {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Cập nhật tòa nhà thất bại.');
         }
     } catch (error) {
-        console.error(`Lỗi service updateBuilding (${id}):`, error.response?.data || error.message);
+        console.error(`Lỗi service updateBuilding (${id}):`, error.response?.data?.message || error.message);
         if (error.response?.data?.errors) {
             throw error.response.data;
         }
@@ -100,7 +100,7 @@ const updateBuilding = async (id, buildingData) => {
  */
 const deleteBuilding = async (id) => {
     try {
-        const response = await apiClient.delete(`/dormitories/${id}`);
+        const response = await apiClient.delete(`/buildings/${id}`);
         // API doc trả về { success: true, message: "..." }
         if (response.data?.success) {
             return response.data;
@@ -108,7 +108,7 @@ const deleteBuilding = async (id) => {
             throw new Error(response.data?.message || 'Xóa tòa nhà thất bại.');
         }
     } catch (error) {
-        console.error(`Lỗi service deleteBuilding (${id}):`, error.response?.data || error.message);
+        console.error(`Lỗi service deleteBuilding (${id}):`, error.response?.data?.message || error.message);
         throw error.response?.data || error;
     }
 };

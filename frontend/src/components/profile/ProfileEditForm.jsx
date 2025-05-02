@@ -180,7 +180,7 @@ const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
             } else if (user.role === 'STAFF' || user.role === 'ADMIN') {
                 // Nếu là nhân viên hoặc admin, sử dụng API staff
                 profileId = user.staffProfile?.id;
-                apiUrl = `/students/staff/${profileId}`; // Sử dụng API endpoint mới
+                apiUrl = `/staff/${profileId}`; // Sửa endpoint thành `/staff/${profileId}`
             } else {
                 // Fallback - sử dụng API chung (nếu có)
                 apiUrl = `/users/${user.id}/profile`;

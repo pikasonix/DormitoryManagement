@@ -129,7 +129,10 @@ const RoomIndex = () => {
     {
       Header: 'Sức chứa',
       accessor: 'capacity',
-      Cell: ({ row }) => `${row.original.actualOccupancy ?? 0} / ${row.original.capacity}`
+      Cell: ({ row }) => {
+        // Add null check to handle undefined actualOccupancy
+        return `${row.original.actualOccupancy || 0} / ${row.original.capacity}`;
+      }
     },
     { Header: 'Giá (VND)', accessor: 'price', Cell: ({ value }) => value ? parseFloat(value).toLocaleString('vi-VN') : '-' }, // Format tiền tệ
     {

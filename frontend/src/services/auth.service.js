@@ -123,17 +123,17 @@ const changePassword = async (oldPassword, newPassword) => {
 };
 
 /**
- * Gọi API để cập nhật thông tin hồ sơ sinh viên.
- * @param {object} profileData - Dữ liệu cập nhật hồ sơ sinh viên
+ * Gọi API để cập nhật thông tin hồ sơ.
+ * @param {object} profileData - Dữ liệu cập nhật hồ sơ
  * @returns {Promise<object>} - Kết quả cập nhật
  * @throws {Error} Nếu cập nhật thất bại hoặc API trả về lỗi
  */
 const updateProfile = async (profileData) => {
     try {
-        // Ensure we have the student profile ID
+        // Ensure we have the profile ID
         if (!profileData.id) {
             console.error('Missing profile ID for update');
-            throw new Error('Thiếu thông tin ID hồ sơ sinh viên');
+            throw new Error('Thiếu thông tin ID hồ sơ');
         }
 
         const profileId = profileData.id;
@@ -197,9 +197,29 @@ const updateProfile = async (profileData) => {
         console.log('Sanitized profile data before update:', sanitizedData);
         console.log('Updating profile ID:', profileId);
 
+        // Determine the correct API endpoint based on role or profile type
+        let apiEndpoint;
+
+        // Get user data to determine role
+        const userData = await getMe();
+        const userRole = userData?.user?.role;
+
+        // More reliable role-based endpoint selection
+        if (userRole === 'STAFF' || userRole === 'ADMIN') {
+            // For staff/admin profiles, use the staff endpoint
+            apiEndpoint = `/students/staff/${profileId}`;
+            console.log('Detected staff/admin role, using staff API endpoint');
+        } else {
+            // For student profiles, use the student endpoint
+            apiEndpoint = `/students/${profileId}`;
+            console.log('Using student API endpoint');
+        }
+
+        console.log('Using API endpoint:', apiEndpoint);
+
         try {
             // Use the correct endpoint with the profileId in the URL
-            const response = await apiClient.put(`/api/students/${profileId}`, sanitizedData);
+            const response = await apiClient.put(apiEndpoint, sanitizedData);
 
             if (response.data?.success || response.data?.status === 'success') {
                 return response.data;

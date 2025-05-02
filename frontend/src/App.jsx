@@ -11,7 +11,7 @@ import DashboardLayout from './layouts/DashboardLayout'; // Chỉ cần import 1
 // Import Pages
 import Login from './pages/Login';                     // Chỉ cần import 1 lần
 import Dashboard from './pages/Dashboard';                 // Chỉ cần import 1 lần
-import Profile from './pages/Profile';
+import ProfileRouter from './components/ProfileRouter'; // Import ProfileRouter
 import StudentIndex from './pages/students/StudentIndex';
 import StudentForm from './pages/students/StudentForm';
 import BuildingIndex from './pages/buildings/BuildingIndex';
@@ -38,6 +38,10 @@ import ForgotPassword from './pages/ForgotPassword'; // Import trang Quên mật
 import Register from './pages/Register'; // Import trang Đăng ký
 import StudentProfilePage from './pages/profile/StudentProfilePage';
 import StudentProfileEditPage from './pages/profile/StudentProfileEditPage';
+// Import StaffProfilePage
+import StaffProfilePage from './pages/profile/StaffProfilePage';
+// Import StaffProfileEditPage
+import StaffProfileEditPage from './pages/profile/StaffProfileEditPage';
 // LoadingSpinner không cần import ở đây nữa, các Route Guard tự xử lý
 
 
@@ -57,8 +61,20 @@ function App() {
         {/* Route mặc định sau khi đăng nhập */}
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/profile" element={<StudentProfilePage />} />
-        <Route path="/profile/edit" element={<StudentProfileEditPage />} />
+
+        {/* Profile Routes - điều hướng dựa theo vai trò */}
+        <Route path="/profile" element={
+          <ProfileRouter
+            studentComponent={<StudentProfilePage />}
+            staffComponent={<StaffProfilePage />}
+          />
+        } />
+        <Route path="/profile/edit" element={
+          <ProfileRouter
+            studentComponent={<StudentProfileEditPage />}
+            staffComponent={<StaffProfileEditPage />}
+          />
+        } />
 
         {/* --- STUDENT ROUTES --- */}
         <Route path="/students">

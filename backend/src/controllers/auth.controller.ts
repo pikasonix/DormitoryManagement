@@ -127,8 +127,7 @@ export class AuthController {
         include: {
           avatar: true,
           staffProfile: userRole !== Role.STUDENT ? {
-            select: {
-              id: true, fullName: true, phoneNumber: true, position: true, managedBuildingId: true,
+            include: {
               managedBuilding: true
             }
           } : undefined,
@@ -163,7 +162,8 @@ export class AuthController {
       return res.json({
         success: true,
         data: {
-          user: formattedUser
+          user: formattedUser,
+          profile: user.staffProfile || user.studentProfile || null
         }
       });
 
