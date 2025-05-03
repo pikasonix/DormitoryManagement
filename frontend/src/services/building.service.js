@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast';
  */
 const getAllBuildings = async (params = {}) => {
     try {
-        const response = await apiClient.get('/buildings', { params });
+        const response = await apiClient.get('/api/buildings', { params });
         // API doc trả về { success: true, data: { buildings: [...], meta: {...} } }
         if (response.data?.success) {
             return response.data.data; // Trả về { buildings, meta }
@@ -31,7 +31,7 @@ const getAllBuildings = async (params = {}) => {
  */
 const getBuildingById = async (id) => {
     try {
-        const response = await apiClient.get(`/buildings/${id}`);
+        const response = await apiClient.get(`/api/buildings/${id}`);
         // API doc trả về { success: true, data: { building_object } }
         if (response.data?.success && response.data?.data) {
             return response.data.data; // Trả về object tòa nhà
@@ -51,7 +51,7 @@ const getBuildingById = async (id) => {
  */
 const createBuilding = async (buildingData) => {
     try {
-        const response = await apiClient.post('/buildings', buildingData);
+        const response = await apiClient.post('/api/buildings', buildingData);
         // API doc trả về { success: true, data: { new_building_object } }
         if (response.data?.success && response.data?.data) {
             return response.data.data;
@@ -77,7 +77,7 @@ const createBuilding = async (buildingData) => {
  */
 const updateBuilding = async (id, buildingData) => {
     try {
-        const response = await apiClient.put(`/buildings/${id}`, buildingData);
+        const response = await apiClient.put(`/api/buildings/${id}`, buildingData);
         // API doc trả về { success: true, data: { updated_building_object } }
         if (response.data?.success && response.data?.data) {
             return response.data.data;
@@ -100,7 +100,7 @@ const updateBuilding = async (id, buildingData) => {
  */
 const deleteBuilding = async (id) => {
     try {
-        const response = await apiClient.delete(`/buildings/${id}`);
+        const response = await apiClient.delete(`/api/buildings/${id}`);
         // API doc trả về { success: true, message: "..." }
         if (response.data?.success) {
             return response.data;

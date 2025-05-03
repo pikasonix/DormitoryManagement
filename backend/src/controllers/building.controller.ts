@@ -12,7 +12,10 @@ export class BuildingController {
     async create(req: Request, res: Response, next: NextFunction) {
         try {
             const newBuilding = await this.buildingService.create(req.body);
-            res.status(201).json(newBuilding);
+            res.status(201).json({
+                success: true,
+                data: newBuilding
+            });
         } catch (error) {
             next(error);
         }
@@ -20,8 +23,18 @@ export class BuildingController {
 
     async getAll(req: Request, res: Response, next: NextFunction) {
         try {
-            const buildings = await this.buildingService.getAll(req.query);
-            res.json(buildings);
+            const { items, total } = await this.buildingService.getAll(req.query);
+            res.json({
+                success: true,
+                data: {
+                    buildings: items,
+                    meta: {
+                        total,
+                        page: Number(req.query.page) || 1,
+                        limit: Number(req.query.limit) || 10
+                    }
+                }
+            });
         } catch (error) {
             next(error);
         }
@@ -30,7 +43,10 @@ export class BuildingController {
     async getById(req: Request, res: Response, next: NextFunction) {
         try {
             const building = await this.buildingService.getById(Number(req.params.id));
-            res.json(building);
+            res.json({
+                success: true,
+                data: building
+            });
         } catch (error) {
             next(error);
         }
@@ -38,8 +54,11 @@ export class BuildingController {
 
     async update(req: Request, res: Response, next: NextFunction) {
         try {
-            const updatedBuilding = await this.buildingService.update(Number(req.params.id), req.body);
-            res.json(updatedBuilding);
+            const { building } = await this.buildingService.update(Number(req.params.id), req.body);
+            res.json({
+                success: true,
+                data: building
+            });
         } catch (error) {
             next(error);
         }
@@ -48,7 +67,10 @@ export class BuildingController {
     async delete(req: Request, res: Response, next: NextFunction) {
         try {
             await this.buildingService.delete(Number(req.params.id));
-            res.status(204).send();
+            res.json({
+                success: true,
+                message: "Xóa tòa nhà thành công"
+            });
         } catch (error) {
             next(error);
         }

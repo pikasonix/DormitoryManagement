@@ -8,7 +8,8 @@ import { PlusIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/24/outli
 // import Modal from '../../components/Modal'; // Optional: Import Modal nếu dùng component modal
 
 const BuildingIndex = () => {
-    const [buildings, setBuildings] = useState([]);
+    const [allBuildings, setAllBuildings] = useState([]); // Lưu tất cả dữ liệu từ API
+    const [buildings, setBuildings] = useState([]); // Dữ liệu hiển thị sau khi lọc
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState(''); // State cho tìm kiếm
@@ -17,31 +18,46 @@ const BuildingIndex = () => {
 
     const navigate = useNavigate();
 
-    // Hàm fetch dữ liệu
+    // Hàm fetch dữ liệu - chỉ gọi API một lần khi component mount
     const fetchBuildings = useCallback(async () => {
         setIsLoading(true);
         setError(null);
         try {
-            // Thêm param search nếu cần (API phải hỗ trợ)
-            const params = {};
-            if (searchTerm) params.search = searchTerm; // Giả sử API hỗ trợ ?search=...
-            const data = await buildingService.getAllBuildings(params);
-            setBuildings(data.dormitories || []); // API trả về { dormitories: [...] }
-            // Xử lý pagination nếu API trả về meta
-            // setTotalPages(data.meta?.totalPages || 1);
-            // setCurrentPage(data.meta?.currentPage || 1);
+            const data = await buildingService.getAllBuildings({});
+            const buildingsData = data.buildings || [];
+            setAllBuildings(buildingsData); // Lưu tất cả dữ liệu
+            setBuildings(buildingsData); // Hiển thị tất cả dữ liệu ban đầu
         } catch (err) {
             setError('Không thể tải danh sách tòa nhà.');
             // Toast lỗi đã được hiển thị bởi interceptor
         } finally {
             setIsLoading(false);
         }
-    }, [searchTerm]); // Fetch lại khi searchTerm thay đổi
+    }, []); // Không phụ thuộc vào searchTerm nữa
 
-    // Fetch dữ liệu khi component mount hoặc khi fetchBuildings thay đổi (do searchTerm)
+    // Fetch dữ liệu khi component mount
     useEffect(() => {
         fetchBuildings();
     }, [fetchBuildings]);
+
+    // Hàm tìm kiếm local - thực hiện trên dữ liệu đã lưu
+    useEffect(() => {
+        if (!searchTerm.trim()) {
+            // Nếu không có từ khóa tìm kiếm, hiển thị tất cả
+            setBuildings(allBuildings);
+            return;
+        }
+
+        // Tìm kiếm local trên dữ liệu đã lưu
+        const lowercasedSearch = searchTerm.toLowerCase();
+        const filteredBuildings = allBuildings.filter(building =>
+            building.name?.toLowerCase().includes(lowercasedSearch) ||
+            building.address?.toLowerCase().includes(lowercasedSearch) ||
+            building.description?.toLowerCase().includes(lowercasedSearch)
+        );
+
+        setBuildings(filteredBuildings);
+    }, [searchTerm, allBuildings]);
 
     // Hàm xử lý xóa (có confirm)
     const handleDelete = async (id, name) => {
@@ -50,32 +66,12 @@ const BuildingIndex = () => {
             try {
                 await buildingService.deleteBuilding(id);
                 toast.success(`Đã xóa tòa nhà "${name}" thành công!`);
-                fetchBuildings(); // Tải lại danh sách sau khi xóa
+                fetchBuildings(); // Tải lại tất cả dữ liệu sau khi xóa
             } catch (err) {
                 toast.error(err?.message || `Xóa tòa nhà "${name}" thất bại.`);
             }
         }
-
-        // Cách 2: Dùng Modal component (Nếu có)
-        // setBuildingToDelete({ id, name });
-        // setShowDeleteModal(true);
     };
-
-    // Optional: Hàm xác nhận xóa từ Modal
-    // const confirmDelete = async () => {
-    //     if (buildingToDelete) {
-    //         try {
-    //             await buildingService.deleteBuilding(buildingToDelete.id);
-    //             toast.success(`Đã xóa tòa nhà "${buildingToDelete.name}"!`);
-    //             fetchBuildings();
-    //         } catch (err) {
-    //             toast.error(err?.message || `Xóa tòa nhà "${buildingToDelete.name}" thất bại.`);
-    //         } finally {
-    //             setShowDeleteModal(false);
-    //             setBuildingToDelete(null);
-    //         }
-    //     }
-    // };
 
     // --- Cấu hình bảng ---
     const columns = React.useMemo(() => [
@@ -128,30 +124,21 @@ const BuildingIndex = () => {
                 </Button>
             </div>
 
-            {/* Optional: Thanh tìm kiếm */}
+            {/* Thanh tìm kiếm */}
             <div className="max-w-xs">
                 <Input
                     placeholder="Tìm kiếm tòa nhà..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
+                {searchTerm && (
+                    <p className="text-sm text-gray-500 mt-1">
+                        Hiển thị {buildings.length} kết quả {buildings.length !== allBuildings.length && `(trong tổng số ${allBuildings.length})`}
+                    </p>
+                )}
             </div>
 
             <Table columns={columns} data={buildings} />
-
-            {/* Optional: Pagination Controls */}
-            {/* <Pagination ... /> */}
-
-            {/* Optional: Delete Confirmation Modal */}
-            {/* <Modal
-                isOpen={showDeleteModal}
-                onClose={() => setShowDeleteModal(false)}
-                onConfirm={confirmDelete}
-                title="Xác nhận Xóa Tòa nhà"
-             >
-                 <p>Bạn có chắc chắn muốn xóa tòa nhà "{buildingToDelete?.name}"?</p>
-                 <p className="text-sm text-red-600 mt-2">Hành động này không thể hoàn tác và có thể ảnh hưởng dữ liệu liên quan.</p>
-             </Modal> */}
         </div>
     );
 };

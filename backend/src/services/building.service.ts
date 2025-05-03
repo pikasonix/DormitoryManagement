@@ -77,7 +77,13 @@ export class BuildingService {
                 prisma.building.count({ where }),
             ]);
 
-            return { items: buildings, total };
+            // Biến đổi kết quả để thêm trường totalRooms
+            const transformedBuildings = buildings.map(building => ({
+                ...building,
+                totalRooms: building._count.rooms // Thêm số phòng dựa trên kết quả đếm
+            }));
+
+            return { items: transformedBuildings as any, total };
         } catch (error: any) {
             console.error("[BuildingService.getAll] Error:", error);
             throw new Error(`Không thể lấy danh sách tòa nhà: ${error.message}`);
@@ -105,12 +111,20 @@ export class BuildingService {
                             user: { select: { id: true, email: true, avatar: true } }
                         }
                     },
+                    _count: { select: { rooms: true } }
                 },
             });
             if (!building) {
                 throw new Error(`Không tìm thấy tòa nhà với ID ${id}`);
             }
-            return building;
+
+            // Biến đổi kết quả để thêm trường totalRooms
+            const transformedBuilding = {
+                ...building,
+                totalRooms: building._count.rooms // Thêm số phòng dựa trên kết quả đếm
+            };
+
+            return transformedBuilding as any;
         } catch (error: any) {
             console.error(`[BuildingService.getById] Error fetching building ${id}:`, error);
             if (error instanceof Error && error.message.includes('Không tìm thấy')) {
@@ -128,8 +142,22 @@ export class BuildingService {
             throw new Error(`ID tòa nhà không hợp lệ.`);
         }
 
-        const { imageIds, ...restUpdateData } = updateData;
+        // Remove totalRooms field from update data since it's not in the schema
+        const { imageIds, totalRooms, ...restUpdateData } = updateData as BuildingUpdateInputWithImages & { totalRooms?: number };
         let oldImagePaths: string[] = [];
+
+        // Tạo một object dữ liệu cập nhật có cấu trúc rõ ràng
+        const dataToUpdate: Prisma.BuildingUpdateInput = {};
+
+        // Xử lý các trường một cách rõ ràng và chắc chắn
+        dataToUpdate.name = restUpdateData.name as string;
+        dataToUpdate.address = restUpdateData.address as string;
+
+        // Đặc biệt xử lý riêng trường description 
+        // Đảm bảo trường này luôn được gán, kể cả khi là null hoặc chuỗi rỗng
+        dataToUpdate.description = restUpdateData.description as string;
+
+        console.log("Description value to update:", dataToUpdate.description);
 
         try {
             const updatedBuilding = await prisma.$transaction(async (tx) => {
@@ -168,7 +196,7 @@ export class BuildingService {
                 const buildingAfterUpdate = await tx.building.update({
                     where: { id },
                     data: {
-                        ...restUpdateData,
+                        ...dataToUpdate,
                         images: imagesUpdate
                     },
                     include: {
@@ -178,10 +206,16 @@ export class BuildingService {
                     },
                 });
 
-                return buildingAfterUpdate;
+                // Thêm trường totalRooms vào kết quả
+                const transformedBuilding = {
+                    ...buildingAfterUpdate,
+                    totalRooms: buildingAfterUpdate._count.rooms
+                };
+
+                return transformedBuilding;
             });
 
-            return { building: updatedBuilding, oldImagePaths };
+            return { building: updatedBuilding as any, oldImagePaths };
 
         } catch (error: any) {
             console.error(`[BuildingService.update] Error updating building ${id}:`, error);
