@@ -9,9 +9,10 @@ import Table from './Table';
 import Pagination from './PaginationTable';
 import MultiSelectCheckbox from './MultiSelectCheckbox';
 import DatePicker from './DatePicker';
-// Import các component shared khác nếu có (vd: Modal, Card, Alert,...)
-import Card from './Card'; // Ví dụ thêm Card
-import Alert from './Alert'; // Ví dụ thêm Alert
+import Card from './Card';
+import Alert from './Alert';
+import Tabs from './Tabs';
+import Tab from './Tab';
 
 
 // Export tất cả dưới dạng named exports
@@ -27,7 +28,9 @@ export {
     Pagination,
     MultiSelectCheckbox,
     DatePicker,
-    Card, // Ví dụ
-    Alert, // Ví dụ
+    Card,
+    Alert,
+    Tabs,
+    Tab,
     // Export các component khác ở đây
 };

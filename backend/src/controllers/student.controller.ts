@@ -89,17 +89,17 @@ export class StudentController {
     }
   }
 
-  // Lấy thông tin chi tiết một sinh viên bằng Profile ID
+  // Lấy thông tin chi tiết sinh viên bằng User ID
   async getStudentById(req: Request, res: Response, next: NextFunction) {
     try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) {
-        return next(new Error('ID hồ sơ sinh viên không hợp lệ'));
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return next(new Error('User ID không hợp lệ'));
       }
 
-      // Đổi model và include
-      const student = await prisma.studentProfile.findUnique({
-        where: { id: id },
+      // Tìm sinh viên qua userId (là trường userId trong bảng student_profiles)
+      const student = await prisma.studentProfile.findFirst({
+        where: { userId: userId },
         include: {
           user: { // User info + avatar
             select: { id: true, email: true, isActive: true, avatar: true }
@@ -116,12 +116,11 @@ export class StudentController {
           reportedMaintenances: { orderBy: { reportDate: 'desc' }, take: 3, include: { images: true } },
           vehicleRegistrations: { include: { images: true } },
           roomTransfers: { orderBy: { createdAt: 'desc' }, take: 3 }
-          // Loại bỏ documents
         }
       });
 
       if (!student) {
-        return next(new Error(`Không tìm thấy hồ sơ sinh viên với ID ${id}`)); // Hoặc AppError 404
+        return next(new Error(`Không tìm thấy hồ sơ sinh viên với User ID ${userId}`));
       }
 
       res.status(200).json({
@@ -131,7 +130,54 @@ export class StudentController {
     } catch (error) {
       console.error('Lỗi khi lấy chi tiết sinh viên:', error);
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-        return next(new Error(`Không tìm thấy hồ sơ sinh viên với ID ${req.params.id}`));
+        return next(new Error(`Không tìm thấy hồ sơ sinh viên với User ID ${req.params.id}`));
+      }
+      next(error);
+    }
+  }
+
+  // Lấy thông tin chi tiết sinh viên bằng User ID
+  async getStudentByUserId(req: Request, res: Response, next: NextFunction) {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return next(new Error('User ID không hợp lệ'));
+      }
+
+      // Tìm sinh viên qua userId (là trường userId trong bảng student_profiles)
+      const student = await prisma.studentProfile.findFirst({
+        where: { userId: userId },
+        include: {
+          user: { // User info + avatar
+            select: { id: true, email: true, isActive: true, avatar: true }
+          },
+          room: { // Room + building info
+            include: {
+              building: true,
+              amenities: { include: { amenity: true } } // Tiện nghi phòng nếu cần
+            }
+          },
+          // Include các thông tin liên quan khác cho trang chi tiết
+          invoices: { orderBy: { issueDate: 'desc' }, take: 5 },
+          payments: { orderBy: { paymentDate: 'desc' }, take: 5 },
+          reportedMaintenances: { orderBy: { reportDate: 'desc' }, take: 3, include: { images: true } },
+          vehicleRegistrations: { include: { images: true } },
+          roomTransfers: { orderBy: { createdAt: 'desc' }, take: 3 }
+        }
+      });
+
+      if (!student) {
+        return next(new Error(`Không tìm thấy hồ sơ sinh viên với User ID ${userId}`));
+      }
+
+      res.status(200).json({
+        status: 'success',
+        data: student
+      });
+    } catch (error) {
+      console.error('Lỗi khi lấy chi tiết sinh viên từ User ID:', error);
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return next(new Error(`Không tìm thấy hồ sơ sinh viên với User ID ${req.params.userId}`));
       }
       next(error);
     }
@@ -668,7 +714,7 @@ export class StaffController {
           const fields = (error.meta?.target as string[])?.join(', ');
           return next(new Error(`Lỗi trùng lặp dữ liệu. Trường(s): ${fields} đã tồn tại.`));
         } else if (error.code === 'P2025') {
-          return next(new Error(`Không tìm thấy hồ sơ nhân viên hoặc tài nguyên liên quan (ID: ${req.params.id})`));
+          return next(new Error(`Không tìm thấy hồ sơ nhân viên hoặc tài nguyên liên quan (ID: ${req.params.id}`));
         }
       }
       next(error);

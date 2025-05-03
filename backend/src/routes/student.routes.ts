@@ -107,6 +107,13 @@ const studentIdParamSchema = z.object({
   }),
 });
 
+// Schema cho việc lấy chi tiết sinh viên bằng User ID
+const userIdParamSchema = z.object({
+  params: z.object({
+    userId: z.coerce.number().int().positive("User ID không hợp lệ"),
+  }),
+});
+
 // Schema for staff update (PUT /staff/:id)
 const updateStaffSchema = z.object({
   // Validate params.id
@@ -146,6 +153,13 @@ router.get(
   '/',
   checkRole([Role.ADMIN, Role.STAFF]),
   studentController.getAllStudents
+);
+
+// GET /api/students/by-user/:userId - Lấy chi tiết sinh viên theo User ID (phải đặt trước /:id)
+router.get(
+  '/by-user/:userId',
+  validate(userIdParamSchema),
+  studentController.getStudentByUserId
 );
 
 // GET /api/students/:id - Lấy chi tiết một sinh viên (Yêu cầu đăng nhập, controller/service kiểm tra quyền cụ thể)

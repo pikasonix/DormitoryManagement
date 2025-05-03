@@ -239,21 +239,22 @@ const StudentIndex = () => {
       Header: 'Hành động',
       accessor: 'actions',
       Cell: ({ row }) => {
-        const studentId = row?.original?.id;
-        if (!studentId) return null;
+        // Sử dụng userId thay vì id của student profile để đi đến trang chi tiết
+        const userId = row?.original?.userId; // user ID từ bảng users
+        if (!userId) return null;
 
         return (
           <div className="flex space-x-2 justify-center">
             <Button
               variant="icon"
-              onClick={() => navigate(`/students/${studentId}`)}
+              onClick={() => navigate(`/students/${userId}`)}
               tooltip="Xem chi tiết"
             >
               <EyeIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
             </Button>
             <Button
               variant="icon"
-              onClick={() => navigate(`/students/${studentId}/edit`)}
+              onClick={() => navigate(`/students/${row?.original?.id}/edit`)}
               tooltip="Chỉnh sửa"
             >
               <PencilSquareIcon className="h-5 w-5 text-yellow-600 hover:text-yellow-800" />
@@ -261,7 +262,7 @@ const StudentIndex = () => {
             {user?.role === 'ADMIN' && (
               <Button
                 variant="icon"
-                onClick={() => handleDelete(studentId, row.original.fullName || 'Sinh viên này')}
+                onClick={() => handleDelete(row?.original?.id, row.original.fullName || 'Sinh viên này')}
                 tooltip="Xóa"
               >
                 <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />

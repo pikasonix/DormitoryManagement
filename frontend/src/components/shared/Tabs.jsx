@@ -1,47 +1,75 @@
-const Tabs = ({
-  tabs = [],
-  activeTab,
-  onChange,
-  className = ''
-}) => {
+import React, { Children, cloneElement, useState, useRef, useEffect } from 'react';
+
+const Tabs = ({ children, activeTab, onChange }) => {
+  const [currentTab, setCurrentTab] = useState(activeTab || '');
+  const tabsRef = useRef(null);
+
+  useEffect(() => {
+    if (activeTab) {
+      setCurrentTab(activeTab);
+    } else if (Children.count(children) > 0) {
+      // Set the first tab as active if none specified
+      const firstTabId = Children.toArray(children)[0].props.id;
+      setCurrentTab(firstTabId);
+    }
+  }, [activeTab, children]);
+
+  const handleTabClick = (tabId) => {
+    setCurrentTab(tabId);
+    if (onChange) {
+      onChange(tabId);
+    }
+  };
+
+  const childrenArray = Children.toArray(children);
+
   return (
-    <div className={className}>
-      <div className="sm:hidden">
-        <select
-          value={activeTab}
-          onChange={(e) => onChange(e.target.value)}
-          className="block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
-        >
-          {tabs.map((tab) => (
-            <option key={tab.id} value={tab.id}>
-              {tab.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="hidden sm:block">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            {tabs.map((tab) => (
+    <div>
+      {/* Tab navigation */}
+      <div className="border-b border-gray-200" ref={tabsRef}>
+        <nav className="flex -mb-px space-x-8 overflow-x-auto px-4" aria-label="Tabs">
+          {childrenArray.map((child) => {
+            const { id, label, icon: Icon } = child.props;
+            const isActive = currentTab === id;
+
+            return (
               <button
-                key={tab.id}
-                onClick={() => onChange(tab.id)}
-                className={`
-                  whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                  ${activeTab === tab.id
+                key={id}
+                id={`tab-${id}`}
+                aria-controls={`tabpanel-${id}`}
+                aria-selected={isActive}
+                role="tab"
+                className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap
+                  ${isActive
                     ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }
-                `}
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                onClick={() => handleTabClick(id)}
               >
-                {tab.name}
+                {Icon && (
+                  <Icon
+                    className={`-ml-0.5 mr-2 h-5 w-5 ${isActive ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-500'}`}
+                    aria-hidden="true"
+                  />
+                )}
+                {label}
               </button>
-            ))}
-          </nav>
-        </div>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* Tab panels */}
+      <div className="mt-2">
+        {childrenArray.map((child) =>
+          cloneElement(child, {
+            key: child.props.id,
+            isActive: currentTab === child.props.id,
+            onClick: () => handleTabClick(child.props.id)
+          })
+        )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Tabs 
+export default Tabs;

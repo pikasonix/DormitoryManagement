@@ -70,6 +70,25 @@ const getStudentById = async (id) => {
 };
 
 /**
+ * Lấy thông tin chi tiết một sinh viên bằng User ID.
+ * @param {string|number} userId - ID của user (User ID).
+ * @returns {Promise<object>} Dữ liệu chi tiết của sinh viên.
+ */
+const getStudentByUserId = async (userId) => {
+  try {
+    const response = await apiClient.get(`/students/by-user/${userId}`);
+    if (response.data?.status === 'success' && response.data?.data) {
+      return response.data.data;
+    } else {
+      throw new Error(response.data?.message || `Không tìm thấy sinh viên với User ID ${userId}.`);
+    }
+  } catch (error) {
+    console.error(`Lỗi service getStudentByUserId (${userId}):`, error.response?.data || error.message);
+    throw error.response?.data || error;
+  }
+};
+
+/**
  * Tạo một hồ sơ sinh viên mới.
  * Lưu ý: API này có thể yêu cầu tạo User trước hoặc tự tạo User liên kết.
  * Cần làm rõ logic này với backend. Giả sử API này tạo cả User và Profile.
@@ -151,6 +170,7 @@ const deleteStudent = async (id) => {
 export const studentService = {
   getAllStudents,
   getStudentById,
+  getStudentByUserId,
   createStudent,
   updateStudent,
   deleteStudent,

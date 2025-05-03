@@ -14,6 +14,7 @@ import Dashboard from './pages/Dashboard';                 // Chỉ cần import
 import ProfileRouter from './components/ProfileRouter'; // Import ProfileRouter
 import StudentIndex from './pages/students/StudentIndex';
 import StudentForm from './pages/students/StudentForm';
+import StudentProfile from './pages/students/StudentProfile'; // Import trang chi tiết sinh viên
 import BuildingIndex from './pages/buildings/BuildingIndex';
 import BuildingForm from './pages/buildings/BuildingForm';
 import RoomIndex from './pages/rooms/RoomIndex';
@@ -80,6 +81,7 @@ function App() {
         <Route path="/students">
           <Route index element={<StaffRoute><StudentIndex /></StaffRoute>} />
           <Route path="new" element={<AdminRoute><StudentForm /></AdminRoute>} />
+          <Route path=":id" element={<StaffRoute><StudentProfile /></StaffRoute>} /> {/* Thêm route xem chi tiết sinh viên */}
           <Route path=":id/edit" element={<StaffRoute><StudentForm /></StaffRoute>} />
         </Route>
 
