@@ -79,7 +79,8 @@ const StudentForm = () => {
 
         // Fetch student data if editing
         if (isEditMode) {
-          const studentData = await studentService.getStudentById(id);
+          // Sử dụng phương thức mới để lấy thông tin sinh viên theo Profile ID
+          const studentData = await studentService.getStudentByProfileId(id);
           setFormData({
             studentId: studentData.studentId || '',
             fullName: studentData.fullName || '',

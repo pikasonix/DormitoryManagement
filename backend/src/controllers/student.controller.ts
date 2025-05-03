@@ -183,6 +183,53 @@ export class StudentController {
     }
   }
 
+  // Lấy thông tin chi tiết sinh viên bằng Profile ID (ID của hồ sơ)
+  async getStudentByProfileId(req: Request, res: Response, next: NextFunction) {
+    try {
+      const profileId = parseInt(req.params.profileId);
+      if (isNaN(profileId)) {
+        return next(new Error('Profile ID không hợp lệ'));
+      }
+
+      // Tìm sinh viên theo Profile ID (id trong bảng student_profiles)
+      const student = await prisma.studentProfile.findUnique({
+        where: { id: profileId },
+        include: {
+          user: { // User info + avatar
+            select: { id: true, email: true, isActive: true, avatar: true }
+          },
+          room: { // Room + building info
+            include: {
+              building: true,
+              amenities: { include: { amenity: true } } // Tiện nghi phòng nếu cần
+            }
+          },
+          // Include các thông tin liên quan khác cho trang chi tiết
+          invoices: { orderBy: { issueDate: 'desc' }, take: 5 },
+          payments: { orderBy: { paymentDate: 'desc' }, take: 5 },
+          reportedMaintenances: { orderBy: { reportDate: 'desc' }, take: 3, include: { images: true } },
+          vehicleRegistrations: { include: { images: true } },
+          roomTransfers: { orderBy: { createdAt: 'desc' }, take: 3 }
+        }
+      });
+
+      if (!student) {
+        return next(new Error(`Không tìm thấy hồ sơ sinh viên với Profile ID ${profileId}`));
+      }
+
+      res.status(200).json({
+        status: 'success',
+        data: student
+      });
+    } catch (error) {
+      console.error('Lỗi khi lấy chi tiết sinh viên theo Profile ID:', error);
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return next(new Error(`Không tìm thấy hồ sơ sinh viên với Profile ID ${req.params.profileId}`));
+      }
+      next(error);
+    }
+  }
+
   // Tạo sinh viên mới (User + StudentProfile)
   async createStudent(req: Request, res: Response, next: NextFunction) {
     try {
