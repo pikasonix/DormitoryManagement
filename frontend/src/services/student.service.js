@@ -171,8 +171,8 @@ const updateStudent = async (id, studentData) => {
 const deleteStudent = async (id) => {
   try {
     const response = await apiClient.delete(`/students/${id}`);
-    // API doc: { success: true, message: "..." }
-    if (response.data?.success) {
+    // Kiểm tra cả hai trường hợp: success và status để tương thích với cả hai cấu trúc response
+    if (response.data?.success || response.data?.status === 'success') {
       return response.data;
     } else {
       throw new Error(response.data?.message || 'Xóa hồ sơ sinh viên thất bại.');
