@@ -9,12 +9,16 @@ export class RoomController {
 
   async getAllRooms(req: Request, res: Response, next: NextFunction) {
     try {
-      const { buildingId, status, type, hasVacancy } = req.query;
+      const { buildingId, status, type, hasVacancy, page, limit, search } = req.query;
 
       const whereClause: Prisma.RoomWhereInput = {};
       if (buildingId) whereClause.buildingId = parseInt(buildingId as string);
       if (status) whereClause.status = status as RoomStatus;
       if (type) whereClause.type = type as RoomType;
+      if (search) {
+        whereClause.number = { contains: search as string };
+      }
+
       if (hasVacancy === 'true') {
         whereClause.status = { not: RoomStatus.UNDER_MAINTENANCE };
         whereClause.AND = [
@@ -29,35 +33,50 @@ export class RoomController {
         ];
       }
 
-      const rooms = await prisma.room.findMany({
-        where: whereClause,
-        include: {
-          building: { select: { id: true, name: true } },
-          images: true,
-          residents: {
-            select: {
-              id: true,
-              fullName: true,
-              studentId: true,
-              user: { select: { avatar: true } }
+      // Pagination
+      const pageNum = parseInt(page as string) || 1;
+      const limitNum = parseInt(limit as string) || 10;
+      const skip = (pageNum - 1) * limitNum;
+
+      // Execute count and findMany in parallel to improve performance
+      const [totalRecords, rooms] = await Promise.all([
+        prisma.room.count({ where: whereClause }),
+        prisma.room.findMany({
+          where: whereClause,
+          include: {
+            building: { select: { id: true, name: true } },
+            images: true,
+            residents: {
+              select: {
+                id: true,
+                fullName: true,
+                studentId: true,
+                user: { select: { avatar: true } }
+              }
+            },
+            amenities: {
+              include: {
+                amenity: true
+              }
             }
           },
-          amenities: {
-            include: {
-              amenity: true
-            }
-          }
-        },
-        orderBy: [
-          { building: { name: 'asc' } },
-          { floor: 'asc' },
-          { number: 'asc' }
-        ]
-      });
+          orderBy: [
+            { building: { name: 'asc' } },
+            { floor: 'asc' },
+            { number: 'asc' }
+          ],
+          skip: skip,
+          take: limitNum
+        })
+      ]);
 
       res.status(200).json({
         status: 'success',
         results: rooms.length,
+        total: totalRecords,
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(totalRecords / limitNum),
         data: rooms
       });
     } catch (error) {

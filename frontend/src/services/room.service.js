@@ -5,15 +5,25 @@ import { toast } from 'react-hot-toast';
 
 /**
  * Lấy danh sách phòng (có thể lọc).
- * @param {object} params - Query parameters (vd: buildingId, status, type, hasVacancy)
- * @returns {Promise<Array>} Mảng các đối tượng phòng. (Controller không trả về meta)
+ * @param {object} params - Query parameters (vd: buildingId, status, type, hasVacancy, page, limit)
+ * @returns {Promise<object>} Dữ liệu trả về { rooms: [...], meta: {...} }
  */
 const getAllRooms = async (params = {}) => {
   try {
     const response = await apiClient.get('/rooms', { params });
-    // Controller trả về { status: 'success', results: number, data: [...] }
+    // Controller trả về { status: 'success', results: number, total: number, data: [...] }
     if (response.data?.status === 'success' && Array.isArray(response.data?.data)) {
-      return response.data.data; // Chỉ trả về mảng các phòng
+      console.log('Room data from API:', response.data.data[0]); // For debugging: Check building info
+
+      return {
+        rooms: response.data.data,
+        meta: {
+          total: response.data.total || response.data.results || response.data.data.length,
+          currentPage: parseInt(params.page) || 1,
+          totalPages: Math.ceil((response.data.total || response.data.results || response.data.data.length) / (params.limit || 10)),
+          limit: parseInt(params.limit) || 10
+        }
+      };
     } else {
       throw new Error(response.data?.message || 'Lấy danh sách phòng thất bại.');
     }

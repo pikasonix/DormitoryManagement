@@ -6,6 +6,15 @@ const prisma = new PrismaClient();
 type BuildingCreateInputWithImages = Prisma.BuildingCreateInput & { imageIds?: number[] };
 type BuildingUpdateInputWithImages = Prisma.BuildingUpdateInput & { imageIds?: number[] };
 
+// Define a more complete return type for the getAll method
+type GetAllBuildingsResult = {
+    items: Building[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+}
+
 @Service()
 export class BuildingService {
 
@@ -41,7 +50,7 @@ export class BuildingService {
     /**
      * Lấy danh sách tòa nhà với phân trang, sắp xếp, tìm kiếm và includes.
      */
-    async getAll(query: any): Promise<{ items: Building[], total: number }> {
+    async getAll(query: any): Promise<GetAllBuildingsResult> {
         const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = 'asc', search = '' } = query;
         const skip = (Number(page) - 1) * Number(limit);
         const allowedSortBy = ['id', 'name', 'address', 'createdAt', 'updatedAt'];
@@ -83,7 +92,13 @@ export class BuildingService {
                 totalRooms: building._count.rooms // Thêm số phòng dựa trên kết quả đếm
             }));
 
-            return { items: transformedBuildings as any, total };
+            return {
+                items: transformedBuildings as any,
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                totalPages: Math.ceil(total / Number(limit))
+            };
         } catch (error: any) {
             console.error("[BuildingService.getAll] Error:", error);
             throw new Error(`Không thể lấy danh sách tòa nhà: ${error.message}`);

@@ -13,8 +13,14 @@ const BuildingIndex = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState(''); // State cho tìm kiếm
-    // const [showDeleteModal, setShowDeleteModal] = useState(false); // Optional: State cho modal xóa
-    // const [buildingToDelete, setBuildingToDelete] = useState(null); // Optional: Lưu ID tòa nhà cần xóa
+    // State cho bộ lọc nâng cao
+    const [filters, setFilters] = useState({
+        minRooms: '',
+        maxRooms: '',
+        hasAvailableRooms: '',
+        status: ''
+    });
+    const [showFilters, setShowFilters] = useState(false);
 
     const navigate = useNavigate();
 
@@ -42,22 +48,79 @@ const BuildingIndex = () => {
 
     // Hàm tìm kiếm local - thực hiện trên dữ liệu đã lưu
     useEffect(() => {
-        if (!searchTerm.trim()) {
-            // Nếu không có từ khóa tìm kiếm, hiển thị tất cả
-            setBuildings(allBuildings);
-            return;
+        let filteredBuildings = [...allBuildings];
+
+        // Tìm kiếm theo text
+        if (searchTerm.trim()) {
+            const lowercasedSearch = searchTerm.toLowerCase();
+            filteredBuildings = filteredBuildings.filter(building =>
+                building.name?.toLowerCase().includes(lowercasedSearch) ||
+                building.address?.toLowerCase().includes(lowercasedSearch) ||
+                building.description?.toLowerCase().includes(lowercasedSearch)
+            );
         }
 
-        // Tìm kiếm local trên dữ liệu đã lưu
-        const lowercasedSearch = searchTerm.toLowerCase();
-        const filteredBuildings = allBuildings.filter(building =>
-            building.name?.toLowerCase().includes(lowercasedSearch) ||
-            building.address?.toLowerCase().includes(lowercasedSearch) ||
-            building.description?.toLowerCase().includes(lowercasedSearch)
-        );
+        // Lọc theo số phòng (min)
+        if (filters.minRooms && !isNaN(parseInt(filters.minRooms))) {
+            filteredBuildings = filteredBuildings.filter(building =>
+                (building.totalRooms || 0) >= parseInt(filters.minRooms)
+            );
+        }
+
+        // Lọc theo số phòng (max)
+        if (filters.maxRooms && !isNaN(parseInt(filters.maxRooms))) {
+            filteredBuildings = filteredBuildings.filter(building =>
+                (building.totalRooms || 0) <= parseInt(filters.maxRooms)
+            );
+        }
+
+        // Lọc theo trạng thái
+        if (filters.status) {
+            // Assuming we have rooms data with status in the building object
+            if (filters.status === 'HAS_ROOMS') {
+                filteredBuildings = filteredBuildings.filter(building =>
+                    (building.totalRooms || 0) > 0
+                );
+            } else if (filters.status === 'NO_ROOMS') {
+                filteredBuildings = filteredBuildings.filter(building =>
+                    (building.totalRooms || 0) === 0
+                );
+            }
+        }
+
+        // Lọc theo phòng trống
+        if (filters.hasAvailableRooms === 'true') {
+            filteredBuildings = filteredBuildings.filter(building =>
+                building.rooms?.some(room => room.status === 'AVAILABLE') || false
+            );
+        } else if (filters.hasAvailableRooms === 'false') {
+            filteredBuildings = filteredBuildings.filter(building =>
+                !building.rooms?.some(room => room.status === 'AVAILABLE')
+            );
+        }
 
         setBuildings(filteredBuildings);
-    }, [searchTerm, allBuildings]);
+    }, [searchTerm, allBuildings, filters]);
+
+    // Handle filter changes
+    const handleFilterChange = (e) => {
+        const { name, value } = e.target;
+        setFilters(prev => ({
+            ...prev,
+            [name]: value
+        }));
+    };
+
+    // Reset all filters
+    const resetFilters = () => {
+        setFilters({
+            minRooms: '',
+            maxRooms: '',
+            hasAvailableRooms: '',
+            status: ''
+        });
+        setSearchTerm('');
+    };
 
     // Hàm xử lý xóa (có confirm)
     const handleDelete = async (id, name) => {
@@ -124,17 +187,117 @@ const BuildingIndex = () => {
                 </Button>
             </div>
 
-            {/* Thanh tìm kiếm */}
-            <div className="max-w-xs">
-                <Input
-                    placeholder="Tìm kiếm tòa nhà..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                {searchTerm && (
-                    <p className="text-sm text-gray-500 mt-1">
-                        Hiển thị {buildings.length} kết quả {buildings.length !== allBuildings.length && `(trong tổng số ${allBuildings.length})`}
-                    </p>
+            {/* Thanh tìm kiếm và bộ lọc */}
+            <div className="flex flex-col space-y-4">
+                <div className="flex justify-between items-center">
+                    <div className="relative w-full max-w-md">
+                        <Input
+                            placeholder="Tìm kiếm tòa nhà..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                        {searchTerm && (
+                            <p className="text-sm text-gray-500 mt-1">
+                                Hiển thị {buildings.length} kết quả {buildings.length !== allBuildings.length && `(trong tổng số ${allBuildings.length})`}
+                            </p>
+                        )}
+                    </div>
+
+                    <Button
+                        variant="outline"
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="ml-2"
+                    >
+                        {showFilters ? 'Ẩn bộ lọc' : 'Hiện bộ lọc'}
+                    </Button>
+                </div>
+
+                {/* Bộ lọc nâng cao */}
+                {showFilters && (
+                    <div className="bg-gray-50 p-4 rounded-md shadow-sm">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="text-lg font-medium">Bộ lọc tìm kiếm</h3>
+                            <Button
+                                variant="text"
+                                onClick={resetFilters}
+                                className="text-sm text-gray-500 hover:text-indigo-600"
+                            >
+                                Đặt lại
+                            </Button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* Lọc theo số phòng */}
+                            <div className="flex space-x-2">
+                                <div className="w-1/2">
+                                    <label htmlFor="minRooms" className="block text-sm font-medium text-gray-700 mb-1">
+                                        Phòng từ
+                                    </label>
+                                    <input
+                                        type="number"
+                                        id="minRooms"
+                                        name="minRooms"
+                                        min="0"
+                                        value={filters.minRooms}
+                                        onChange={handleFilterChange}
+                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder="Min"
+                                    />
+                                </div>
+                                <div className="w-1/2">
+                                    <label htmlFor="maxRooms" className="block text-sm font-medium text-gray-700 mb-1">
+                                        Đến
+                                    </label>
+                                    <input
+                                        type="number"
+                                        id="maxRooms"
+                                        name="maxRooms"
+                                        min="0"
+                                        value={filters.maxRooms}
+                                        onChange={handleFilterChange}
+                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                        placeholder="Max"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Lọc theo trạng thái */}
+                            <div>
+                                <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
+                                    Trạng thái
+                                </label>
+                                <select
+                                    id="status"
+                                    name="status"
+                                    value={filters.status}
+                                    onChange={handleFilterChange}
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                >
+                                    <option value="">Tất cả</option>
+                                    <option value="HAS_ROOMS">Có phòng</option>
+                                    <option value="NO_ROOMS">Chưa có phòng</option>
+                                </select>
+                            </div>
+
+                            {/* Lọc theo phòng trống */}
+                            <div>
+                                <label htmlFor="hasAvailableRooms" className="block text-sm font-medium text-gray-700 mb-1">
+                                    Tình trạng phòng
+                                </label>
+                                <select
+                                    id="hasAvailableRooms"
+                                    name="hasAvailableRooms"
+                                    value={filters.hasAvailableRooms}
+                                    onChange={handleFilterChange}
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                                >
+                                    <option value="">Tất cả</option>
+                                    <option value="true">Còn phòng trống</option>
+                                    <option value="false">Hết phòng trống</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
 

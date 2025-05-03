@@ -23,15 +23,16 @@ export class BuildingController {
 
     async getAll(req: Request, res: Response, next: NextFunction) {
         try {
-            const { items, total } = await this.buildingService.getAll(req.query);
+            const result = await this.buildingService.getAll(req.query);
             res.json({
                 success: true,
                 data: {
-                    buildings: items,
+                    buildings: result.items,
                     meta: {
-                        total,
-                        page: Number(req.query.page) || 1,
-                        limit: Number(req.query.limit) || 10
+                        total: result.total,
+                        page: result.page || Number(req.query.page) || 1,
+                        limit: result.limit || Number(req.query.limit) || 10,
+                        totalPages: result.totalPages || Math.ceil(result.total / (Number(req.query.limit) || 10))
                     }
                 }
             });

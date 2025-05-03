@@ -3,11 +3,11 @@ import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 
 const PaginationTable = ({
   columns,
-  data,
-  currentPage,
-  totalPages,
+  data = [],
+  currentPage = 1,
+  totalPages = 1,
   onPageChange,
-  totalRecords,
+  totalRecords = 0,
   recordsPerPage = 10,
   showingText = "",
   outOfText = "trên tổng số",
@@ -66,7 +66,12 @@ const PaginationTable = ({
                 <tr key={rowIndex} className="hover:bg-gray-50">
                   {columns.map((column, colIndex) => (
                     <td key={colIndex} className="px-3 py-3 text-sm text-gray-600 whitespace-nowrap text-center">
-                      {column.Cell ? column.Cell({ value: row[column.accessor], row: { original: row } }) : row[column.accessor]}
+                      {column.Cell ? column.Cell({ value: row[column.accessor], row: { original: row } }) :
+                        // Handle nested properties like 'building.name'
+                        column.accessor && column.accessor.includes('.') ?
+                          column.accessor.split('.').reduce((obj, key) => obj && obj[key], row) :
+                          row[column.accessor]
+                      }
                     </td>
                   ))}
                 </tr>
@@ -164,7 +169,7 @@ const PaginationTable = ({
                 ))}
 
                 {/* Last page */}
-                {getPageNumbers()[getPageNumbers().length - 1] < totalPages && (
+                {getPageNumbers().length > 0 && getPageNumbers()[getPageNumbers().length - 1] < totalPages && (
                   <>
                     {getPageNumbers()[getPageNumbers().length - 1] < totalPages - 1 && (
                       <span className="relative inline-flex items-center px-3 py-1 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">

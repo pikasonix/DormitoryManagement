@@ -2,33 +2,34 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { roomService } from '../../services/room.service';
 import { buildingService } from '../../services/building.service'; // Cần lấy danh sách tòa nhà để lọc
-import { Button, Table, Select, Input, Badge } from '../../components/shared'; // Thêm Select, Badge
+import { Button, Select, Input, Badge } from '../../components/shared'; // Thêm Pagination
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
+import PaginationTable from '../../components/shared/PaginationTable'; // Import PaginationTable
 import { toast } from 'react-hot-toast';
 import { PlusIcon, PencilSquareIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext'; // Import useAuth để kiểm tra quyền
 
 // Định nghĩa các tùy chọn cho bộ lọc status và type (phải khớp với Enum trong backend)
 const roomStatusOptions = [
-  { value: '', label: 'Tất cả trạng thái' },
-  { value: 'AVAILABLE', label: 'Còn trống' },
-  { value: 'OCCUPIED', label: 'Đang ở' },
-  { value: 'FULL', label: 'Đã đầy' },
-  { value: 'UNDER_MAINTENANCE', label: 'Đang bảo trì' },
+  { value: '', label: 'Tất cả trạng thái', color: 'gray' },
+  { value: 'AVAILABLE', label: 'Còn chỗ', color: 'green' },
+  { value: 'FULL', label: 'Đủ người', color: 'indigo' },
+  { value: 'UNDER_MAINTENANCE', label: 'Đang sửa chữa', color: 'yellow' },
 ];
 
 const roomTypeOptions = [
   { value: '', label: 'Tất cả loại phòng' },
-  { value: 'NORMAL', label: 'Thường' },
-  { value: 'VIP', label: 'Vip' },
-  // Thêm các loại khác nếu có
+  { value: 'ROOM_12', label: 'Phòng 12 người' },
+  { value: 'ROOM_10', label: 'Phòng 10 người' },
+  { value: 'ROOM_8', label: 'Phòng 8 người' },
+  { value: 'ROOM_6', label: 'Phòng 6 người' },
+  { value: 'MANAGEMENT', label: 'Phòng quản lý' },
 ];
 
 // Hàm helper để lấy màu badge theo status
 const getStatusBadgeColor = (status) => {
   switch (status) {
     case 'AVAILABLE': return 'green';
-    case 'OCCUPIED': return 'blue';
     case 'FULL': return 'indigo';
     case 'UNDER_MAINTENANCE': return 'yellow';
     default: return 'gray';
@@ -41,6 +42,8 @@ const RoomIndex = () => {
   const [buildings, setBuildings] = useState([]); // Danh sách tòa nhà để lọc
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [meta, setMeta] = useState({ currentPage: 1, totalPages: 1, limit: 10, total: 0 });
+  const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState({ // State cho bộ lọc
     buildingId: '',
     status: '',
@@ -57,26 +60,44 @@ const RoomIndex = () => {
     setError(null);
     try {
       // Tạo params từ filters, loại bỏ các giá trị rỗng
-      const params = {};
+      const params = { page: currentPage, limit: meta.limit };
       Object.keys(filters).forEach(key => {
         if (filters[key]) {
           params[key] = filters[key];
         }
       });
       const roomsData = await roomService.getAllRooms(params);
-      setRooms(roomsData);
+
+      // Make sure we have an array of rooms
+      const roomsArray = Array.isArray(roomsData.rooms) ? roomsData.rooms : [];
+
+      // Debug if building information is present
+      if (roomsArray.length > 0) {
+        console.log('First room building data:', roomsArray[0]?.building);
+      }
+
+      setRooms(roomsArray);
+      setMeta({
+        currentPage: roomsData.meta?.currentPage || 1,
+        totalPages: roomsData.meta?.totalPages || 1,
+        limit: roomsData.meta?.limit || 10,
+        total: roomsData.meta?.total || roomsArray.length,
+      });
     } catch (err) {
       setError('Không thể tải danh sách phòng.');
     } finally {
       setIsLoading(false);
     }
-  }, [filters]); // Fetch lại khi filters thay đổi
+  }, [filters, currentPage, meta.limit]);
 
   // Hàm fetch danh sách tòa nhà cho bộ lọc
   const fetchBuildings = useCallback(async () => {
     try {
       const data = await buildingService.getAllBuildings({ limit: 1000 }); // Lấy nhiều tòa nhà
-      setBuildings(data.dormitories || []);
+      // Correctly access buildings data from the API response
+      const buildingsData = data.buildings || [];
+      console.log('Fetched buildings:', buildingsData); // Debug log
+      setBuildings(buildingsData);
     } catch (err) {
       console.error("Lỗi tải danh sách tòa nhà cho bộ lọc:", err);
       // Không cần set lỗi chính, chỉ log
@@ -92,7 +113,6 @@ const RoomIndex = () => {
   useEffect(() => {
     fetchBuildings();
   }, [fetchBuildings]);
-
 
   // Hàm xử lý thay đổi bộ lọc
   const handleFilterChange = (e) => {
@@ -182,7 +202,6 @@ const RoomIndex = () => {
     ...buildings.map(b => ({ value: b.id.toString(), label: b.name }))
   ];
 
-
   // --- Render ---
   return (
     <div className="space-y-4">
@@ -205,6 +224,7 @@ const RoomIndex = () => {
           value={filters.search}
           onChange={handleFilterChange}
         />
+
         <Select
           label="Tòa nhà"
           id="buildingId"
@@ -212,23 +232,69 @@ const RoomIndex = () => {
           value={filters.buildingId}
           onChange={handleFilterChange}
           options={buildingOptions}
+          className="w-full"
         />
-        <Select
-          label="Trạng thái"
-          id="status"
-          name="status"
-          value={filters.status}
-          onChange={handleFilterChange}
-          options={roomStatusOptions}
-        />
-        <Select
-          label="Loại phòng"
-          id="type"
-          name="type"
-          value={filters.type}
-          onChange={handleFilterChange}
-          options={roomTypeOptions}
-        />
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="status" className="text-sm font-medium text-gray-700">
+            Trạng thái
+          </label>
+          <div className="relative">
+            <select
+              id="status"
+              name="status"
+              value={filters.status}
+              onChange={handleFilterChange}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm
+                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                bg-white appearance-none"
+            >
+              {roomStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+              </svg>
+            </div>
+            {filters.status && (
+              <span className="absolute left-3 top-2 flex h-2 w-2">
+                <span className={`animate-none opacity-100 rounded-full h-2 w-2 bg-${roomStatusOptions.find(opt => opt.value === filters.status)?.color || 'gray'}-500`}></span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="type" className="text-sm font-medium text-gray-700">
+            Loại phòng
+          </label>
+          <div className="relative">
+            <select
+              id="type"
+              name="type"
+              value={filters.type}
+              onChange={handleFilterChange}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm
+                focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500
+                bg-white appearance-none"
+            >
+              {roomTypeOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+              </svg>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Bảng dữ liệu */}
@@ -237,10 +303,16 @@ const RoomIndex = () => {
       ) : error ? (
         <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
       ) : (
-        <Table columns={columns} data={rooms} />
+        <PaginationTable
+          columns={columns}
+          data={rooms}
+          currentPage={meta.currentPage}
+          totalPages={meta.totalPages}
+          onPageChange={(page) => setCurrentPage(page)}
+          totalRecords={meta.total}
+          recordsPerPage={meta.limit}
+        />
       )}
-
-      {/* Lưu ý: Không có Pagination vì API không hỗ trợ */}
     </div>
   );
 };
