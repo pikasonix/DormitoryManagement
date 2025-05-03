@@ -278,8 +278,12 @@ const StudentIndex = () => {
       <div className="flex flex-wrap justify-between items-center gap-4">
         <h1 className="text-2xl font-semibold">Quản lý Sinh viên</h1>
         {user?.role === 'ADMIN' && (
-          <Button onClick={() => navigate('/students/new')} icon={PlusIcon}>
-            Thêm Sinh viên mới
+          <Button
+            onClick={() => navigate('/students/new')}
+            className="flex items-center gap-2"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Thêm tài khoản sinh viên
           </Button>
         )}
       </div>

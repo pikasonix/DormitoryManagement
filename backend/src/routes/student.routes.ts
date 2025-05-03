@@ -156,10 +156,10 @@ router.get(
   studentController.getStudentById
 );
 
-// POST /api/students - Tạo sinh viên mới (Yêu cầu Admin)
+// POST /api/students - Tạo sinh viên mới (Yêu cầu Admin hoặc Staff)
 router.post(
   '/',
-  checkRole([Role.ADMIN]), // Chỉ Admin được tạo mới (hoặc thêm STAFF nếu cần)
+  checkRole([Role.ADMIN, Role.STAFF]), // Both Admin and Staff can create new students
   validate(createStudentSchema), // Validate dữ liệu body
   studentController.createStudent
 );
