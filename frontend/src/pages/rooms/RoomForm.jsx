@@ -10,15 +10,16 @@ import { ArrowLeftIcon, TrashIcon, ArrowUpTrayIcon } from '@heroicons/react/24/o
 
 // Các tùy chọn cố định (phải khớp Enum backend)
 const roomStatusOptions = [
-    { value: 'AVAILABLE', label: 'Còn trống' },
-    { value: 'OCCUPIED', label: 'Đang ở' },
-    { value: 'FULL', label: 'Đã đầy' },
-    { value: 'UNDER_MAINTENANCE', label: 'Đang bảo trì' },
+    { value: 'AVAILABLE', label: 'Còn chỗ' },
+    { value: 'FULL', label: 'Đủ người' },
+    { value: 'UNDER_MAINTENANCE', label: 'Đang sửa chữa' },
 ];
 const roomTypeOptions = [
-    { value: 'NORMAL', label: 'Thường' },
-    { value: 'VIP', label: 'Vip' },
-    // Thêm loại khác nếu có
+    { value: 'ROOM_12', label: 'Phòng 12 người' },
+    { value: 'ROOM_10', label: 'Phòng 10 người' },
+    { value: 'ROOM_8', label: 'Phòng 8 người' },
+    { value: 'ROOM_6', label: 'Phòng 6 người' },
+    { value: 'MANAGEMENT', label: 'Phòng quản lý' },
 ];
 
 const RoomForm = () => {
@@ -29,7 +30,7 @@ const RoomForm = () => {
     const [formData, setFormData] = useState({
         buildingId: '',
         number: '',
-        type: 'NORMAL',
+        type: 'ROOM_8', // Updated default room type
         capacity: 2, // Giá trị mặc định
         floor: 1,
         status: 'AVAILABLE',
@@ -62,7 +63,8 @@ const RoomForm = () => {
                 ]);
 
                 if (buildingRes.status === 'fulfilled') {
-                    setBuildings(buildingRes.value.dormitories || []);
+                    setBuildings(buildingRes.value.buildings || []);
+                    console.log('Loaded buildings:', buildingRes.value.buildings);
                 } else {
                     console.error("Lỗi tải tòa nhà:", buildingRes.reason);
                     toast.error("Không thể tải danh sách tòa nhà.");
@@ -78,10 +80,11 @@ const RoomForm = () => {
                 if (isEditMode) {
                     if (roomRes.status === 'fulfilled' && roomRes.value) {
                         const roomData = roomRes.value;
+                        console.log('Room data loaded:', roomData); // Debug log
                         setFormData({
                             buildingId: roomData.buildingId?.toString() || '',
                             number: roomData.number || '',
-                            type: roomData.type || 'NORMAL',
+                            type: roomData.type || 'ROOM_8', // Default to a valid room type if missing
                             capacity: roomData.capacity ?? 2,
                             floor: roomData.floor ?? 1,
                             status: roomData.status || 'AVAILABLE',
@@ -434,10 +437,11 @@ const RoomForm = () => {
                             <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                                 {imagePreviews.map((src, index) => (
                                     <div key={index} className="relative group aspect-square">
-                                        <img src={src.startsWith('blob:') ? src : `${UPLOADS_BASE_URL || ''}${src.startsWith('/') ? '' : '/'}${src}`} // Xử lý cả blob và path
+                                        <img
+                                            src={src.startsWith('blob:') ? src : `/uploads/${src}`} // Simplified path resolution
                                             alt={`Preview ${index + 1}`}
                                             className="object-cover w-full h-full rounded-md border"
-                                            onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png' }} // Fallback ảnh lỗi
+                                            onError={(e) => { e.target.onerror = null; e.target.src = '/default-room.png' }} // Fallback ảnh lỗi
                                         />
                                         <button
                                             type="button"
