@@ -3,13 +3,12 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import path from 'path';
-// import morgan from 'morgan'; // (Optional) Logging
 
 // Import router chính
-import apiRouter from './routes'; // Đảm bảo đường dẫn đúng
+import apiRouter from './routes';
 
 // Import middleware xử lý lỗi global
-import { errorMiddleware } from './middleware/error.middleware'; // Đảm bảo đường dẫn đúng
+import { errorMiddleware } from './middleware/error.middleware';
 
 const app = express();
 
@@ -44,19 +43,17 @@ app.use(helmet({
       "img-src": ["'self'", "data:", "blob:", "http://localhost:5002", "*"]
     }
   },
-  crossOriginEmbedderPolicy: false // Cho phép các tài nguyên chéo origin
+  crossOriginEmbedderPolicy: false
 }));
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle preflight
+app.options('*', cors(corsOptions));
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-// app.use(morgan('dev')); // (Optional) Logging
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
-// (Optional) Simple request logger
 app.use((req: Request, _res: Response, next: NextFunction) => {
   console.log(`[Request Log] ${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
   next();
@@ -76,4 +73,4 @@ app.use((_req: Request, res: Response) => {
 // --- Global Error Handling Middleware ---
 app.use(errorMiddleware);
 
-export default app; // Export instance app đã cấu hình
+export default app;

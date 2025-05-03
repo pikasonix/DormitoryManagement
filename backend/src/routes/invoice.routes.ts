@@ -6,25 +6,18 @@ import { Role } from '@prisma/client';
 const router = express.Router();
 const invoiceController = new InvoiceController();
 
-// --- Áp dụng Middleware ---
-// Yêu cầu đăng nhập cho tất cả các route hóa đơn
 router.use(authMiddleware);
 
-// --- CRUD Routes (Thường dành cho Admin/Staff) ---
-
 // GET /api/invoices - Lấy danh sách hóa đơn (Admin/Staff xem tất cả)
-// Sinh viên cần route riêng hoặc logic lọc trong controller/service để xem hóa đơn của mình
 router.get(
     '/',
     checkRole([Role.ADMIN, Role.STAFF]),
     invoiceController.getAllInvoices
 );
 
-// GET /api/invoices/:id - Lấy chi tiết hóa đơn (Admin/Staff + Sinh viên liên quan?)
-// Cần kiểm tra quyền cụ thể hơn trong controller/service nếu cần
+// GET /api/invoices/:id - Lấy chi tiết hóa đơn
 router.get(
     '/:id',
-    // authMiddleware đã áp dụng
     invoiceController.getInvoiceById
 );
 

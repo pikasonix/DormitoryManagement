@@ -1,3 +1,4 @@
+// File sinh data mẫu cho Prisma
 import {
   PrismaClient,
   Role,
@@ -5,17 +6,17 @@ import {
   RoomType,
   RoomStatus,
   StudentStatus,
-  Amenity, // Vẫn giữ lại nếu bạn dùng Amenity ở đâu đó, nhưng không có trong schema mới bạn gửi? => À có Amenity, ok
+  Amenity,
   PaymentType,
   InvoiceStatus,
   UtilityType,
   MaintenanceStatus,
   TransferStatus,
   VehicleType,
-  MediaType, // Thêm MediaType
+  MediaType,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { Decimal } from '@prisma/client/runtime/library'; // Import Decimal
+import { Decimal } from '@prisma/client/runtime/library';
 
 const prisma = new PrismaClient();
 
@@ -28,31 +29,10 @@ function getRandomDate(start: Date, end: Date): Date {
   return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 }
 
-// Helper function to create placeholder media data
+// Helper function that now returns null instead of creating media data
 function createPlaceholderMediaData(type: MediaType, namePrefix: string, index: number) {
-  const ext = 'jpg'; // Giả sử là ảnh jpg
-  const filename = `${namePrefix}_${index}_${Date.now()}.${ext}`;
-
-  // Xác định path dựa vào loại media
-  let path;
-  if (type === MediaType.USER_AVATAR) {
-    path = `/uploads/avatar/${filename}`; // Avatar lưu vào thư mục avatar
-  } else {
-    path = `/uploads/${filename}`; // Các loại khác lưu vào thư mục uploads gốc
-  }
-
-  return {
-    filename: filename,
-    originalFilename: `${namePrefix}_${index}_original.${ext}`,
-    path: path,
-    mimeType: `image/${ext}`,
-    size: Math.floor(Math.random() * (2048 * 1024 - 100 * 1024) + 100 * 1024), // 100KB - 2MB
-    mediaType: type,
-    alt: `Placeholder image for ${namePrefix} ${index}`,
-    isPublic: true,
-  };
+  return null; // No longer creating media data
 }
-
 
 async function main() {
   console.log('Start seeding ...');
@@ -102,13 +82,6 @@ async function main() {
       name: 'B3',
       address: 'KTX Bách Khoa Hà Nội, Khu B',
       description: 'Tòa nhà dành cho sinh viên nam',
-      // Add Building Images using nested create
-      images: {
-        create: [
-          createPlaceholderMediaData(MediaType.BUILDING_IMAGE, 'b3', 1),
-          createPlaceholderMediaData(MediaType.BUILDING_IMAGE, 'b3', 2),
-        ]
-      }
     },
   });
   const buildingB9 = await prisma.building.create({
@@ -116,12 +89,6 @@ async function main() {
       name: 'B9',
       address: 'KTX Bách Khoa Hà Nội, Khu B',
       description: 'Tòa nhà dành cho sinh viên nữ',
-      // Add Building Images using nested create
-      images: {
-        create: [
-          createPlaceholderMediaData(MediaType.BUILDING_IMAGE, 'b9', 1),
-        ]
-      }
     },
   });
   console.log(`Created buildings: ${buildingB3.name}, ${buildingB9.name}`);
@@ -132,12 +99,10 @@ async function main() {
   const roomTypes = [RoomType.ROOM_8, RoomType.ROOM_6];
   const capacities = { [RoomType.ROOM_8]: 8, [RoomType.ROOM_6]: 6 };
   const prices = { [RoomType.ROOM_8]: new Decimal(600000), [RoomType.ROOM_6]: new Decimal(800000) };
-  let roomCounter = 0; // Counter for unique image names
 
   for (const building of [buildingB3, buildingB9]) {
     for (let floor = 1; floor <= 5; floor++) {
       for (let roomNum = 1; roomNum <= 10; roomNum++) {
-        roomCounter++;
         const type = getRandomElement(roomTypes);
         const roomNumberStr = `${floor}0${roomNum}`;
         const room = await prisma.room.create({
@@ -150,12 +115,6 @@ async function main() {
             status: RoomStatus.AVAILABLE,
             price: prices[type],
             description: `Phòng ${capacities[type]} người, tầng ${floor}, tòa ${building.name}`,
-            // Add Room Image using nested create
-            images: {
-              create: [
-                createPlaceholderMediaData(MediaType.ROOM_IMAGE, `room_${building.name}_${roomNumberStr}`, roomCounter)
-              ]
-            },
             // Add amenities
             amenities: {
               create: [
@@ -180,23 +139,12 @@ async function main() {
     where: { email: 'admin@example.com' },
     update: {
       password: adminPassword,
-      // Add/Update Avatar using nested create/connect (upsert is tricky, let's create if not exists)
-      avatar: {
-        upsert: { // Use upsert to avoid errors if avatar already exists
-          create: createPlaceholderMediaData(MediaType.USER_AVATAR, 'admin_avatar', 1),
-          update: {} // No update needed if it exists, could update path/etc if desired
-        }
-      }
     },
     create: {
       email: 'admin@example.com',
       password: adminPassword,
       role: Role.ADMIN,
       isActive: true,
-      // Add Avatar using nested create
-      avatar: {
-        create: createPlaceholderMediaData(MediaType.USER_AVATAR, 'admin_avatar', 1)
-      }
     },
   });
   console.log(`Created admin user: ${adminUser.email}`);
@@ -210,19 +158,13 @@ async function main() {
     { email: 'staff3@example.com', fullName: 'Lê Minh Cường', position: 'Nhân viên kỹ thuật', gender: Gender.MALE, managedBuildingId: null },
   ];
   const createdStaffProfiles: Array<Awaited<ReturnType<typeof prisma.staffProfile.create>>> = [];
-  let staffCounter = 0;
   for (const staff of staffData) {
-    staffCounter++;
     const user = await prisma.user.create({
       data: {
         email: staff.email,
         password: staffPassword,
         role: Role.STAFF,
         isActive: true,
-        // Add Avatar using nested create
-        avatar: {
-          create: createPlaceholderMediaData(MediaType.USER_AVATAR, `staff_${staff.email.split('@')[0]}`, staffCounter)
-        },
         staffProfile: {
           create: {
             fullName: staff.fullName,
@@ -292,10 +234,6 @@ async function main() {
           password: studentPassword,
           role: Role.STUDENT,
           isActive: true,
-          // Add Avatar using nested create
-          avatar: {
-            create: createPlaceholderMediaData(MediaType.USER_AVATAR, `student_${studentId}`, i)
-          },
           studentProfile: {
             create: {
               studentId: studentId,
@@ -455,13 +393,11 @@ async function main() {
     where: { actualOccupancy: { gt: 0 } },
     include: { residents: true }
   });
-  let maintenanceCounter = 0;
   if (roomsWithStudents.length > 0 && createdStudentProfiles.length > 0 && assignedStaff) {
     const roomToReport1 = getRandomElement(roomsWithStudents);
     const reportingStudent1 = getRandomElement(roomToReport1.residents);
 
     if (reportingStudent1) {
-      maintenanceCounter++;
       await prisma.maintenance.create({
         data: {
           roomId: roomToReport1.id,
@@ -469,12 +405,6 @@ async function main() {
           issue: 'Điều hòa bị chảy nước, không mát.',
           reportDate: new Date(),
           status: MaintenanceStatus.PENDING,
-          // Add Maintenance Image using nested create
-          images: {
-            create: [
-              createPlaceholderMediaData(MediaType.MAINTENANCE_IMAGE, `maintenance_ac_${roomToReport1.number}`, maintenanceCounter)
-            ]
-          }
         }
       });
       console.log(`Created maintenance request (AC) for room ${roomToReport1.number}.`);
@@ -485,7 +415,6 @@ async function main() {
     const roomToReport2 = getRandomElement(roomsWithStudents);
     const reportingStudent2 = getRandomElement(roomToReport2.residents);
     if (reportingStudent2) {
-      maintenanceCounter++;
       await prisma.maintenance.create({
         data: {
           roomId: roomToReport2.id,
@@ -494,12 +423,6 @@ async function main() {
           reportDate: new Date(Date.now() - 86400000 * 2), // 2 days ago
           status: MaintenanceStatus.ASSIGNED,
           assignedToId: assignedStaff.id, // Assign to the technician
-          // Add Maintenance Image using nested create
-          images: {
-            create: [
-              createPlaceholderMediaData(MediaType.MAINTENANCE_IMAGE, `maintenance_light_${roomToReport2.number}`, maintenanceCounter)
-            ]
-          }
         }
       });
       console.log(`Created maintenance request (Light) for room ${roomToReport2.number}.`);
@@ -514,9 +437,7 @@ async function main() {
   // --- Create Sample Vehicle Registration ---
   console.log('Creating vehicle registrations...');
   const studentsForVehicles = createdStudentProfiles.slice(0, 5); // Take first 5 students
-  let vehicleCounter = 0;
   for (const student of studentsForVehicles) {
-    vehicleCounter++;
     const vehicleType = getRandomElement([VehicleType.MOTORBIKE, VehicleType.BICYCLE]);
     await prisma.vehicleRegistration.create({
       data: {
@@ -531,12 +452,6 @@ async function main() {
         isActive: true,
         startDate: student.startDate,
         monthlyFee: new Decimal(getRandomElement([50000, 80000])),
-        // Add Vehicle Image using nested create
-        images: {
-          create: [
-            createPlaceholderMediaData(MediaType.VEHICLE_IMAGE, `vehicle_${student.studentId}_${vehicleType}`, vehicleCounter)
-          ]
-        }
       }
     });
   }

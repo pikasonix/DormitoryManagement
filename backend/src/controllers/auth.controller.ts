@@ -3,7 +3,7 @@ import { PrismaClient, Role, StudentProfile, StaffProfile, Gender, StudentStatus
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions, Secret } from 'jsonwebtoken';
 
-// --- Interfaces ---
+// Interfaces
 interface RequestWithUser extends Request {
   user?: {
     userId: number;
@@ -12,21 +12,17 @@ interface RequestWithUser extends Request {
   };
 }
 
-// --- Constants ---
+// Constants
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret';
-// **QUAN TRỌNG:** Đảm bảo giá trị trong .env là một chuỗi thời gian hợp lệ (vd: '1d', '24h')
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
-// Cấu hình URL cho avatar
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:5002';
 const DEFAULT_AVATAR = 'src/assets/default-avatar.png';
 
-// --- Helpers ---
+// Helpers
 const formatUserResponse = (user: any) => {
-  // Bỏ mật khẩu khỏi đối tượng user
   const { password: _, ...userWithoutPassword } = user;
 
-  // Thêm URL avatar - ghép backend URL với path từ DB
   const avatarUrl = user.avatar?.path
     ? `${BACKEND_URL}${user.avatar.path}`
     : DEFAULT_AVATAR;
@@ -37,7 +33,6 @@ const formatUserResponse = (user: any) => {
   };
 };
 
-// --- Controller ---
 export class AuthController {
   static async login(req: Request, res: Response): Promise<Response> {
     try {
@@ -65,7 +60,7 @@ export class AuthController {
         return res.status(401).json({ message: 'Email hoặc mật khẩu không chính xác' });
       }
 
-      // --- JWT Signing ---
+      // JWT Signing
       const payload = { userId: user.id, email: user.email, role: user.role };
       const secret: Secret = JWT_SECRET;
       const options: SignOptions = {
@@ -73,7 +68,6 @@ export class AuthController {
       };
 
       const token = jwt.sign(payload, secret, options);
-      // --- End JWT Signing ---
 
       let profile: StudentProfile | StaffProfile | null = null;
       if (user.role === Role.STUDENT) {
@@ -88,11 +82,10 @@ export class AuthController {
         });
       }
 
-      // Format user response with avatar URL
       const formattedUser = formatUserResponse(user);
 
       return res.json({
-        success: true, // Thêm flag success để frontend dễ xử lý
+        success: true,
         data: {
           message: 'Đăng nhập thành công',
           token,
@@ -156,7 +149,6 @@ export class AuthController {
         });
       }
 
-      // Format user response with avatar URL
       const formattedUser = formatUserResponse(user);
 
       return res.json({
@@ -233,29 +225,28 @@ export class AuthController {
         // Create student profile with required fields
         const today = new Date();
         const defaultContractEndDate = new Date(today);
-        defaultContractEndDate.setFullYear(today.getFullYear() + 1); // Default contract: 1 year
+        defaultContractEndDate.setFullYear(today.getFullYear() + 1);
 
         const studentProfile = await tx.studentProfile.create({
           data: {
             userId: newUser.id,
             fullName,
-            studentId: studentId || `S${Math.floor(10000 + Math.random() * 90000)}`, // Generate random student ID if not provided
-            phoneNumber: phoneNumber || "Chưa cập nhật", // Default phone number
-            gender: Gender.MALE, // Default gender
-            birthDate: new Date("2000-01-01"), // Default birthdate
-            identityCardNumber: `ID${Date.now()}`, // Temporary ID number
-            faculty: "Khoa chưa xác định", // Default faculty
-            courseYear: new Date().getFullYear() - 2000, // Default course year based on current year
-            status: StudentStatus.PENDING_APPROVAL, // Default status
-            startDate: today, // Default start date is today
-            contractEndDate: defaultContractEndDate // Default end date
+            studentId: studentId || `S${Math.floor(10000 + Math.random() * 90000)}`,
+            phoneNumber: phoneNumber || "Chưa cập nhật",
+            gender: Gender.MALE,
+            birthDate: new Date("2000-01-01"),
+            identityCardNumber: `ID${Date.now()}`,
+            faculty: "Khoa chưa xác định",
+            courseYear: new Date().getFullYear() - 2000,
+            status: StudentStatus.PENDING_APPROVAL,
+            startDate: today,
+            contractEndDate: defaultContractEndDate
           }
         });
 
         return { user: newUser, profile: studentProfile };
       });
 
-      // Format user response (remove password)
       const { password: _, ...userWithoutPassword } = result.user;
 
       return res.status(201).json({

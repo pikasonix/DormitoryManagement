@@ -15,8 +15,9 @@ export const baseTemplate = (content: string) => `
     .header {
       text-align: center;
       padding: 20px 0;
-      background: #f8f9fa;
+      background: #f0f4f8;
       border-radius: 8px;
+      border-bottom: 3px solid #4f46e5;
     }
     .logo {
       max-width: 150px;
@@ -26,7 +27,7 @@ export const baseTemplate = (content: string) => `
       background: white;
       padding: 20px;
       border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       margin: 20px 0;
     }
     .footer {
@@ -34,6 +35,7 @@ export const baseTemplate = (content: string) => `
       font-size: 12px;
       color: #666;
       padding: 20px 0;
+      border-top: 1px solid #eee;
     }
     .button {
       display: inline-block;
@@ -43,6 +45,7 @@ export const baseTemplate = (content: string) => `
       text-decoration: none;
       border-radius: 5px;
       margin: 15px 0;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -55,9 +58,9 @@ export const baseTemplate = (content: string) => `
     ${content}
   </div>
   <div class="footer">
-    <p>© ${new Date().getFullYear()} QUẢN LÝ KÍ TÚC XÁ. All rights reserved.</p>
-    <p>Jika Anda tidak meminta email ini, silakan abaikan.</p>
+    <p>© ${new Date().getFullYear()} QUẢN LÝ KÍ TÚC XÁ. Đã đăng ký bản quyền.</p>
+    <p>Nếu bạn không yêu cầu email này, vui lòng bỏ qua.</p>
   </div>
 </body>
 </html>
-` 
+`

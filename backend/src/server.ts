@@ -1,17 +1,11 @@
 import 'reflect-metadata';
 import dotenv from 'dotenv';
-dotenv.config(); // Load .env LÊN ĐẦU TIÊN
+dotenv.config(); // Load .env first
 
-import app from './app'; // Import instance Express app đã cấu hình từ app.ts
-import http from 'http'; // Import module http để tạo server
-import { PrismaClient } from '@prisma/client'; // Chỉ import type nếu dùng singleton
-// Giả sử bạn có utils/prisma.ts để tạo instance singleton
-// import prisma from './utils/prisma';
-// Hoặc giữ lại new instance ở đây để kết nối và đóng
-const prisma = new PrismaClient(); // Tạm thời giữ lại để kết nối/đóng
-
-// Import hàm kiểm tra biến môi trường (nếu có)
-// import { checkRequiredEnvVars } from './utils/checkEnv';
+import app from './app';
+import http from 'http';
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 // --- Log và Kiểm tra Cấu hình ---
 console.log('--- Application Configuration ---');
@@ -24,7 +18,6 @@ console.log('---------------------------------');
 
 // --- Kiểm tra biến môi trường bắt buộc ---
 try {
-  // checkRequiredEnvVars();
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is missing');
   if (!process.env.JWT_SECRET) console.warn('[ENV Warning] JWT_SECRET is missing, using default insecure key!');
   console.log('[ENV Check] Required environment variables checked.');
@@ -37,7 +30,6 @@ try {
 process.on('unhandledRejection', (reason: any, promise) => {
   console.error('🚨 UNHANDLED REJECTION!');
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Nên thoát ứng dụng để tránh trạng thái không xác định
   process.exit(1);
 });
 
@@ -48,10 +40,9 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
-
 // --- Khởi động Server và Kiểm tra Kết nối DB ---
 const PORT = Number(process.env.PORT) || 5002;
-let server: http.Server; // Khai báo biến server ở scope cao hơn
+let server: http.Server;
 
 const initializeApp = async () => {
   try {
@@ -59,12 +50,10 @@ const initializeApp = async () => {
     await prisma.$connect();
     console.log('[DB Check] Database connected successfully!');
 
-    // Tạo HTTP server từ instance Express app
     server = http.createServer(app);
 
-    // Lắng nghe trên port đã định nghĩa
     server.listen(PORT, '0.0.0.0', () => {
-      console.log(`\n🚀 Server listening on port ${PORT} (http://localhost:${PORT})`);
+      console.log(`\n🚀 Server listening on port ${PORT}(http://localhost:${PORT})`);
       console.log(`   Network access via: http://<your-ip>:${PORT}`);
       console.log(`   Press Ctrl+C to stop\n`);
     });
@@ -72,35 +61,32 @@ const initializeApp = async () => {
   } catch (error) {
     console.error('[Initialization] Failed to initialize application:', error);
     await prisma.$disconnect().catch(err => console.error('[DB] Error disconnecting after failed init:', err));
-    process.exit(1); // Thoát nếu không khởi tạo được
+    process.exit(1);
   }
 };
 
 // --- Graceful Shutdown ---
 const shutdown = async (signal: string) => {
   console.log(`\n${signal} signal received. Shutting down gracefully...`);
-  // Kiểm tra xem server đã khởi tạo chưa trước khi đóng
   if (server) {
-    server.close(async () => { // Ngừng nhận kết nối mới
+    server.close(async () => {
       console.log('[Server] HTTP server closed.');
       try {
-        await prisma.$disconnect(); // Đóng kết nối Prisma
+        await prisma.$disconnect();
         console.log('[DB] Database connection closed.');
-        process.exit(0); // Thoát thành công
+        process.exit(0);
       } catch (error) {
         console.error('[DB] Error disconnecting from database:', error);
-        process.exit(1); // Thoát với lỗi
+        process.exit(1);
       }
     });
 
-    // Force shutdown after a timeout
     setTimeout(() => {
       console.error('[Server] Could not close connections in time, forcefully shutting down');
       process.exit(1);
-    }, 10000); // 10 seconds timeout
+    }, 10000);
 
   } else {
-    // Nếu server chưa kịp khởi động mà đã nhận tín hiệu shutdown
     console.log('[Server] Server was not running. Exiting.');
     await prisma.$disconnect().catch(err => console.error('[DB] Error disconnecting during shutdown:', err));
     process.exit(0);
@@ -108,7 +94,6 @@ const shutdown = async (signal: string) => {
 };
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT')); // Handle Ctrl+C
+process.on('SIGINT', () => shutdown('SIGINT'));
 
-// Bắt đầu quá trình khởi tạo ứng dụng
 initializeApp();

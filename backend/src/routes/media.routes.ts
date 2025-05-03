@@ -1,39 +1,31 @@
 import express from 'express';
 import { MediaController } from '../controllers/media.controller';
 import { authMiddleware, checkRole } from '../middleware/auth.middleware';
-import { upload } from '../middleware/upload.middleware'; // Import multer instance đã config
+import { upload } from '../middleware/upload.middleware';
 import { Role } from '@prisma/client';
 
 const router = express.Router();
 const mediaController = new MediaController();
 
-// --- Áp dụng Middleware ---
-// Yêu cầu đăng nhập cho hầu hết các thao tác media
 router.use(authMiddleware);
 
-// --- Routes ---
-
 // POST /api/media/upload - Endpoint chính để tải file lên
-// 1. Xác thực người dùng (authMiddleware đã chạy)
-// 2. Sử dụng multer để xử lý file upload (trường tên là 'file')
-// 3. Gọi controller để tạo bản ghi Media
 router.post(
     '/upload',
-    upload.single('file'), // Sử dụng multer instance đã cấu hình, field name là 'file'
+    upload.single('file'),
     mediaController.uploadMedia
 );
 
 // GET /api/media - Lấy danh sách Media (Admin/Staff)
 router.get(
     '/',
-    checkRole([Role.ADMIN, Role.STAFF]), // Giới hạn quyền xem danh sách
+    checkRole([Role.ADMIN, Role.STAFF]),
     mediaController.getAllMedia
 );
 
-// GET /api/media/:id - Lấy chi tiết Media (Có thể cho mọi user đăng nhập?)
+// GET /api/media/:id - Lấy chi tiết Media
 router.get(
     '/:id',
-    // authMiddleware đã áp dụng
     mediaController.getMediaById
 );
 

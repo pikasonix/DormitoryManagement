@@ -1,31 +1,32 @@
 import { PrismaClient, Prisma, RoomTransfer, TransferStatus, Room, StudentProfile, RoomStatus, StudentStatus } from '@prisma/client';
 
-// Lưu ý: Nên sử dụng instance PrismaClient singleton
 const prisma = new PrismaClient();
 
 export class TransferService {
 
-    // ... (findAll, findById, create giữ nguyên) ...
+    /**
+     * Lấy danh sách các yêu cầu chuyển phòng
+     */
     async findAll(options?: Prisma.RoomTransferFindManyArgs): Promise<RoomTransfer[]> {
         try {
             const transfers = await prisma.roomTransfer.findMany({
                 ...options,
-                include: { // Include thông tin liên quan mặc định
-                    studentProfile: { // Sinh viên yêu cầu
+                include: {
+                    studentProfile: {
                         select: { id: true, fullName: true, studentId: true }
                     },
-                    fromRoom: { // Phòng cũ
+                    fromRoom: {
                         select: { id: true, number: true, building: { select: { id: true, name: true } } }
                     },
-                    toRoom: { // Phòng mới
+                    toRoom: {
                         select: { id: true, number: true, building: { select: { id: true, name: true } } }
                     },
-                    approvedBy: { // Người duyệt (Staff)
+                    approvedBy: {
                         select: { id: true, fullName: true, position: true }
                     },
                     ...(options?.include || {})
                 },
-                orderBy: options?.orderBy || { createdAt: 'desc' } // Mặc định sắp xếp theo ngày tạo mới nhất
+                orderBy: options?.orderBy || { createdAt: 'desc' }
             });
             return transfers;
         } catch (error) {
@@ -34,15 +35,18 @@ export class TransferService {
         }
     }
 
+    /**
+     * Tìm một yêu cầu chuyển phòng theo ID
+     */
     async findById(id: number, options?: Prisma.RoomTransferFindUniqueArgs): Promise<RoomTransfer | null> {
         if (isNaN(id)) {
-            throw new Error('ID yêu cầu chuyển phòng không hợp lệ'); // Hoặc AppError 400
+            throw new Error('ID yêu cầu chuyển phòng không hợp lệ');
         }
         try {
             const transfer = await prisma.roomTransfer.findUnique({
                 where: { id },
                 ...options,
-                include: { // Include chi tiết hơn
+                include: {
                     studentProfile: { include: { user: { select: { email: true, avatar: true } } } },
                     fromRoom: { include: { building: true } },
                     toRoom: { include: { building: true } },
@@ -52,7 +56,7 @@ export class TransferService {
             });
 
             if (!transfer) {
-                throw new Error(`Không tìm thấy yêu cầu chuyển phòng với ID ${id}`); // Hoặc AppError 404
+                throw new Error(`Không tìm thấy yêu cầu chuyển phòng với ID ${id}`);
             }
             return transfer;
         } catch (error) {
@@ -64,75 +68,68 @@ export class TransferService {
         }
     }
 
+    /**
+     * Tạo mới yêu cầu chuyển phòng
+     */
     async create(data: {
         studentProfileId: number;
         toRoomId: number;
         transferDate: Date | string;
         reason?: string;
     }): Promise<RoomTransfer> {
-        // --- Validation ---
         if (!data.studentProfileId || !data.toRoomId || !data.transferDate) {
-            throw new Error('Thiếu thông tin bắt buộc: studentProfileId, toRoomId, transferDate.'); // Hoặc AppError 400
+            throw new Error('Thiếu thông tin bắt buộc: studentProfileId, toRoomId, transferDate.');
         }
         if (isNaN(parseInt(data.studentProfileId as any)) || isNaN(parseInt(data.toRoomId as any))) {
-            throw new Error('studentProfileId hoặc toRoomId không hợp lệ.'); // Hoặc AppError 400
+            throw new Error('studentProfileId hoặc toRoomId không hợp lệ.');
         }
-        // --- Kết thúc Validation ---
 
         try {
-            // 1. Lấy thông tin sinh viên và phòng hiện tại (fromRoomId)
             const student = await prisma.studentProfile.findUnique({
                 where: { id: data.studentProfileId },
-                select: { id: true, roomId: true, status: true } // Lấy cả status
+                select: { id: true, roomId: true, status: true }
             });
             if (!student) {
-                throw new Error(`Không tìm thấy sinh viên với ID ${data.studentProfileId}.`); // Hoặc AppError 404
+                throw new Error(`Không tìm thấy sinh viên với ID ${data.studentProfileId}.`);
             }
             if (student.status !== StudentStatus.RENTING) {
-                throw new Error(`Sinh viên này hiện không ở trạng thái 'RENTING', không thể yêu cầu chuyển phòng.`); // Hoặc AppError 400
+                throw new Error(`Sinh viên này hiện không ở trạng thái 'RENTING', không thể yêu cầu chuyển phòng.`);
             }
 
-
-            // 2. Kiểm tra phòng muốn chuyển đến (toRoom)
             const toRoom = await prisma.room.findUnique({
                 where: { id: data.toRoomId },
                 select: { id: true, status: true, capacity: true, actualOccupancy: true, buildingId: true }
             });
             if (!toRoom) {
-                throw new Error(`Không tìm thấy phòng muốn chuyển đến với ID ${data.toRoomId}.`); // Hoặc AppError 404
+                throw new Error(`Không tìm thấy phòng muốn chuyển đến với ID ${data.toRoomId}.`);
             }
-            // Kiểm tra phòng mới có phù hợp không (còn chỗ, không đang bảo trì, cùng tòa nhà?)
             if (toRoom.status === RoomStatus.UNDER_MAINTENANCE) {
-                throw new Error(`Phòng muốn chuyển đến (${toRoom.id}) đang được bảo trì.`); // Hoặc AppError 400
+                throw new Error(`Phòng muốn chuyển đến (${toRoom.id}) đang được bảo trì.`);
             }
             if (toRoom.actualOccupancy >= toRoom.capacity) {
-                throw new Error(`Phòng muốn chuyển đến (${toRoom.id}) đã đầy.`); // Hoặc AppError 400
+                throw new Error(`Phòng muốn chuyển đến (${toRoom.id}) đã đầy.`);
             }
 
-
-            // 3. Kiểm tra xem sinh viên đã có yêu cầu đang chờ chưa?
             const pendingTransfer = await prisma.roomTransfer.findFirst({
                 where: {
                     studentProfileId: data.studentProfileId,
-                    status: { in: [TransferStatus.PENDING, TransferStatus.APPROVED] } // Đang chờ hoặc đã duyệt nhưng chưa hoàn thành?
+                    status: { in: [TransferStatus.PENDING, TransferStatus.APPROVED] }
                 }
             });
             if (pendingTransfer) {
-                throw new Error(`Bạn đã có một yêu cầu chuyển phòng đang chờ xử lý (ID: ${pendingTransfer.id}).`); // Hoặc AppError 409 Conflict
+                throw new Error(`Bạn đã có một yêu cầu chuyển phòng đang chờ xử lý (ID: ${pendingTransfer.id}).`);
             }
 
-
-            // 4. Tạo yêu cầu chuyển phòng
             const newTransfer = await prisma.roomTransfer.create({
                 data: {
                     studentProfile: { connect: { id: data.studentProfileId } },
-                    fromRoom: student.roomId ? { connect: { id: student.roomId } } : undefined, // Phòng hiện tại (có thể null nếu mới vào?)
-                    toRoom: { connect: { id: data.toRoomId } }, // Phòng muốn đến
+                    fromRoom: student.roomId ? { connect: { id: student.roomId } } : undefined,
+                    toRoom: { connect: { id: data.toRoomId } },
                     transferDate: new Date(data.transferDate),
                     reason: data.reason,
-                    status: TransferStatus.PENDING // Trạng thái ban đầu là PENDING
+                    status: TransferStatus.PENDING
                 },
-                include: { // Include để trả về đủ thông tin
+                include: {
                     studentProfile: { select: { fullName: true, studentId: true } },
                     fromRoom: { select: { number: true, building: { select: { name: true } } } },
                     toRoom: { select: { number: true, building: { select: { name: true } } } }
@@ -143,19 +140,21 @@ export class TransferService {
             console.error("[TransferService.create] Error:", error);
             if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
                 throw new Error('Không tìm thấy sinh viên hoặc phòng được chỉ định.');
-            } else if (error instanceof Error && error.message.includes('không thể yêu cầu chuyển phòng')) {
-                throw error; // Ném lại lỗi validation cụ thể
-            } else if (error instanceof Error && error.message.includes('đang được bảo trì')) {
-                throw error;
-            } else if (error instanceof Error && error.message.includes('đã đầy')) {
-                throw error;
-            } else if (error instanceof Error && error.message.includes('đã có một yêu cầu')) {
+            } else if (error instanceof Error && (
+                error.message.includes('không thể yêu cầu chuyển phòng') ||
+                error.message.includes('đang được bảo trì') ||
+                error.message.includes('đã đầy') ||
+                error.message.includes('đã có một yêu cầu')
+            )) {
                 throw error;
             }
-            throw new Error('Không thể tạo yêu cầu chuyển phòng.'); // Lỗi chung
+            throw new Error('Không thể tạo yêu cầu chuyển phòng.');
         }
     }
 
+    /**
+     * Cập nhật trạng thái yêu cầu chuyển phòng
+     */
     async updateStatus(id: number, data: {
         status: TransferStatus;
         approvedById?: number | null;
@@ -184,7 +183,6 @@ export class TransferService {
                     throw new Error(`Không tìm thấy yêu cầu chuyển phòng hoặc thông tin liên quan với ID ${id}`);
                 }
 
-                // SỬA LỖI Ở ĐÂY: Dùng || thay vì includes()
                 if (currentTransfer.status === TransferStatus.COMPLETED || currentTransfer.status === TransferStatus.REJECTED) {
                     throw new Error(`Không thể thay đổi trạng thái của yêu cầu đã ${currentTransfer.status}.`);
                 }
@@ -248,6 +246,9 @@ export class TransferService {
         }
     }
 
+    /**
+     * Xóa yêu cầu chuyển phòng
+     */
     async delete(id: number): Promise<void> {
         if (isNaN(id)) {
             throw new Error('ID yêu cầu chuyển phòng không hợp lệ');
@@ -258,7 +259,6 @@ export class TransferService {
                 throw new Error(`Không tìm thấy yêu cầu chuyển phòng với ID ${id}`);
             }
 
-            // SỬA LỖI Ở ĐÂY: Dùng || thay vì includes()
             if (transfer.status === TransferStatus.APPROVED || transfer.status === TransferStatus.COMPLETED) {
                 throw new Error(`Không thể xóa yêu cầu chuyển phòng đã được duyệt hoặc hoàn thành.`);
             }

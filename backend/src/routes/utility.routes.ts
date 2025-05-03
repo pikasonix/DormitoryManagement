@@ -6,12 +6,8 @@ import { Role } from '@prisma/client';
 const router = express.Router();
 const utilityController = new UtilityController();
 
-// --- Áp dụng Middleware ---
-// Yêu cầu đăng nhập và quyền Admin/Staff cho tất cả các route quản lý chỉ số
 router.use(authMiddleware);
 router.use(checkRole([Role.ADMIN, Role.STAFF]));
-
-// --- CRUD Routes ---
 
 // GET /api/utilities/readings - Lấy danh sách các lần ghi chỉ số
 router.get('/readings', utilityController.getAllReadings);

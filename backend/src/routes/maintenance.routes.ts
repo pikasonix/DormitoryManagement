@@ -6,32 +6,24 @@ import { Role } from '@prisma/client';
 const router = express.Router();
 const maintenanceController = new MaintenanceController();
 
-// --- Áp dụng Middleware ---
-// Yêu cầu đăng nhập cho tất cả các route bảo trì
 router.use(authMiddleware);
 
-// --- CRUD Routes ---
-
-// GET /api/maintenances - Lấy danh sách yêu cầu (Admin/Staff xem tất cả, Student xem của mình?)
-// Cần logic phức tạp hơn nếu student chỉ xem của mình -> có thể cần route riêng /api/students/me/maintenances
+// GET /api/maintenances - Lấy danh sách yêu cầu (Admin/Staff xem tất cả)
 router.get(
     '/',
-    checkRole([Role.ADMIN, Role.STAFF]), // Tạm thời chỉ cho Admin/Staff xem danh sách tổng
+    checkRole([Role.ADMIN, Role.STAFF]),
     maintenanceController.getAllMaintenances
 );
 
 // GET /api/maintenances/:id - Lấy chi tiết yêu cầu
-// Cần kiểm tra quyền ở controller/service nếu student chỉ xem của mình
 router.get(
     '/:id',
-    // authMiddleware đã áp dụng
     maintenanceController.getMaintenanceById
 );
 
-// POST /api/maintenances - Tạo yêu cầu mới (Sinh viên có thể tạo)
+// POST /api/maintenances - Tạo yêu cầu mới
 router.post(
     '/',
-    // authMiddleware đã áp dụng, không cần checkRole cụ thể nếu mọi người dùng đăng nhập đều có thể tạo
     maintenanceController.createMaintenance
 );
 

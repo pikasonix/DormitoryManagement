@@ -7,6 +7,9 @@ export class RoomService {
     this.prisma = new PrismaClient()
   }
 
+  /**
+   * Lấy danh sách tất cả các phòng
+   */
   async findAll(): Promise<Room[]> {
     return this.prisma.room.findMany({
       include: {
@@ -15,6 +18,9 @@ export class RoomService {
     })
   }
 
+  /**
+   * Tìm một phòng theo ID
+   */
   async findOne(id: number): Promise<Room | null> {
     return this.prisma.room.findUnique({
       where: { id },
@@ -24,6 +30,9 @@ export class RoomService {
     })
   }
 
+  /**
+   * Tạo một phòng mới
+   */
   async create(data: Prisma.RoomCreateInput): Promise<Room> {
     return this.prisma.room.create({
       data,
@@ -33,6 +42,9 @@ export class RoomService {
     })
   }
 
+  /**
+   * Cập nhật thông tin phòng
+   */
   async update(id: number, data: Prisma.RoomUpdateInput): Promise<Room> {
     return this.prisma.room.update({
       where: { id },
@@ -43,9 +55,12 @@ export class RoomService {
     })
   }
 
+  /**
+   * Xóa một phòng
+   */
   async delete(id: number): Promise<Room> {
     return this.prisma.room.delete({
       where: { id }
     })
   }
-} 
+}

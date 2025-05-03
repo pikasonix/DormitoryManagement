@@ -18,6 +18,9 @@ export class EmailService {
     })
   }
 
+  /**
+   * Gửi email đến người nhận
+   */
   async sendEmail(to: string, subject: string, html: string) {
     try {
       const result = await this.transporter.sendMail({
@@ -30,8 +33,7 @@ export class EmailService {
       return result
     } catch (error: unknown) {
       console.error('Email sending failed:', error)
-      
-      // Handle error berdasarkan tipenya
+
       if (error instanceof Error) {
         throw new Error(`Failed to send email: ${error.message}`)
       } else {
@@ -41,4 +43,4 @@ export class EmailService {
   }
 }
 
-export const emailService = new EmailService() 
+export const emailService = new EmailService()

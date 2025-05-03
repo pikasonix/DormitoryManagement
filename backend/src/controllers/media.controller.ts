@@ -1,42 +1,34 @@
 import { Request, Response, NextFunction } from 'express';
 import { MediaService } from '../services/media.service';
-import { deleteFile } from '../services/file.service'; // Import hàm xóa file
-import { Prisma, MediaType, PrismaClient, Role } from '@prisma/client'; // Import Role type from Prisma client
+import { deleteFile } from '../services/file.service';
+import { Prisma, MediaType, PrismaClient, Role } from '@prisma/client';
 
-// Cập nhật interface RequestWithUser để bao gồm user từ auth middleware
 interface RequestWithUser extends Request {
     user?: {
         userId: number;
         email: string;
-        role: Role; // Use the Role type here
+        role: Role;
     };
 }
 
-const prisma = new PrismaClient(); // Initialize Prisma client
-
-
+const prisma = new PrismaClient();
 const mediaService = new MediaService();
 
 export class MediaController {
 
-    /**
-     * Xử lý upload file và tạo bản ghi Media.
-     */
+    // Xử lý upload file và tạo bản ghi Media
     async uploadMedia(req: RequestWithUser, res: Response, next: NextFunction) {
-        const uploadedFile = req.file; // File được multer xử lý và gán vào req.file
+        const uploadedFile = req.file;
 
         try {
             if (!uploadedFile) {
-                // return next(new AppError('Không có file nào được tải lên.', 400));
                 return next(new Error('Không có file nào được tải lên.'));
             }
 
-            // Lấy thông tin từ body (do upload là multipart/form-data)
             const { mediaType, alt, isPublic } = req.body;
 
             // Validate mediaType
             if (!mediaType || !Object.values(MediaType).includes(mediaType as MediaType)) {
-                // Quan trọng: Nếu validate lỗi sau khi file đã upload, cần xóa file vật lý
                 if (typeof deleteFile === 'function') await deleteFile(`/uploads/${uploadedFile.filename}`);
                 return next(new Error(`Loại media không hợp lệ hoặc bị thiếu. Các loại hợp lệ: ${Object.values(MediaType).join(', ')}`));
             }
@@ -52,23 +44,20 @@ export class MediaController {
             const createData = {
                 filename: uploadedFile.filename,
                 originalFilename: uploadedFile.originalname,
-                path: filePath, // Đường dẫn tương đối đã được điều chỉnh
+                path: filePath,
                 mimeType: uploadedFile.mimetype,
                 size: uploadedFile.size,
                 mediaType: mediaType as MediaType,
                 alt: alt || null,
                 isPublic: isPublic !== undefined ? Boolean(isPublic) : true,
-                // uploadedById: req.user?.userId // Gán ID người upload nếu cần
             };
 
-            // Thực hiện transaction để đảm bảo tính nhất quán giữa media và user
+            // Thực hiện transaction
             const newMedia = await prisma.$transaction(async (tx) => {
-                // 1. Tạo bản ghi media mới
                 const media = await tx.media.create({
                     data: createData
                 });
 
-                // 2. Nếu là avatar và có userId, cập nhật avatarId trong bảng users
                 if (mediaType === MediaType.USER_AVATAR && req.user?.userId) {
                     console.log(`[MediaController] Updating user ${req.user.userId} with new avatar ID ${media.id}`);
 
@@ -84,23 +73,19 @@ export class MediaController {
             res.status(201).json({
                 status: 'success',
                 message: 'Tải lên thành công và tạo bản ghi Media.',
-                data: newMedia // Trả về thông tin Media đã tạo (quan trọng là ID)
+                data: newMedia
             });
 
         } catch (error: any) {
-            // Nếu có lỗi xảy ra *sau khi* file đã được upload (vd: lỗi DB khi tạo record)
-            // thì cần cố gắng xóa file vật lý đã upload
             if (uploadedFile && typeof deleteFile === 'function') {
                 console.warn(`[MediaController.uploadMedia] Rolling back file upload due to error: ${error.message}. Deleting ${uploadedFile.filename}`);
-                await deleteFile(`/uploads/${uploadedFile.filename}`).catch(delErr => console.error("Error deleting orphaned file:", delErr)); // Cố gắng xóa, bắt lỗi nếu xóa thất bại
+                await deleteFile(`/uploads/${uploadedFile.filename}`).catch(delErr => console.error("Error deleting orphaned file:", delErr));
             }
-            next(error); // Chuyển lỗi đến global handler
+            next(error);
         }
     }
 
-    /**
-     * Lấy danh sách Media (có thể lọc và phân trang).
-     */
+    // Lấy danh sách Media (có thể lọc và phân trang)
     async getAllMedia(req: Request, res: Response, next: NextFunction) {
         try {
             const { mediaType, isPublic, page, limit } = req.query;
@@ -112,16 +97,16 @@ export class MediaController {
                 options.where!.mediaType = mediaType as MediaType;
             }
             if (isPublic !== undefined) {
-                options.where!.isPublic = isPublic === 'true'; // Chuyển string từ query param thành boolean
+                options.where!.isPublic = isPublic === 'true';
             }
 
             // Phân trang
             const pageNum = parseInt(page as string) || 1;
-            const limitNum = parseInt(limit as string) || 20; // Mặc định 20 item/trang
+            const limitNum = parseInt(limit as string) || 20;
             options.skip = (pageNum - 1) * limitNum;
             options.take = limitNum;
 
-            // Lấy tổng số bản ghi để phân trang phía client
+            // Lấy tổng số bản ghi để phân trang
             const totalRecords = await prisma.media.count({ where: options.where });
             const mediaItems = await mediaService.findAll(options);
 
@@ -136,13 +121,11 @@ export class MediaController {
         }
     }
 
-    /**
-     * Lấy thông tin chi tiết một Media bằng ID.
-     */
+    // Lấy thông tin chi tiết một Media bằng ID
     async getMediaById(req: Request, res: Response, next: NextFunction) {
         try {
             const id = parseInt(req.params.id);
-            const media = await mediaService.findById(id); // Service đã xử lý not found
+            const media = await mediaService.findById(id);
             res.status(200).json({
                 status: 'success',
                 data: media
@@ -152,13 +135,11 @@ export class MediaController {
         }
     }
 
-    /**
-     * Cập nhật metadata của Media.
-     */
+    // Cập nhật metadata của Media
     async updateMedia(req: Request, res: Response, next: NextFunction) {
         try {
             const id = parseInt(req.params.id);
-            const { alt, isPublic } = req.body; // Chỉ lấy các trường cho phép cập nhật
+            const { alt, isPublic } = req.body;
 
             const updateData = {
                 alt: alt,
@@ -175,14 +156,11 @@ export class MediaController {
         }
     }
 
-    /**
-     * Xóa một Media (bản ghi DB và file vật lý).
-     */
+    // Xóa một Media (bản ghi DB và file vật lý)
     async deleteMedia(req: Request, res: Response, next: NextFunction) {
         try {
             const id = parseInt(req.params.id);
 
-            // Service sẽ xử lý việc xóa DB và trả về path của file cần xóa
             const { deletedMediaPath } = await mediaService.delete(id);
 
             // Xóa file vật lý sau khi xóa DB thành công
