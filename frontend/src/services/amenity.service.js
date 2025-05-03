@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast';
  */
 const getAllAmenities = async (params = {}) => {
   try {
-    const response = await apiClient.get('/amenities', { params });
+    const response = await apiClient.get('/api/amenities', { params });
     // API doc: { success: true, data: { amenities: [...], meta: {...} } }
     if (response.data?.success) {
       return response.data.data; // Trả về { amenities, meta }
@@ -30,7 +30,7 @@ const getAllAmenities = async (params = {}) => {
  */
 const getAmenityById = async (id) => {
   try {
-    const response = await apiClient.get(`/amenities/${id}`);
+    const response = await apiClient.get(`/api/amenities/${id}`);
     // API doc: { success: true, data: { amenity_object } }
     if (response.data?.success && response.data?.data) {
       return response.data.data;
@@ -50,7 +50,7 @@ const getAmenityById = async (id) => {
  */
 const createAmenity = async (amenityData) => {
   try {
-    const response = await apiClient.post('/amenities', amenityData);
+    const response = await apiClient.post('/api/amenities', amenityData);
     // API doc: { success: true, data: { new_amenity_object } }
     if (response.data?.success && response.data?.data) {
       return response.data.data;
@@ -74,7 +74,7 @@ const createAmenity = async (amenityData) => {
  */
 const updateAmenity = async (id, amenityData) => {
   try {
-    const response = await apiClient.put(`/amenities/${id}`, amenityData);
+    const response = await apiClient.put(`/api/amenities/${id}`, amenityData);
     // API doc: { success: true, data: { updated_amenity_object } }
     if (response.data?.success && response.data?.data) {
       return response.data.data;
@@ -97,7 +97,7 @@ const updateAmenity = async (id, amenityData) => {
  */
 const deleteAmenity = async (id) => {
   try {
-    const response = await apiClient.delete(`/amenities/${id}`);
+    const response = await apiClient.delete(`/api/amenities/${id}`);
     // API doc: { success: true, message: "..." }
     if (response.data?.success) {
       return response.data;

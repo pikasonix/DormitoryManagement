@@ -6,16 +6,47 @@ const prisma = new PrismaClient();
 export class AmenityController {
 
   // Get all amenities
-  async getAllAmenities(_req: Request, res: Response, next: NextFunction) {
+  async getAllAmenities(req: Request, res: Response, next: NextFunction) {
     try {
-      const amenities = await prisma.amenity.findMany({
-        orderBy: { name: 'asc' },
-      });
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const skip = (page - 1) * limit;
+      const search = req.query.search as string;
+
+      // Build the where clause for search
+      const whereClause: Prisma.AmenityWhereInput = {};
+      if (search) {
+        whereClause.OR = [
+          { name: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } }
+        ];
+      }
+
+      // Execute count and findMany in parallel
+      const [totalRecords, amenities] = await Promise.all([
+        prisma.amenity.count({ where: whereClause }),
+        prisma.amenity.findMany({
+          where: whereClause,
+          orderBy: { name: 'asc' },
+          skip: skip,
+          take: limit
+        })
+      ]);
+
+      // Calculate total pages
+      const totalPages = Math.ceil(totalRecords / limit);
 
       res.status(200).json({
-        status: 'success',
-        results: amenities.length,
-        data: amenities
+        success: true,
+        data: {
+          amenities,
+          meta: {
+            total: totalRecords,
+            page,
+            limit,
+            totalPages
+          }
+        }
       });
     } catch (error) {
       next(error);
@@ -39,7 +70,7 @@ export class AmenityController {
       }
 
       res.status(200).json({
-        status: 'success',
+        success: true,
         data: amenity
       });
     } catch (error) {
@@ -64,7 +95,7 @@ export class AmenityController {
       });
 
       res.status(201).json({
-        status: 'success',
+        success: true,
         data: newAmenity
       });
     } catch (error) {
@@ -97,7 +128,7 @@ export class AmenityController {
       });
 
       res.status(200).json({
-        status: 'success',
+        success: true,
         data: updatedAmenity
       });
     } catch (error) {
@@ -130,7 +161,7 @@ export class AmenityController {
       });
 
       res.status(200).json({
-        status: 'success',
+        success: true,
         message: 'Amenity deleted successfully',
         data: null
       });
