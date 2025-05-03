@@ -10,10 +10,18 @@ import { toast } from 'react-hot-toast';
  */
 const getAllMaintenanceRequests = async (params = {}) => {
   try {
-    const response = await apiClient.get('/maintenance', { params });
-    // API doc: { success: true, data: { maintenanceRequests: [...], meta: {...} } }
-    if (response.data?.success) {
-      return response.data.data; // Trả về { maintenanceRequests, meta }
+    const response = await apiClient.get('/maintenances', { params });
+    // Backend returns: { status: 'success', results: number, total: number, data: array }
+    if (response.data?.status === 'success') {
+      return {
+        maintenanceRequests: response.data.data,
+        meta: {
+          total: response.data.total,
+          count: response.data.results,
+          page: params.page || 1,
+          limit: params.limit || 10
+        }
+      };
     } else {
       throw new Error(response.data?.message || 'Lấy danh sách yêu cầu bảo trì thất bại.');
     }
@@ -30,9 +38,9 @@ const getAllMaintenanceRequests = async (params = {}) => {
  */
 const getMaintenanceRequestById = async (id) => {
   try {
-    const response = await apiClient.get(`/maintenance/${id}`);
-    // API doc: { success: true, data: { maintenance_request_object } }
-    if (response.data?.success && response.data?.data) {
+    const response = await apiClient.get(`/maintenances/${id}`);
+    // Backend returns: { status: 'success', data: object }
+    if (response.data?.status === 'success' && response.data?.data) {
       return response.data.data;
     } else {
       throw new Error(response.data?.message || `Không tìm thấy yêu cầu bảo trì với ID ${id}.`);
@@ -45,17 +53,14 @@ const getMaintenanceRequestById = async (id) => {
 
 /**
  * Tạo một yêu cầu bảo trì mới (Thường do Sinh viên thực hiện).
- * @param {object} requestData - Dữ liệu yêu cầu { studentId, roomId, title, description, images: [mediaId1, mediaId2]? }.
- * Lưu ý: `images` là mảng các ID của media đã được upload trước đó.
+ * @param {object} requestData - Dữ liệu yêu cầu { roomId, issue, notes, imageIds? }.
  * @returns {Promise<object>} Dữ liệu yêu cầu vừa tạo.
  */
 const createMaintenanceRequest = async (requestData) => {
   try {
-    // Backend có thể tự lấy studentId/roomId từ user đang login?
-    // Nếu không, frontend cần truyền vào.
-    const response = await apiClient.post('/maintenance', requestData);
-    // API doc: { success: true, data: { new_maintenance_request_object } }
-    if (response.data?.success && response.data?.data) {
+    const response = await apiClient.post('/maintenances', requestData);
+    // Backend returns: { status: 'success', data: object }
+    if (response.data?.status === 'success' && response.data?.data) {
       return response.data.data;
     } else {
       throw new Error(response.data?.message || 'Gửi yêu cầu bảo trì thất bại.');
@@ -77,9 +82,9 @@ const createMaintenanceRequest = async (requestData) => {
  */
 const updateMaintenanceRequest = async (id, updateData) => {
   try {
-    const response = await apiClient.put(`/maintenance/${id}`, updateData);
-    // API doc: { success: true, data: { updated_maintenance_request_object } }
-    if (response.data?.success && response.data?.data) {
+    const response = await apiClient.put(`/maintenances/${id}`, updateData);
+    // Backend returns: { status: 'success', data: object }
+    if (response.data?.status === 'success' && response.data?.data) {
       return response.data.data;
     } else {
       throw new Error(response.data?.message || 'Cập nhật yêu cầu bảo trì thất bại.');
@@ -100,9 +105,9 @@ const updateMaintenanceRequest = async (id, updateData) => {
  */
 const deleteMaintenanceRequest = async (id) => {
   try {
-    const response = await apiClient.delete(`/maintenance/${id}`);
-    // API doc: { success: true, message: "..." }
-    if (response.data?.success) {
+    const response = await apiClient.delete(`/maintenances/${id}`);
+    // Backend returns: { status: 'success', message: string, data: null }
+    if (response.data?.status === 'success') {
       return response.data;
     } else {
       throw new Error(response.data?.message || 'Xóa yêu cầu bảo trì thất bại.');

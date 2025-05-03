@@ -84,10 +84,25 @@ const MaintenanceIndex = () => {
           studentService.getAllStudents({ limit: 1000, fields: 'id,fullName' }),
           roomService.getAllRooms({ limit: 1000, fields: 'id,number,building.name' }) // Lấy số phòng và tên tòa nhà
         ]);
-        if (studentData.status === 'fulfilled') setStudents(studentData.value.students || []);
-        if (roomData.status === 'fulfilled') setRooms(roomData.value || []); // getAllRooms trả về mảng trực tiếp
+
+        if (studentData.status === 'fulfilled') {
+          setStudents(studentData.value.students || []);
+        }
+
+        if (roomData.status === 'fulfilled') {
+          // Kiểm tra cấu trúc dữ liệu và đảm bảo rooms là một mảng
+          if (roomData.value && Array.isArray(roomData.value.rooms)) {
+            setRooms(roomData.value.rooms);
+          } else if (roomData.value && Array.isArray(roomData.value)) {
+            setRooms(roomData.value);
+          } else {
+            console.error("Dữ liệu phòng không phải là mảng:", roomData.value);
+            setRooms([]);
+          }
+        }
       } catch (err) {
         console.error("Lỗi tải dữ liệu liên quan:", err);
+        setRooms([]); // Khởi tạo mảng rỗng để tránh lỗi map()
       }
     }
     fetchRelatedData();
@@ -171,9 +186,12 @@ const MaintenanceIndex = () => {
   ], [navigate, students, rooms, currentPage, filters]); // Thêm dependencies
 
 
-  // Options cho Selects
+  // Options cho Selects - Thêm kiểm tra để đảm bảo rooms là mảng
   const studentOptions = [{ value: '', label: 'Tất cả sinh viên' }, ...students.map(s => ({ value: s.id.toString(), label: s.fullName }))];
-  const roomOptions = [{ value: '', label: 'Tất cả phòng' }, ...rooms.map(r => ({ value: r.id.toString(), label: `${r.number} (${r.building?.name || 'N/A'})` }))];
+  const roomOptions = [{ value: '', label: 'Tất cả phòng' }, ...(Array.isArray(rooms) ? rooms.map(r => ({
+    value: r.id.toString(),
+    label: `${r.number} (${r.building?.name || 'N/A'})`
+  })) : [])];
 
   return (
     <div className="space-y-4">
