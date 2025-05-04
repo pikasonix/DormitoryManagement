@@ -154,8 +154,20 @@ export class MaintenanceService {
         if (isNaN(id)) {
             throw new Error('ID yêu cầu bảo trì không hợp lệ');
         }
-        if (data.status && !Object.values(MaintenanceStatus).includes(data.status as MaintenanceStatus)) {
-            throw new Error(`Trạng thái bảo trì không hợp lệ: ${data.status}`);
+
+        // Chuyển đổi status thành chữ hoa để so sánh với enum MaintenanceStatus
+        let normalizedStatus: MaintenanceStatus | undefined;
+        if (data.status) {
+            const upperStatus = typeof data.status === 'string'
+                ? data.status.toUpperCase()
+                : String(data.status).toUpperCase();
+
+            // Kiểm tra nếu status sau khi chuyển đổi nằm trong các giá trị hợp lệ
+            if (Object.values(MaintenanceStatus).includes(upperStatus as MaintenanceStatus)) {
+                normalizedStatus = upperStatus as MaintenanceStatus;
+            } else {
+                throw new Error(`Trạng thái bảo trì không hợp lệ: ${data.status}`);
+            }
         }
 
         let oldImagePaths: string[] = [];
@@ -195,12 +207,12 @@ export class MaintenanceService {
 
                 const updateData: Prisma.MaintenanceUpdateInput = {
                     issue: data.issue,
-                    status: data.status,
+                    status: normalizedStatus, // Sử dụng status đã được chuẩn hóa
                     notes: data.notes,
                     assignedTo: data.assignedToId !== undefined
                         ? (data.assignedToId ? { connect: { id: data.assignedToId } } : { disconnect: true })
                         : undefined,
-                    completedDate: (data.status as MaintenanceStatus) === MaintenanceStatus.COMPLETED ? new Date() : ((data.status as MaintenanceStatus) !== MaintenanceStatus.COMPLETED ? null : undefined),
+                    completedDate: normalizedStatus === MaintenanceStatus.COMPLETED ? new Date() : normalizedStatus ? null : undefined,
                     images: imagesUpdate,
                 };
 
@@ -218,9 +230,9 @@ export class MaintenanceService {
                 const currentRoomStatus = currentMaintenance.room.status;
                 let newRoomStatus: RoomStatus | undefined = undefined;
 
-                if (data.status === MaintenanceStatus.IN_PROGRESS && currentRoomStatus !== RoomStatus.UNDER_MAINTENANCE) {
+                if (normalizedStatus === MaintenanceStatus.IN_PROGRESS && currentRoomStatus !== RoomStatus.UNDER_MAINTENANCE) {
                     newRoomStatus = RoomStatus.UNDER_MAINTENANCE;
-                } else if (data.status === MaintenanceStatus.COMPLETED && currentRoomStatus === RoomStatus.UNDER_MAINTENANCE) {
+                } else if (normalizedStatus === MaintenanceStatus.COMPLETED && currentRoomStatus === RoomStatus.UNDER_MAINTENANCE) {
                     const roomInfo = await tx.room.findUnique({ where: { id: currentMaintenance.roomId }, select: { capacity: true, actualOccupancy: true } });
                     newRoomStatus = (roomInfo && roomInfo.actualOccupancy >= roomInfo.capacity) ? RoomStatus.FULL : RoomStatus.AVAILABLE;
                 }

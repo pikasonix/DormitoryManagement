@@ -41,6 +41,13 @@ const getStatusIcon = (status) => {
     }
 };
 
+const maintenanceStatusOptions = [
+    { value: 'pending', label: 'Chờ xử lý' },
+    { value: 'in_progress', label: 'Đang xử lý' },
+    { value: 'completed', label: 'Đã hoàn thành' },
+    { value: 'cancelled', label: 'Đã hủy' },
+];
+
 // --- Component ---
 const MaintenanceForm = () => {
     const { id } = useParams(); // ID của Maintenance Request
@@ -181,7 +188,7 @@ const MaintenanceForm = () => {
                         </div>
                     </div>
                     <p className="mt-2 max-w-2xl text-sm text-gray-500">
-                        Yêu cầu bởi: <span className='font-medium'>{student?.fullName || `SV ID: ${request.studentId}`}</span>
+                        Yêu cầu bởi: <span className='font-medium'>{request.reportedBy?.fullName || request.studentId || '-'}</span>
                         <br />
                         Phòng: <span className='font-medium'>{room?.number || `ID: ${request.roomId}`}</span> ({room?.building?.name || 'N/A'})
                         <br />
@@ -192,7 +199,7 @@ const MaintenanceForm = () => {
                     {/* Mô tả sự cố */}
                     <div>
                         <h4 className='text-sm font-medium text-gray-600 mb-1'>Mô tả sự cố:</h4>
-                        <p className='text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-3 rounded border'>{request.description || '-'}</p>
+                        <p className='text-sm text-gray-800 whitespace-pre-wrap bg-gray-50 p-3 rounded border'>{request.issue || '-'}</p>
                     </div>
 
                     {/* Ảnh đính kèm */}

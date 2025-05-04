@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast';
  */
 const getAllMaintenanceRequests = async (params = {}) => {
   try {
-    const response = await apiClient.get('/maintenances', { params });
+    const response = await apiClient.get('/api/maintenances', { params });
     // Backend returns: { status: 'success', results: number, total: number, data: array }
     if (response.data?.status === 'success') {
       return {
@@ -38,7 +38,7 @@ const getAllMaintenanceRequests = async (params = {}) => {
  */
 const getMaintenanceRequestById = async (id) => {
   try {
-    const response = await apiClient.get(`/maintenances/${id}`);
+    const response = await apiClient.get(`/api/maintenances/${id}`);
     // Backend returns: { status: 'success', data: object }
     if (response.data?.status === 'success' && response.data?.data) {
       return response.data.data;
@@ -58,7 +58,7 @@ const getMaintenanceRequestById = async (id) => {
  */
 const createMaintenanceRequest = async (requestData) => {
   try {
-    const response = await apiClient.post('/maintenances', requestData);
+    const response = await apiClient.post('/api/maintenances', requestData);
     // Backend returns: { status: 'success', data: object }
     if (response.data?.status === 'success' && response.data?.data) {
       return response.data.data;
@@ -82,7 +82,7 @@ const createMaintenanceRequest = async (requestData) => {
  */
 const updateMaintenanceRequest = async (id, updateData) => {
   try {
-    const response = await apiClient.put(`/maintenances/${id}`, updateData);
+    const response = await apiClient.put(`/api/maintenances/${id}`, updateData);
     // Backend returns: { status: 'success', data: object }
     if (response.data?.status === 'success' && response.data?.data) {
       return response.data.data;
@@ -105,7 +105,7 @@ const updateMaintenanceRequest = async (id, updateData) => {
  */
 const deleteMaintenanceRequest = async (id) => {
   try {
-    const response = await apiClient.delete(`/maintenances/${id}`);
+    const response = await apiClient.delete(`/api/maintenances/${id}`);
     // Backend returns: { status: 'success', message: string, data: null }
     if (response.data?.status === 'success') {
       return response.data;
