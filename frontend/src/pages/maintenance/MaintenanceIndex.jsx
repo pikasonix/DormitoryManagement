@@ -12,7 +12,15 @@ import { vi } from 'date-fns/locale';
 import { useDebounce } from '../../hooks/useDebounce';
 
 // Format ngày giờ
-const formatDateTime = (dateString) => { /* ... như các file trước ... */ }
+const formatDateTime = (dateString) => {
+  if (!dateString) return 'N/A';
+  try {
+    return format(parseISO(dateString), 'dd/MM/yyyy HH:mm', { locale: vi });
+  } catch (error) {
+    console.error("Lỗi format date:", error);
+    return dateString || 'N/A';
+  }
+}
 
 // Trạng thái yêu cầu (cần khớp Enum backend)
 const maintenanceStatusOptions = [
@@ -79,9 +87,9 @@ const MaintenanceIndex = () => {
   useEffect(() => {
     const fetchRelatedData = async () => {
       try {
-        // Chỉ lấy id, tên để giảm tải
+        // Chỉ lấy id, tên, và userId để giảm tải
         const [studentData, roomData] = await Promise.allSettled([
-          studentService.getAllStudents({ limit: 1000, fields: 'id,fullName' }),
+          studentService.getAllStudents({ limit: 1000, fields: 'id,fullName,userId' }),
           roomService.getAllRooms({ limit: 1000, fields: 'id,number,building.name' }) // Lấy số phòng và tên tòa nhà
         ]);
 
@@ -122,14 +130,14 @@ const MaintenanceIndex = () => {
   };
 
   // Handler xóa yêu cầu
-  const handleDelete = async (id, title) => {
-    if (window.confirm(`Bạn có chắc muốn xóa yêu cầu "${title}" không?`)) {
+  const handleDelete = async (id, issue) => {
+    if (window.confirm(`Bạn có chắc muốn xóa yêu cầu "${issue}" không?`)) {
       try {
         await maintenanceService.deleteMaintenanceRequest(id);
-        toast.success(`Đã xóa yêu cầu "${title}" thành công!`);
+        toast.success(`Đã xóa yêu cầu "${issue}" thành công!`);
         fetchRequests(currentPage, filters);
       } catch (err) {
-        toast.error(err?.message || `Xóa yêu cầu "${title}" thất bại.`);
+        toast.error(err?.message || `Xóa yêu cầu "${issue}" thất bại.`);
       }
     }
   };
@@ -141,22 +149,66 @@ const MaintenanceIndex = () => {
 
   // --- Cấu hình bảng ---
   const columns = useMemo(() => [
-    { Header: 'Tiêu đề', accessor: 'title', Cell: ({ value }) => <span className='font-medium'>{value}</span> },
     {
-      Header: 'Sinh viên YC', accessor: 'studentId', Cell: ({ value }) => {
-        const student = students.find(s => s.id === value);
-        return student ? student.fullName : `ID: ${value}`;
+      Header: 'Nội dung',
+      accessor: 'issue',
+      Cell: ({ value }) => <span className='font-medium'>{value}</span>
+    },
+    {
+      Header: 'Sinh viên YC',
+      accessor: 'reportedBy',
+      Cell: ({ value, row }) => {
+        // Khi có dữ liệu reportedBy từ backend
+        if (value && typeof value === 'object') {
+          // Ưu tiên hiển thị tên đầy đủ của sinh viên
+          if (value.fullName) {
+            return value.fullName;
+          }
+          // Nếu có thông tin user, hiển thị email 
+          if (value.user && value.user.email) {
+            return value.user.email;
+          }
+          return `ID: ${value.id || value.userId || 'N/A'}`;
+        }
+
+        // Fallback cho các trường hợp cũ hoặc dữ liệu không đầy đủ
+        const reportedById = row.original.reportedById;
+        if (reportedById) {
+          // reportedById là userId (từ bảng users), không phải id từ bảng student_profiles
+          // Tìm student dựa trên userId thay vì id
+          const student = students.find(s => s.userId === reportedById);
+
+          if (student) {
+            return student.fullName;
+          }
+
+          // Nếu không tìm thấy, thử xem có thông tin user trong dữ liệu không
+          if (row.original.reportedByUser) {
+            return row.original.reportedByUser.email || `User ID: ${reportedById}`;
+          }
+
+          return `User ID: ${reportedById}`;
+        }
+
+        return 'N/A';
       }
     },
     {
-      Header: 'Phòng', accessor: 'roomId', Cell: ({ value }) => {
-        const room = rooms.find(r => r.id === value);
-        return room ? `${room.number} (${room.building?.name || 'N/A'})` : `ID: ${value}`;
+      Header: 'Phòng',
+      accessor: 'room',
+      Cell: ({ value }) => {
+        return value ? `${value.number} (${value.building?.name || 'N/A'})` : 'N/A';
       }
     },
-    { Header: 'Ngày YC', accessor: 'createdAt', Cell: ({ value }) => formatDateTime(value) },
     {
-      Header: 'Trạng thái', accessor: 'status', Cell: ({ value }) => (
+      Header: 'Ngày YC',
+      accessor: 'reportDate',
+      Cell: ({ value }) => formatDateTime(value)
+    },
+    {
+      Header: 'Trạng thái',
+      accessor: 'status',
+      Cell: ({ value }) => (
         <Badge color={getStatusBadgeColor(value)}>{value?.toUpperCase() || 'N/A'}</Badge>
       )
     },
@@ -175,7 +227,7 @@ const MaintenanceIndex = () => {
           </Button>
           <Button
             variant="icon"
-            onClick={() => handleDelete(row.original.id, row.original.title)}
+            onClick={() => handleDelete(row.original.id, row.original.issue)}
             tooltip="Xóa"
           >
             <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />

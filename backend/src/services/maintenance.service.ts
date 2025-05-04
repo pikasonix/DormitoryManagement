@@ -15,7 +15,15 @@ export class MaintenanceService {
                 ...options,
                 include: {
                     room: { select: { id: true, number: true, building: { select: { id: true, name: true } } } },
-                    reportedBy: { select: { id: true, fullName: true, studentId: true } },
+                    reportedBy: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            studentId: true,
+                            userId: true,
+                            user: { select: { id: true, email: true } }
+                        }
+                    },
                     assignedTo: { select: { id: true, fullName: true, position: true } },
                     images: true,
                     ...(options?.include || {})
@@ -45,7 +53,17 @@ export class MaintenanceService {
                 ...options,
                 include: {
                     room: { include: { building: true } },
-                    reportedBy: { include: { user: { select: { email: true, avatar: true } } } },
+                    reportedBy: {
+                        include: {
+                            user: {
+                                select: {
+                                    id: true,
+                                    email: true,
+                                    avatar: true
+                                }
+                            }
+                        }
+                    },
                     assignedTo: { include: { user: { select: { email: true, avatar: true } } } },
                     images: true,
                     ...(options?.include || {})
@@ -80,9 +98,11 @@ export class MaintenanceService {
     }): Promise<Maintenance> {
         try {
             const roomExists = await prisma.room.findUnique({ where: { id: data.roomId } });
-            const reporterExists = await prisma.studentProfile.findUnique({ where: { id: data.reportedById } });
+            // Kiểm tra người báo cáo theo userId thay vì id
+            const reporterExists = await prisma.studentProfile.findUnique({ where: { userId: data.reportedById } });
+
             if (!roomExists) throw new Error(`Phòng với ID ${data.roomId} không tồn tại.`);
-            if (!reporterExists) throw new Error(`Người báo cáo (StudentProfile) với ID ${data.reportedById} không tồn tại.`);
+            if (!reporterExists) throw new Error(`Người báo cáo (StudentProfile) với ID người dùng ${data.reportedById} không tồn tại.`);
             if (data.assignedToId) {
                 const assigneeExists = await prisma.staffProfile.findUnique({ where: { id: data.assignedToId } });
                 if (!assigneeExists) throw new Error(`Nhân viên được giao (StaffProfile) với ID ${data.assignedToId} không tồn tại.`);
@@ -91,7 +111,7 @@ export class MaintenanceService {
             const newMaintenance = await prisma.maintenance.create({
                 data: {
                     room: { connect: { id: data.roomId } },
-                    reportedBy: { connect: { id: data.reportedById } },
+                    reportedBy: { connect: { userId: data.reportedById } }, // Sửa thành userId
                     issue: data.issue,
                     notes: data.notes,
                     status: data.status || MaintenanceStatus.PENDING,

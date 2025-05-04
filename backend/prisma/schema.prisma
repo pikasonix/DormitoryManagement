@@ -351,8 +351,8 @@ model Maintenance {
   id            Int      @id @default(autoincrement())
   room          Room     @relation(fields: [roomId], references: [id])
   roomId        Int
-  reportedBy    StudentProfile @relation("reportedMaintenance", fields: [reportedById], references: [id])
-  reportedById  Int
+  reportedBy    StudentProfile @relation("reportedMaintenance", fields: [reportedById], references: [userId])
+  reportedById  Int      // Tham chiếu đến userId (không phải id) trong StudentProfile
   issue         String   // Mô tả vấn đề
   reportDate    DateTime @default(now())
   status        MaintenanceStatus @default(PENDING)

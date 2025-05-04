@@ -68,7 +68,7 @@ export class MaintenanceController {
                 return next(new Error('Thiếu thông tin bắt buộc: roomId, issue.')); // Hoặc AppError 400
             }
 
-            // Tìm StudentProfile ID của người báo cáo
+            // Kiểm tra xem có phải sinh viên không (cần thiết vì reportedById giờ là userId)
             const reporterProfile = await prisma.studentProfile.findUnique({
                 where: { userId: reporterUserId },
                 select: { id: true }
@@ -82,7 +82,7 @@ export class MaintenanceController {
 
             const createData = {
                 roomId: parseInt(roomId),
-                reportedById: reporterProfile.id, // Sử dụng profile ID
+                reportedById: reporterUserId, // Sử dụng userId trực tiếp thay vì profile.id
                 issue,
                 notes,
                 imageIds: imageIds ? (Array.isArray(imageIds) ? imageIds.map(Number) : [Number(imageIds)]) : undefined,

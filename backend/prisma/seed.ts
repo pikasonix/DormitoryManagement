@@ -401,7 +401,7 @@ async function main() {
       await prisma.maintenance.create({
         data: {
           roomId: roomToReport1.id,
-          reportedById: reportingStudent1.id,
+          reportedById: reportingStudent1.userId, // SỬA: dùng userId thay vì id
           issue: 'Điều hòa bị chảy nước, không mát.',
           reportDate: new Date(),
           status: MaintenanceStatus.PENDING,
@@ -418,7 +418,7 @@ async function main() {
       await prisma.maintenance.create({
         data: {
           roomId: roomToReport2.id,
-          reportedById: reportingStudent2.id, // Can be same student reporting again
+          reportedById: reportingStudent2.userId, // SỬA: dùng userId thay vì id
           issue: 'Bóng đèn nhà vệ sinh bị cháy.',
           reportDate: new Date(Date.now() - 86400000 * 2), // 2 days ago
           status: MaintenanceStatus.ASSIGNED,
