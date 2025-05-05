@@ -7,7 +7,7 @@ import { roomService } from '../../services/room.service'; // Để lấy thông
 import { Button, Select, Textarea, Badge } from '../../components/shared';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import { ArrowLeftIcon, CheckCircleIcon, ClockIcon, XCircleIcon, PencilSquareIcon, PaperClipIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CheckCircleIcon, ClockIcon, XCircleIcon, PencilSquareIcon, PaperClipIcon, EyeIcon, UserIcon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -25,6 +25,7 @@ const formatDateTime = (dateString) => {
 const getStatusBadgeColor = (status) => {
     switch (status?.toLowerCase()) {
         case 'pending': return 'yellow';
+        case 'assigned': return 'purple';
         case 'in_progress': return 'blue';
         case 'completed': return 'green';
         case 'cancelled': return 'gray';
@@ -35,7 +36,8 @@ const getStatusIcon = (status) => {
     switch (status?.toLowerCase()) {
         case 'completed': return <CheckCircleIcon className="h-5 w-5 text-green-500 mr-1 inline-block" />;
         case 'pending': return <ClockIcon className="h-5 w-5 text-yellow-500 mr-1 inline-block" />;
-        case 'in_progress': return <PencilSquareIcon className="h-5 w-5 text-blue-500 mr-1 inline-block" />; // Hoặc một icon khác
+        case 'assigned': return <UserIcon className="h-5 w-5 text-purple-500 mr-1 inline-block" />; // Icon cho trạng thái "Đã phân công"
+        case 'in_progress': return <PencilSquareIcon className="h-5 w-5 text-blue-500 mr-1 inline-block" />;
         case 'cancelled': return <XCircleIcon className="h-5 w-5 text-gray-500 mr-1 inline-block" />;
         default: return null;
     }
@@ -43,6 +45,7 @@ const getStatusIcon = (status) => {
 
 const maintenanceStatusOptions = [
     { value: 'pending', label: 'Chờ xử lý' },
+    { value: 'assigned', label: 'Đã phân công' },
     { value: 'in_progress', label: 'Đang xử lý' },
     { value: 'completed', label: 'Đã hoàn thành' },
     { value: 'cancelled', label: 'Đã hủy' },

@@ -5,11 +5,16 @@ import { toast } from 'react-hot-toast';
 
 /**
  * Lấy danh sách yêu cầu bảo trì (có phân trang và lọc).
- * @param {object} params - Query parameters (vd: page, limit, status, studentId, roomId, buildingId?)
+ * @param {object} params - Query parameters (vd: page, limit, status, id, roomId, buildingId?)
  * @returns {Promise<object>} Dữ liệu trả về { maintenanceRequests: [...], meta: {...} }
  */
 const getAllMaintenanceRequests = async (params = {}) => {
   try {
+    // Nếu status là chữ thường, chuyển thành chữ hoa để khớp với backend enum
+    if (params.status && typeof params.status === 'string') {
+      params.status = params.status.toUpperCase();
+    }
+
     const response = await apiClient.get('/api/maintenances', { params });
     // Backend returns: { status: 'success', results: number, total: number, data: array }
     if (response.data?.status === 'success') {

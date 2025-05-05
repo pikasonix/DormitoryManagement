@@ -26,6 +26,7 @@ const formatDateTime = (dateString) => {
 const maintenanceStatusOptions = [
   { value: '', label: 'Tất cả trạng thái' },
   { value: 'pending', label: 'Chờ xử lý' },
+  { value: 'assigned', label: 'Đã phân công' },
   { value: 'in_progress', label: 'Đang xử lý' },
   { value: 'completed', label: 'Đã hoàn thành' },
   { value: 'cancelled', label: 'Đã hủy' },
@@ -35,6 +36,7 @@ const maintenanceStatusOptions = [
 const getStatusBadgeColor = (status) => {
   switch (status?.toLowerCase()) {
     case 'pending': return 'yellow';
+    case 'assigned': return 'purple';
     case 'in_progress': return 'blue';
     case 'completed': return 'green';
     case 'cancelled': return 'gray';
@@ -52,7 +54,7 @@ const MaintenanceIndex = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState({
     status: '',
-    studentId: '',
+    id: '', // Thay thế studentId bằng id
     roomId: '',
     // search: '', // Tìm theo tiêu đề?
   });
@@ -68,15 +70,22 @@ const MaintenanceIndex = () => {
         page: page,
         limit: meta.limit,
         status: currentFilters.status || undefined,
-        studentId: currentFilters.studentId || undefined,
+        id: currentFilters.id || undefined, // Thay thế studentId bằng id
         roomId: currentFilters.roomId || undefined,
         // search: debouncedSearch || undefined,
       };
+
+      // Debug log để kiểm tra params
+      console.log("Maintenance request params:", params);
+
       const data = await maintenanceService.getAllMaintenanceRequests(params);
+      console.log("Maintenance response:", data);
+
       setRequests(data.maintenanceRequests || []);
       setMeta(prev => ({ ...prev, ...data.meta }));
       setCurrentPage(data.meta?.page || 1);
     } catch (err) {
+      console.error("Error fetching maintenance requests:", err);
       setError('Không thể tải danh sách yêu cầu bảo trì.');
     } finally {
       setIsLoading(false);
@@ -149,6 +158,11 @@ const MaintenanceIndex = () => {
 
   // --- Cấu hình bảng ---
   const columns = useMemo(() => [
+    {
+      Header: 'ID',
+      accessor: 'id',
+      Cell: ({ value }) => <span className="font-mono text-sm">{value}</span>
+    },
     {
       Header: 'Nội dung',
       accessor: 'issue',
@@ -254,10 +268,17 @@ const MaintenanceIndex = () => {
 
       {/* Bộ lọc */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
-        <Select label="Sinh viên" id="studentId" name="studentId" value={filters.studentId} onChange={handleFilterChange} options={studentOptions} />
-        <Select label="Phòng" id="roomId" name="roomId" value={filters.roomId} onChange={handleFilterChange} options={roomOptions} />
+        <Input label="ID" id="id" name="id" value={filters.id} onChange={handleFilterChange} placeholder="Nhập ID yêu cầu" />
+        <Input
+          label="Phòng"
+          id="roomId"
+          name="roomId"
+          value={filters.roomId}
+          onChange={handleFilterChange}
+          placeholder="Ví dụ: 203 (B3), B3-203, hoặc B3"
+          helpText="Tìm theo số phòng, tòa nhà hoặc cả hai"
+        />
         <Select label="Trạng thái" id="status" name="status" value={filters.status} onChange={handleFilterChange} options={maintenanceStatusOptions} />
-        {/* <Input label="Tìm tiêu đề" id="search" name="search" value={filters.search} onChange={handleFilterChange} /> */}
       </div>
 
       {/* Bảng dữ liệu */}
