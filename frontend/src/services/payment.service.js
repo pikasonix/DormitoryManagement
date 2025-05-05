@@ -5,22 +5,21 @@ import { toast } from 'react-hot-toast';
 
 /**
  * Lấy danh sách các giao dịch thanh toán (có phân trang và lọc).
- * @param {object} params - Query parameters (vd: page, limit, status, studentId, invoiceId, method?)
+ * @param {object} params - Query parameters (vd: page, limit, id, studentId, invoiceId, method, transactionCode)
  * @returns {Promise<object>} Dữ liệu trả về { payments: [...], meta: {...} }
  */
 const getAllPayments = async (params = {}) => {
   try {
     const response = await apiClient.get('/api/payments', { params });
-    // Backend trả về: { status: 'success', results: number, total: number, data: array }
+    // Backend trả về: { status: 'success', payments: [...], meta: {...} }
     if (response.data?.status === 'success') {
       return {
-        payments: response.data.data || [],
-        meta: {
-          total: response.data.total || 0,
-          count: response.data.results || 0,
+        payments: response.data.payments || [],
+        meta: response.data.meta || {
           page: params.page || 1,
           limit: params.limit || 10,
-          totalPages: Math.ceil((response.data.total || 0) / (params.limit || 10))
+          totalPages: 1,
+          total: 0
         }
       };
     } else {

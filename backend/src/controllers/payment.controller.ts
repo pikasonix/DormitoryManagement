@@ -8,30 +8,84 @@ const prisma = new PrismaClient();
 // Lấy danh sách thanh toán (có thể lọc)
 export const getPayments = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Lọc theo studentProfileId hoặc invoiceId từ query params
-    const { studentProfileId, invoiceId } = req.query;
+    // Lấy tất cả các tham số lọc từ query params
+    const {
+      id,
+      studentId,
+      studentProfileId,
+      invoiceId,
+      method, // Tham số từ frontend
+      page,
+      limit,
+      transactionCode
+    } = req.query;
 
+    // Lọc và phân trang
+    const pageNum = parseInt(page as string) || 1;
+    const limitNum = parseInt(limit as string) || 10;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Xây dựng mệnh đề lọc (where)
     const whereClause: Prisma.PaymentWhereInput = {};
+
+    // Lọc theo ID payment
+    if (id) {
+      whereClause.id = parseInt(id as string);
+    }
+
+    // Lọc theo sinh viên (mã sinh viên)
+    if (studentId) {
+      whereClause.studentProfile = {
+        studentId: {
+          contains: studentId as string,
+          mode: 'insensitive'
+        }
+      };
+    }
+
+    // Lọc theo sinh viên (ID profile)
     if (studentProfileId) {
       whereClause.studentProfileId = parseInt(studentProfileId as string);
     }
+
+    // Lọc theo hóa đơn
     if (invoiceId) {
       whereClause.invoiceId = parseInt(invoiceId as string);
     }
 
+    // Lọc theo phương thức thanh toán
+    if (method) {
+      whereClause.paymentMethod = method as string; // Sử dụng giá trị chính xác từ frontend
+    }
+
+    // Lọc theo mã giao dịch (nếu có)
+    if (transactionCode) {
+      whereClause.transactionCode = {
+        contains: transactionCode as string,
+        mode: 'insensitive' // Tìm kiếm không phân biệt chữ hoa/thường
+      };
+    }
+
+    // Đếm tổng số bản ghi phù hợp với điều kiện lọc
+    const totalRecords = await prisma.payment.count({
+      where: whereClause
+    });
+
+    // Lấy danh sách thanh toán với phân trang và lọc
     const payments = await prisma.payment.findMany({
       where: whereClause,
+      skip,
+      take: limitNum,
       include: {
-        // Đổi resident thành studentProfile
         studentProfile: {
-          select: { // Chỉ lấy thông tin cần thiết
+          select: {
             id: true,
             fullName: true,
             studentId: true,
-            room: { select: { id: true, number: true, building: { select: { name: true } } } } // Lấy thêm thông tin phòng
+            room: { select: { id: true, number: true, building: { select: { name: true } } } }
           }
         },
-        invoice: { // Include thông tin hóa đơn
+        invoice: {
           select: {
             id: true,
             billingMonth: true,
@@ -42,18 +96,25 @@ export const getPayments = async (req: Request, res: Response, next: NextFunctio
         }
       },
       orderBy: {
-        paymentDate: 'desc' // Đổi tên trường date thành paymentDate
+        paymentDate: 'desc'
       }
     });
 
     res.status(200).json({
       status: 'success',
       results: payments.length,
-      data: payments
+      total: totalRecords,
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(totalRecords / limitNum),
+        total: totalRecords
+      },
+      payments: payments
     });
   } catch (error: any) {
     console.error('Lỗi khi lấy danh sách thanh toán:', error);
-    next(error); // Chuyển lỗi
+    next(error);
   }
 };
 
