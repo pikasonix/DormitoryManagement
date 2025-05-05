@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { transferService } from '../../services/transfer.service';
 import { studentService } from '../../services/student.service'; // Để lấy tên SV
 import { roomService } from '../../services/room.service'; // Để lấy tên phòng
-import { Button, Table, Select, Pagination, Badge } from '../../components/shared';
+import { Button, Select, Badge } from '../../components/shared';
+import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { EyeIcon, CheckCircleIcon, XCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
@@ -11,7 +12,10 @@ import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
 // Format ngày giờ
-const formatDateTime = (dateString) => { /* ... */ }
+const formatDateTime = (dateString) => {
+    const date = parseISO(dateString);
+    return format(date, 'dd/MM/yyyy HH:mm:ss', { locale: vi });
+};
 
 // Trạng thái yêu cầu
 const transferStatusOptions = [
@@ -132,7 +136,12 @@ const TransferIndex = () => {
 
     // Handler chuyển trang
     const handlePageChange = (page) => {
-        setCurrentPage(page);
+        // Đảm bảo trang mới hợp lệ
+        if (page > 0 && page <= meta.totalPages) {
+            setCurrentPage(page);
+            // Scroll lên đầu trang khi chuyển trang
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     };
 
     // --- Cấu hình bảng ---
@@ -192,17 +201,23 @@ const TransferIndex = () => {
                 <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
             ) : error ? (
                 <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
+            ) : requests.length === 0 ? (
+                <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
+                    Không tìm thấy yêu cầu chuyển phòng nào.
+                </div>
             ) : (
-                <>
-                    <Table columns={columns} data={requests} />
-                    {meta.totalPages > 1 && (
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={meta.totalPages}
-                            onPageChange={handlePageChange}
-                        />
-                    )}
-                </>
+                <PaginationTable
+                    columns={columns}
+                    data={requests}
+                    currentPage={currentPage}
+                    totalPages={meta.totalPages}
+                    onPageChange={handlePageChange}
+                    totalRecords={meta.total}
+                    recordsPerPage={meta.limit}
+                    showingText={`Hiển thị yêu cầu ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
+                    recordsText="yêu cầu"
+                    pageText="Trang"
+                />
             )}
         </div>
     );

@@ -139,7 +139,14 @@ const UtilityReadingIndex = () => {
             }
         }
     };
-    const handlePageChange = (page) => setCurrentPage(page);
+    const handlePageChange = (page) => {
+        // Đảm bảo trang mới hợp lệ
+        if (page > 0 && page <= meta.totalPages) {
+            setCurrentPage(page);
+            // Scroll lên đầu trang khi chuyển trang
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
 
     // --- Cấu hình bảng ---
     const columns = useMemo(() => [
@@ -209,12 +216,12 @@ const UtilityReadingIndex = () => {
                 <PaginationTable
                     columns={columns}
                     data={readings}
-                    currentPage={meta.currentPage}
+                    currentPage={currentPage}
                     totalPages={meta.totalPages}
                     onPageChange={handlePageChange}
                     totalRecords={meta.total}
                     recordsPerPage={meta.limit}
-                    showingText={`Hiển thị bản ghi ${(meta.currentPage - 1) * meta.limit + 1} - ${Math.min(meta.currentPage * meta.limit, meta.total)}`}
+                    showingText={`Hiển thị bản ghi ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
                     recordsText="bản ghi"
                     pageText="Trang"
                 />

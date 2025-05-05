@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { invoiceService } from '../../services/invoice.service';
 import { studentService } from '../../services/student.service'; // Lấy ds sinh viên để lọc
+import { roomService } from '../../services/room.service'; // Thêm roomService để lấy thông tin phòng
 import { Button, Select, Input, Badge } from '../../components/shared';
 import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
@@ -27,10 +28,11 @@ const formatCurrency = (amount) => {
 // Options trạng thái hóa đơn
 const invoiceStatusOptions = [
     { value: '', label: 'Tất cả trạng thái' },
-    { value: 'pending', label: 'Chờ thanh toán' },
-    { value: 'paid', label: 'Đã thanh toán' },
-    { value: 'overdue', label: 'Quá hạn' }, // Thêm nếu backend hỗ trợ
-    { value: 'cancelled', label: 'Đã hủy' }, // Thêm nếu backend hỗ trợ
+    { value: 'UNPAID', label: 'Chờ thanh toán' },
+    { value: 'PAID', label: 'Đã thanh toán' },
+    { value: 'PARTIALLY_PAID', label: 'Thanh toán một phần' },
+    { value: 'OVERDUE', label: 'Quá hạn' },
+    { value: 'CANCELLED', label: 'Đã hủy' },
 ];
 
 // Màu badge theo status
@@ -47,17 +49,18 @@ const getStatusBadgeColor = (status) => {
 const InvoiceIndex = () => {
     const [invoices, setInvoices] = useState([]);
     const [students, setStudents] = useState([]); // DS sinh viên cho filter
+    const [rooms, setRooms] = useState({}); // Cache thông tin phòng theo ID
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [meta, setMeta] = useState({ currentPage: 1, totalPages: 1, limit: 10, total: 0 });
     const [currentPage, setCurrentPage] = useState(1);
     const [filters, setFilters] = useState({
-        studentId: '',
         status: '',
-        // Thêm search theo số hóa đơn?
-        // search: '',
+        search: '', // Tìm theo số hợp đồng
+        identifier: '', // Tìm theo mã SV/phòng
     });
-    // const debouncedSearch = useDebounce(filters.search, 500); // Nếu có search
+    const debouncedSearch = useDebounce(filters.search, 500); // Debounce cho tìm kiếm số hợp đồng
+    const debouncedIdentifier = useDebounce(filters.identifier, 500); // Debounce cho tìm kiếm mã SV/phòng
     const navigate = useNavigate();
 
     // Fetch danh sách hóa đơn
@@ -68,20 +71,42 @@ const InvoiceIndex = () => {
             const params = {
                 page: page,
                 limit: meta.limit,
-                studentId: currentFilters.studentId || undefined,
                 status: currentFilters.status || undefined,
-                // search: debouncedSearch || undefined,
+                invoiceNumber: debouncedSearch || undefined, // Tìm theo số hợp đồng
+                identifier: debouncedIdentifier || undefined, // Tìm theo mã SV/phòng
             };
             const data = await invoiceService.getAllInvoices(params);
-            setInvoices(data.invoices || []);
+            const invoiceList = data.invoices || [];
+            setInvoices(invoiceList);
             setMeta(prev => ({ ...prev, ...data.meta }));
             setCurrentPage(data.meta?.page || 1);
+
+            // Lấy danh sách roomId từ các hóa đơn phòng
+            const roomIds = [...new Set(invoiceList
+                .filter(invoice => invoice.roomId && !invoice.studentProfileId)
+                .map(invoice => invoice.roomId)
+                .filter(id => id && !rooms[id]))];
+
+            // Fetch thông tin phòng nếu cần
+            if (roomIds.length > 0) {
+                const roomPromises = roomIds.map(id => roomService.getRoomById(id).catch(() => null));
+                const roomResults = await Promise.all(roomPromises);
+
+                // Cập nhật state rooms
+                setRooms(prev => {
+                    const newRooms = { ...prev };
+                    roomResults.forEach(room => {
+                        if (room) newRooms[room.id] = room;
+                    });
+                    return newRooms;
+                });
+            }
         } catch (err) {
             setError('Không thể tải danh sách hóa đơn.');
         } finally {
             setIsLoading(false);
         }
-    }, [meta.limit]); // Không cần filters ở dependency vì fetchInvoices nhận filters làm tham số
+    }, [meta.limit, rooms, debouncedSearch, debouncedIdentifier]); // Thêm rooms và debouncedSearch vào dependencies
 
     // Fetch danh sách sinh viên cho bộ lọc
     const fetchStudents = useCallback(async () => {
@@ -127,26 +152,36 @@ const InvoiceIndex = () => {
 
     // Xử lý chuyển trang
     const handlePageChange = (page) => {
-        setCurrentPage(page);
+        // Đảm bảo trang mới hợp lệ
+        if (page > 0 && page <= meta.totalPages) {
+            setCurrentPage(page);
+            // Scroll lên đầu trang khi chuyển trang
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     };
 
     // --- Cấu hình bảng ---
     const columns = useMemo(() => [
-        { Header: 'Số HĐ', accessor: 'invoiceNumber', Cell: ({ value }) => <span className='font-mono'>{value}</span> },
+        { Header: 'Số hợp đồng', accessor: 'id', Cell: ({ value }) => <span className='font-mono'>{value || 'N/A'}</span> },
         {
-            Header: 'Sinh viên',
-            accessor: 'studentProfile',
+            Header: 'Mã SV/Phòng',
+            accessor: 'studentProfileId',
             Cell: ({ value, row }) => {
-                // Nếu có thông tin studentProfile
-                if (value && typeof value === 'object') {
-                    return value.fullName || `ID: ${value.id}`;
-                }
+                const invoice = row.original;
 
-                // Fallback trường hợp chỉ có studentProfileId
-                const studentProfileId = row.original.studentProfileId;
-                if (studentProfileId) {
-                    const student = students.find(s => s.id === studentProfileId);
-                    return student ? student.fullName : `ID: ${studentProfileId}`;
+                // Nếu là hóa đơn sinh viên (studentProfileId có giá trị)
+                if (invoice.studentProfileId) {
+                    // Tìm student từ danh sách students
+                    const student = students.find(s => s.id === invoice.studentProfileId);
+                    return student?.studentId || `SV-${invoice.studentProfileId}`;
+                }
+                // Nếu là hóa đơn phòng (roomId có giá trị)
+                else if (invoice.roomId) {
+                    const room = rooms[invoice.roomId];
+                    if (room) {
+                        return `${room.number} (${room.building?.name || ''})`;
+                    }
+                    return `P-${invoice.roomId}`;
                 }
 
                 return 'N/A';
@@ -181,7 +216,7 @@ const InvoiceIndex = () => {
                 </div>
             ),
         },
-    ], [navigate, students, currentPage, filters]); // Thêm dependencies
+    ], [navigate, students, rooms, currentPage, filters]); // Thêm rooms vào dependencies
 
     // Options cho Select sinh viên
     const studentOptions = [
@@ -199,14 +234,22 @@ const InvoiceIndex = () => {
 
             {/* Bộ lọc */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
-                <Select
-                    label="Sinh viên"
-                    id="studentId"
-                    name="studentId"
-                    value={filters.studentId}
+                <Input
+                    label="Số hợp đồng"
+                    id="search"
+                    name="search"
+                    value={filters.search}
                     onChange={handleFilterChange}
-                    options={studentOptions}
-                // Có thể thêm chức năng search vào Select nếu danh sách quá dài
+                    placeholder="Nhập số hợp đồng..."
+                />
+                <Input
+                    label="Mã SV/Phòng"
+                    id="identifier"
+                    name="identifier"
+                    value={filters.identifier}
+                    onChange={handleFilterChange}
+                    placeholder="Nhập mã SV hoặc phòng (VD: B3-105)"
+                    helpText="Tìm theo mã sinh viên hoặc phòng"
                 />
                 <Select
                     label="Trạng thái"
@@ -216,7 +259,6 @@ const InvoiceIndex = () => {
                     onChange={handleFilterChange}
                     options={invoiceStatusOptions}
                 />
-                {/* Thêm Input search nếu cần */}
             </div>
 
             {/* Bảng dữ liệu */}
@@ -232,12 +274,12 @@ const InvoiceIndex = () => {
                 <PaginationTable
                     columns={columns}
                     data={invoices}
-                    currentPage={meta.currentPage}
+                    currentPage={currentPage}
                     totalPages={meta.totalPages}
                     onPageChange={handlePageChange}
                     totalRecords={meta.total}
                     recordsPerPage={meta.limit}
-                    showingText={`Hiển thị hóa đơn ${(meta.currentPage - 1) * meta.limit + 1} - ${Math.min(meta.currentPage * meta.limit, meta.total)}`}
+                    showingText={`Hiển thị hóa đơn ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
                     recordsText="hóa đơn"
                     pageText="Trang"
                 />

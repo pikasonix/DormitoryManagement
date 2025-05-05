@@ -100,7 +100,16 @@ const VehicleIndex = () => {
         setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
         setCurrentPage(1);
     };
-    const handlePageChange = (page) => setCurrentPage(page);
+
+    const handlePageChange = (page) => {
+        // Đảm bảo trang mới hợp lệ
+        if (page > 0 && page <= meta.totalPages) {
+            setCurrentPage(page);
+            // Scroll lên đầu trang khi chuyển trang
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
     const handleDelete = async (id, licensePlate) => {
         if (window.confirm(`Bạn có chắc muốn xóa thông tin xe có biển số "${licensePlate || 'N/A'}" không?`)) {
             try {
@@ -168,12 +177,12 @@ const VehicleIndex = () => {
                 <PaginationTable
                     columns={columns}
                     data={vehicles}
-                    currentPage={meta.currentPage}
+                    currentPage={currentPage}
                     totalPages={meta.totalPages}
                     onPageChange={handlePageChange}
                     totalRecords={meta.total}
                     recordsPerPage={meta.limit}
-                    showingText={`Hiển thị xe ${(meta.currentPage - 1) * meta.limit + 1} - ${Math.min(meta.currentPage * meta.limit, meta.total)}`}
+                    showingText={`Hiển thị xe ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
                     recordsText="xe"
                     pageText="Trang"
                 />

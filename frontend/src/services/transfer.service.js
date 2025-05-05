@@ -39,9 +39,9 @@ const getAllTransferRequests = async (params = {}) => {
  */
 const getTransferRequestById = async (id) => {
     try {
-        const response = await apiClient.get(`/transfers/${id}`);
-        // API doc: { success: true, data: { transfer_request_object } }
-        if (response.data?.success && response.data?.data) {
+        const response = await apiClient.get(`/api/transfers/${id}`);
+        // Backend trả về: { status: 'success', data: transfer_request_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || `Không tìm thấy yêu cầu chuyển phòng với ID ${id}.`);
@@ -61,9 +61,9 @@ const getTransferRequestById = async (id) => {
 const createTransferRequest = async (requestData) => {
     try {
         // Cần làm rõ backend có tự lấy studentId/currentRoomId không
-        const response = await apiClient.post('/transfers', requestData);
-        // API doc: { success: true, data: { new_transfer_request_object } }
-        if (response.data?.success && response.data?.data) {
+        const response = await apiClient.post('/api/transfers', requestData);
+        // Backend trả về: { status: 'success', data: new_transfer_request_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Gửi yêu cầu chuyển phòng thất bại.');
@@ -85,9 +85,9 @@ const createTransferRequest = async (requestData) => {
  */
 const updateTransferRequest = async (id, updateData) => {
     try {
-        const response = await apiClient.put(`/transfers/${id}`, updateData);
-        // API doc: { success: true, data: { updated_transfer_request_object } }
-        if (response.data?.success && response.data?.data) {
+        const response = await apiClient.put(`/api/transfers/${id}`, updateData);
+        // Backend trả về: { status: 'success', data: updated_transfer_request_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Cập nhật yêu cầu chuyển phòng thất bại.');
@@ -108,9 +108,9 @@ const updateTransferRequest = async (id, updateData) => {
  */
 const deleteTransferRequest = async (id) => {
     try {
-        const response = await apiClient.delete(`/transfers/${id}`);
-        // API doc: { success: true, message: "..." }
-        if (response.data?.success) {
+        const response = await apiClient.delete(`/api/transfers/${id}`);
+        // Backend trả về: { status: 'success', message: "..." }
+        if (response.data?.status === 'success') {
             return response.data;
         } else {
             throw new Error(response.data?.message || 'Xóa yêu cầu chuyển phòng thất bại.');

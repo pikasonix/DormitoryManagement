@@ -13,7 +13,10 @@ export class InvoiceController {
 
     async getAllInvoices(req: Request, res: Response, next: NextFunction) {
         try {
-            const { studentProfileId, roomId, status, month, year, page, limit } = req.query;
+            const {
+                studentProfileId, roomId, status, month, year, page, limit,
+                invoiceNumber, identifier // Thêm tham số tìm kiếm mới
+            } = req.query;
 
             const options: Prisma.InvoiceFindManyArgs = { where: {} };
 
@@ -23,6 +26,50 @@ export class InvoiceController {
             if (status) options.where!.status = status as InvoiceStatus; // Cần validate enum
             if (month) options.where!.billingMonth = parseInt(month as string);
             if (year) options.where!.billingYear = parseInt(year as string);
+
+            // Xử lý tìm kiếm theo số hợp đồng
+            if (invoiceNumber) {
+                const invoiceId = parseInt(invoiceNumber as string);
+                if (!isNaN(invoiceId)) {
+                    options.where!.id = invoiceId;
+                }
+            }
+
+            // Xử lý tìm kiếm theo mã SV/phòng
+            if (identifier) {
+                const searchTerm = (identifier as string).trim();
+
+                // Tìm studentProfile có studentId chứa searchTerm
+                const matchingStudents = await prisma.studentProfile.findMany({
+                    where: {
+                        studentId: {
+                            contains: searchTerm
+                        }
+                    },
+                    select: { id: true }
+                });
+
+                // Tìm phòng có số phòng chứa searchTerm
+                const matchingRooms = await prisma.room.findMany({
+                    where: {
+                        OR: [
+                            { number: { contains: searchTerm } },
+                            { building: { name: { contains: searchTerm } } }
+                        ]
+                    },
+                    select: { id: true }
+                });
+
+                if (matchingStudents.length > 0 || matchingRooms.length > 0) {
+                    options.where!.OR = [
+                        ...matchingStudents.map(student => ({ studentProfileId: student.id })),
+                        ...matchingRooms.map(room => ({ roomId: room.id }))
+                    ];
+                } else {
+                    // Nếu không tìm thấy kết quả nào, trả về mảng rỗng
+                    options.where!.id = -1; // Không có ID hóa đơn nào là -1, đảm bảo không có kết quả trả về
+                }
+            }
 
             // Validate Enums nếu cần
             if (status && !Object.values(InvoiceStatus).includes(status as InvoiceStatus)) {
