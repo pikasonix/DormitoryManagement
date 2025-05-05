@@ -10,10 +10,19 @@ import { toast } from 'react-hot-toast';
  */
 const getAllTransferRequests = async (params = {}) => {
     try {
-        const response = await apiClient.get('/transfers', { params });
-        // API doc: { success: true, data: { transfers: [...], meta: {...} } }
-        if (response.data?.success) {
-            return response.data.data; // Trả về { transfers, meta }
+        const response = await apiClient.get('/api/transfers', { params });
+        // Backend trả về: { status: 'success', results: number, total: number, data: array }
+        if (response.data?.status === 'success') {
+            return {
+                transfers: response.data.data || [],
+                meta: {
+                    total: response.data.total || 0,
+                    count: response.data.results || 0,
+                    page: params.page || 1,
+                    limit: params.limit || 10,
+                    totalPages: Math.ceil((response.data.total || 0) / (params.limit || 10))
+                }
+            };
         } else {
             throw new Error(response.data?.message || 'Lấy danh sách yêu cầu chuyển phòng thất bại.');
         }

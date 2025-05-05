@@ -1,16 +1,25 @@
 import express from 'express';
-import { AuthController } from '../controllers/auth.controller';
+import { getPayments, getPaymentById, createPayment, updatePayment, deletePayment } from '../controllers/payment.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
 
 const router = express.Router();
 
-// POST /api/auth/login - Đăng nhập người dùng
-router.post('/login', AuthController.login);
+// Tất cả các routes đều cần authentication
+router.use(authMiddleware);
 
-// GET /api/auth/me - Lấy thông tin người dùng đang đăng nhập (từ token)
-router.get('/me', authMiddleware, AuthController.me);
+// GET /api/payments - Lấy danh sách thanh toán (có thể lọc)
+router.get('/', getPayments);
 
-// POST /api/auth/logout - Đăng xuất (chủ yếu để client xóa token)
-router.post('/logout', authMiddleware, AuthController.logout);
+// GET /api/payments/:id - Lấy chi tiết một thanh toán
+router.get('/:id', getPaymentById);
+
+// POST /api/payments - Tạo thanh toán mới
+router.post('/', createPayment);
+
+// PUT /api/payments/:id - Cập nhật thanh toán
+router.put('/:id', updatePayment);
+
+// DELETE /api/payments/:id - Xóa thanh toán
+router.delete('/:id', deletePayment);
 
 export default router;

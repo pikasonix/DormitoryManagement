@@ -10,10 +10,19 @@ import { toast } from 'react-hot-toast';
  */
 const getAllUtilityReadings = async (params = {}) => {
     try {
-        const response = await apiClient.get('/utilities', { params });
-        // API doc: { success: true, data: { utilities: [...], meta: {...} } }
-        if (response.data?.success) {
-            return response.data.data; // Trả về { utilities, meta }
+        const response = await apiClient.get('/api/utilities', { params });
+        // Backend trả về: { status: 'success', results: number, total: number, data: array }
+        if (response.data?.status === 'success') {
+            return {
+                utilities: response.data.data || [],
+                meta: {
+                    total: response.data.total || 0,
+                    count: response.data.results || 0,
+                    page: params.page || 1,
+                    limit: params.limit || 10,
+                    totalPages: Math.ceil((response.data.total || 0) / (params.limit || 10))
+                }
+            };
         } else {
             throw new Error(response.data?.message || 'Lấy danh sách ghi điện nước thất bại.');
         }
@@ -30,9 +39,9 @@ const getAllUtilityReadings = async (params = {}) => {
  */
 const getUtilityReadingById = async (id) => {
     try {
-        const response = await apiClient.get(`/utilities/${id}`);
-        // API doc: { success: true, data: { utility_reading_object } }
-        if (response.data?.success && response.data?.data) {
+        const response = await apiClient.get(`/api/utilities/${id}`);
+        // Backend trả về: { status: 'success', data: utility_reading_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || `Không tìm thấy bản ghi điện nước với ID ${id}.`);
@@ -61,9 +70,9 @@ const createUtilityReading = async (readingData) => {
             roomId: readingData.roomId ? parseInt(readingData.roomId) : null,
             dormitoryId: readingData.dormitoryId ? parseInt(readingData.dormitoryId) : null,
         };
-        const response = await apiClient.post('/utilities', payload);
-        // API doc: { success: true, data: { new_utility_reading_object } }
-        if (response.data?.success && response.data?.data) {
+        const response = await apiClient.post('/api/utilities', payload);
+        // Backend trả về: { status: 'success', data: new_utility_reading_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Ghi nhận chỉ số điện nước thất bại.');
@@ -93,9 +102,9 @@ const updateUtilityReading = async (id, updateData) => {
         // Xóa các key undefined khỏi payload
         Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
 
-        const response = await apiClient.put(`/utilities/${id}`, payload);
-        // API doc: { success: true, data: { updated_utility_reading_object } }
-        if (response.data?.success && response.data?.data) {
+        const response = await apiClient.put(`/api/utilities/${id}`, payload);
+        // Backend trả về: { status: 'success', data: updated_utility_reading_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Cập nhật bản ghi điện nước thất bại.');
@@ -116,9 +125,9 @@ const updateUtilityReading = async (id, updateData) => {
  */
 const deleteUtilityReading = async (id) => {
     try {
-        const response = await apiClient.delete(`/utilities/${id}`);
-        // API doc: { success: true, message: "..." }
-        if (response.data?.success) {
+        const response = await apiClient.delete(`/api/utilities/${id}`);
+        // Backend trả về: { status: 'success', message: "..." }
+        if (response.data?.status === 'success') {
             return response.data;
         } else {
             throw new Error(response.data?.message || 'Xóa bản ghi điện nước thất bại.');

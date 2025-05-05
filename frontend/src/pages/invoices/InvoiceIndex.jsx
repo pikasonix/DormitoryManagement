@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { invoiceService } from '../../services/invoice.service';
 import { studentService } from '../../services/student.service'; // Lấy ds sinh viên để lọc
-import { Button, Table, Select, Input, Pagination, Badge } from '../../components/shared';
+import { Button, Select, Input, Badge } from '../../components/shared';
+import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { EyeIcon, PencilSquareIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
@@ -133,13 +134,25 @@ const InvoiceIndex = () => {
     const columns = useMemo(() => [
         { Header: 'Số HĐ', accessor: 'invoiceNumber', Cell: ({ value }) => <span className='font-mono'>{value}</span> },
         {
-            Header: 'Sinh viên', accessor: 'studentId', Cell: ({ value }) => {
-                // Tìm tên sinh viên từ state `students` (cần tối ưu nếu danh sách lớn)
-                const student = students.find(s => s.id === value);
-                return student ? student.fullName : `ID: ${value}`;
+            Header: 'Sinh viên',
+            accessor: 'studentProfile',
+            Cell: ({ value, row }) => {
+                // Nếu có thông tin studentProfile
+                if (value && typeof value === 'object') {
+                    return value.fullName || `ID: ${value.id}`;
+                }
+
+                // Fallback trường hợp chỉ có studentProfileId
+                const studentProfileId = row.original.studentProfileId;
+                if (studentProfileId) {
+                    const student = students.find(s => s.id === studentProfileId);
+                    return student ? student.fullName : `ID: ${studentProfileId}`;
+                }
+
+                return 'N/A';
             }
         },
-        { Header: 'Tổng tiền', accessor: 'amount', Cell: ({ value }) => formatCurrency(value) },
+        { Header: 'Tổng tiền', accessor: 'totalAmount', Cell: ({ value }) => formatCurrency(value) },
         { Header: 'Ngày hết hạn', accessor: 'dueDate', Cell: ({ value }) => formatDate(value) },
         {
             Header: 'Trạng thái', accessor: 'status', Cell: ({ value }) => (
@@ -158,8 +171,6 @@ const InvoiceIndex = () => {
                     >
                         <EyeIcon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
                     </Button>
-                    {/* Nút sửa chỉ cho phép sửa status/dueDate? Cần trang sửa riêng hoặc modal */}
-                    {/* <Button variant="icon" onClick={() => navigate(`/invoices/${row.original.id}/edit`)} tooltip="Chỉnh sửa">...</Button> */}
                     <Button
                         variant="icon"
                         onClick={() => handleDelete(row.original.id, row.original.invoiceNumber)}
@@ -213,17 +224,23 @@ const InvoiceIndex = () => {
                 <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
             ) : error ? (
                 <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
+            ) : invoices.length === 0 ? (
+                <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
+                    Không tìm thấy hóa đơn nào.
+                </div>
             ) : (
-                <>
-                    <Table columns={columns} data={invoices} />
-                    {meta.totalPages > 1 && (
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={meta.totalPages}
-                            onPageChange={handlePageChange}
-                        />
-                    )}
-                </>
+                <PaginationTable
+                    columns={columns}
+                    data={invoices}
+                    currentPage={meta.currentPage}
+                    totalPages={meta.totalPages}
+                    onPageChange={handlePageChange}
+                    totalRecords={meta.total}
+                    recordsPerPage={meta.limit}
+                    showingText={`Hiển thị hóa đơn ${(meta.currentPage - 1) * meta.limit + 1} - ${Math.min(meta.currentPage * meta.limit, meta.total)}`}
+                    recordsText="hóa đơn"
+                    pageText="Trang"
+                />
             )}
         </div>
     );

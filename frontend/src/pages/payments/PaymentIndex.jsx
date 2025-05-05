@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { paymentService } from '../../services/payment.service';
 import { studentService } from '../../services/student.service'; // Lấy tên SV
 import { invoiceService } from '../../services/invoice.service'; // Lấy số HĐ?
-import { Button, Table, Select, Input, Pagination, Badge } from '../../components/shared';
+import { Button, Select, Input, Badge } from '../../components/shared';
+import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { EyeIcon, PencilSquareIcon, TrashIcon, CreditCardIcon, BanknotesIcon, QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
@@ -187,17 +188,23 @@ const PaymentIndex = () => {
         <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
       ) : error ? (
         <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
+      ) : payments.length === 0 ? (
+        <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
+          Không tìm thấy giao dịch thanh toán nào.
+        </div>
       ) : (
-        <>
-          <Table columns={columns} data={payments} />
-          {meta.totalPages > 1 && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={meta.totalPages}
-              onPageChange={handlePageChange}
-            />
-          )}
-        </>
+        <PaginationTable
+          columns={columns}
+          data={payments}
+          currentPage={meta.currentPage}
+          totalPages={meta.totalPages}
+          onPageChange={handlePageChange}
+          totalRecords={meta.total}
+          recordsPerPage={meta.limit}
+          showingText={`Hiển thị giao dịch ${(meta.currentPage - 1) * meta.limit + 1} - ${Math.min(meta.currentPage * meta.limit, meta.total)}`}
+          recordsText="giao dịch"
+          pageText="Trang"
+        />
       )}
     </div>
   );

@@ -19,8 +19,13 @@ const PaginationTable = ({
     const pageNumbers = [];
     const maxPagesToShow = 5; // Maximum number of page numbers to show
 
-    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    // Đảm bảo totalPages là số hợp lệ
+    const validTotalPages = Math.max(1, totalPages || 1);
+    // Đảm bảo currentPage là số hợp lệ
+    const validCurrentPage = Math.min(Math.max(1, currentPage || 1), validTotalPages);
+
+    let startPage = Math.max(1, validCurrentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(validTotalPages, startPage + maxPagesToShow - 1);
 
     // Adjust startPage if we're near the end
     if (endPage - startPage + 1 < maxPagesToShow && startPage > 1) {
@@ -134,7 +139,7 @@ const PaginationTable = ({
                 </button>
 
                 {/* First page */}
-                {getPageNumbers()[0] > 1 && (
+                {getPageNumbers().length > 0 && getPageNumbers()[0] > 1 && (
                   <>
                     <button
                       onClick={() => onPageChange(1)}
@@ -146,7 +151,7 @@ const PaginationTable = ({
                       1
                     </button>
 
-                    {getPageNumbers()[0] > 2 && (
+                    {getPageNumbers().length > 0 && getPageNumbers()[0] > 2 && (
                       <span className="relative inline-flex items-center px-3 py-1 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">
                         ...
                       </span>
@@ -171,7 +176,7 @@ const PaginationTable = ({
                 {/* Last page */}
                 {getPageNumbers().length > 0 && getPageNumbers()[getPageNumbers().length - 1] < totalPages && (
                   <>
-                    {getPageNumbers()[getPageNumbers().length - 1] < totalPages - 1 && (
+                    {getPageNumbers().length > 0 && getPageNumbers()[getPageNumbers().length - 1] < totalPages - 1 && (
                       <span className="relative inline-flex items-center px-3 py-1 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">
                         ...
                       </span>

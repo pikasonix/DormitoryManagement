@@ -10,10 +10,27 @@ import { toast } from 'react-hot-toast';
  */
 const getAllInvoices = async (params = {}) => {
     try {
-        const response = await apiClient.get('/invoices', { params });
-        // API doc: { success: true, data: { invoices: [...], meta: {...} } }
-        if (response.data?.success) {
-            return response.data.data; // Trả về { invoices, meta }
+        // Xử lý tham số: chuyển studentId thành studentProfileId nếu cần
+        const apiParams = { ...params };
+        if (apiParams.studentId) {
+            apiParams.studentProfileId = apiParams.studentId;
+            delete apiParams.studentId;
+        }
+
+        const response = await apiClient.get('/api/invoices', { params: apiParams });
+
+        // Backend trả về: { status: 'success', results: number, total: number, data: array }
+        if (response.data?.status === 'success') {
+            return {
+                invoices: response.data.data || [],
+                meta: {
+                    total: response.data.total || 0,
+                    count: response.data.results || 0,
+                    page: params.page || 1,
+                    limit: params.limit || 10,
+                    totalPages: Math.ceil((response.data.total || 0) / (params.limit || 10))
+                }
+            };
         } else {
             throw new Error(response.data?.message || 'Lấy danh sách hóa đơn thất bại.');
         }
@@ -30,9 +47,9 @@ const getAllInvoices = async (params = {}) => {
  */
 const getInvoiceById = async (id) => {
     try {
-        const response = await apiClient.get(`/invoices/${id}`);
-        // API doc: { success: true, data: { invoice_object } }
-        if (response.data?.success && response.data?.data) {
+        const response = await apiClient.get(`/api/invoices/${id}`);
+        // Backend trả về: { status: 'success', data: invoice_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || `Không tìm thấy hóa đơn với ID ${id}.`);
@@ -45,23 +62,29 @@ const getInvoiceById = async (id) => {
 
 /**
  * Tạo một hóa đơn mới.
- * @param {object} invoiceData - Dữ liệu hóa đơn mới { studentId, invoiceNumber?, amount, dueDate, items: [{description, amount}], status? }.
+ * @param {object} invoiceData - Dữ liệu hóa đơn mới { studentProfileId, roomId, billingMonth, billingYear, dueDate, items: [{type, description, amount}], status? }.
  * @returns {Promise<object>} Dữ liệu hóa đơn vừa tạo.
  */
 const createInvoice = async (invoiceData) => {
     try {
-        // Đảm bảo amount và item.amount là số nếu cần
-        const payload = {
-            ...invoiceData,
-            amount: parseFloat(invoiceData.amount) || 0,
-            items: (invoiceData.items || []).map(item => ({
+        // Chuyển đổi studentId thành studentProfileId nếu cần
+        const payload = { ...invoiceData };
+        if (payload.studentId && !payload.studentProfileId) {
+            payload.studentProfileId = payload.studentId;
+            delete payload.studentId;
+        }
+
+        // Đảm bảo amount trong items là số
+        if (payload.items && Array.isArray(payload.items)) {
+            payload.items = payload.items.map(item => ({
                 ...item,
                 amount: parseFloat(item.amount) || 0,
-            })),
-        };
-        const response = await apiClient.post('/invoices', payload);
-        // API doc: { success: true, data: { new_invoice_object } }
-        if (response.data?.success && response.data?.data) {
+            }));
+        }
+
+        const response = await apiClient.post('/api/invoices', payload);
+        // Backend trả về: { status: 'success', data: new_invoice_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Tạo hóa đơn mới thất bại.');
@@ -78,14 +101,14 @@ const createInvoice = async (invoiceData) => {
 /**
  * Cập nhật thông tin một hóa đơn (thường là trạng thái hoặc hạn thanh toán).
  * @param {string|number} id - ID của hóa đơn cần cập nhật.
- * @param {object} invoiceData - Dữ liệu cần cập nhật { status?, dueDate? }.
+ * @param {object} invoiceData - Dữ liệu cần cập nhật { status?, dueDate?, items? }.
  * @returns {Promise<object>} Dữ liệu hóa đơn sau khi cập nhật.
  */
 const updateInvoice = async (id, invoiceData) => {
     try {
-        const response = await apiClient.put(`/invoices/${id}`, invoiceData);
-        // API doc: { success: true, data: { updated_invoice_object } }
-        if (response.data?.success && response.data?.data) {
+        const response = await apiClient.put(`/api/invoices/${id}`, invoiceData);
+        // Backend trả về: { status: 'success', data: updated_invoice_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Cập nhật hóa đơn thất bại.');
@@ -106,9 +129,9 @@ const updateInvoice = async (id, invoiceData) => {
  */
 const deleteInvoice = async (id) => {
     try {
-        const response = await apiClient.delete(`/invoices/${id}`);
-        // API doc: { success: true, message: "..." }
-        if (response.data?.success) {
+        const response = await apiClient.delete(`/api/invoices/${id}`);
+        // Backend trả về: { status: 'success', message: "..." }
+        if (response.data?.status === 'success') {
             return response.data;
         } else {
             throw new Error(response.data?.message || 'Xóa hóa đơn thất bại.');

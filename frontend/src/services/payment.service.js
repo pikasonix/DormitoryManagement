@@ -10,10 +10,19 @@ import { toast } from 'react-hot-toast';
  */
 const getAllPayments = async (params = {}) => {
   try {
-    const response = await apiClient.get('/payments', { params });
-    // API doc: { success: true, data: { payments: [...], meta: {...} } }
-    if (response.data?.success) {
-      return response.data.data; // Trả về { payments, meta }
+    const response = await apiClient.get('/api/payments', { params });
+    // Backend trả về: { status: 'success', results: number, total: number, data: array }
+    if (response.data?.status === 'success') {
+      return {
+        payments: response.data.data || [],
+        meta: {
+          total: response.data.total || 0,
+          count: response.data.results || 0,
+          page: params.page || 1,
+          limit: params.limit || 10,
+          totalPages: Math.ceil((response.data.total || 0) / (params.limit || 10))
+        }
+      };
     } else {
       throw new Error(response.data?.message || 'Lấy lịch sử thanh toán thất bại.');
     }
@@ -30,9 +39,9 @@ const getAllPayments = async (params = {}) => {
  */
 const getPaymentById = async (id) => {
   try {
-    const response = await apiClient.get(`/payments/${id}`);
-    // API doc: { success: true, data: { payment_object } }
-    if (response.data?.success && response.data?.data) {
+    const response = await apiClient.get(`/api/payments/${id}`);
+    // Backend trả về: { status: 'success', data: payment_object }
+    if (response.data?.status === 'success') {
       return response.data.data;
     } else {
       throw new Error(response.data?.message || `Không tìm thấy giao dịch với ID ${id}.`);
@@ -55,9 +64,9 @@ const createPayment = async (paymentData) => {
       ...paymentData,
       amount: parseFloat(paymentData.amount) || 0,
     };
-    const response = await apiClient.post('/payments', payload);
-    // API doc: { success: true, data: { new_payment_object } }
-    if (response.data?.success && response.data?.data) {
+    const response = await apiClient.post('/api/payments', payload);
+    // Backend trả về: { status: 'success', data: new_payment_object }
+    if (response.data?.status === 'success') {
       return response.data.data;
     } else {
       throw new Error(response.data?.message || 'Tạo giao dịch thanh toán thất bại.');
@@ -79,9 +88,9 @@ const createPayment = async (paymentData) => {
  */
 const updatePayment = async (id, updateData) => {
   try {
-    const response = await apiClient.put(`/payments/${id}`, updateData);
-    // API doc: { success: true, data: { updated_payment_object } }
-    if (response.data?.success && response.data?.data) {
+    const response = await apiClient.put(`/api/payments/${id}`, updateData);
+    // Backend trả về: { status: 'success', data: updated_payment_object }
+    if (response.data?.status === 'success') {
       return response.data.data;
     } else {
       throw new Error(response.data?.message || 'Cập nhật giao dịch thanh toán thất bại.');
@@ -102,9 +111,9 @@ const updatePayment = async (id, updateData) => {
  */
 const deletePayment = async (id) => {
   try {
-    const response = await apiClient.delete(`/payments/${id}`);
-    // API doc: { success: true, message: "..." }
-    if (response.data?.success) {
+    const response = await apiClient.delete(`/api/payments/${id}`);
+    // Backend trả về: { status: 'success', message: "..." }
+    if (response.data?.status === 'success') {
       return response.data;
     } else {
       throw new Error(response.data?.message || 'Xóa giao dịch thanh toán thất bại.');

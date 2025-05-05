@@ -9,6 +9,22 @@ const utilityController = new UtilityController();
 router.use(authMiddleware);
 router.use(checkRole([Role.ADMIN, Role.STAFF]));
 
+// GET /api/utilities - Lấy danh sách các lần ghi chỉ số (endpoint mới cho frontend)
+router.get('/', utilityController.getAllReadings);
+
+// GET /api/utilities/:id - Lấy chi tiết một lần ghi chỉ số (endpoint mới cho frontend)
+router.get('/:id', utilityController.getReadingById);
+
+// POST /api/utilities - Tạo bản ghi chỉ số mới (endpoint mới cho frontend)
+router.post('/', utilityController.createReading);
+
+// PUT /api/utilities/:id - Cập nhật bản ghi chỉ số (endpoint mới cho frontend)
+router.put('/:id', utilityController.updateReading);
+
+// DELETE /api/utilities/:id - Xóa bản ghi chỉ số (endpoint mới cho frontend)
+router.delete('/:id', utilityController.deleteReading);
+
+// Giữ lại các routes cũ với tiền tố /readings để đảm bảo tương thích ngược
 // GET /api/utilities/readings - Lấy danh sách các lần ghi chỉ số
 router.get('/readings', utilityController.getAllReadings);
 

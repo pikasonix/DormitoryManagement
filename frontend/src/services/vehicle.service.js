@@ -10,10 +10,19 @@ import { toast } from 'react-hot-toast';
  */
 const getAllVehicles = async (params = {}) => {
     try {
-        const response = await apiClient.get('/vehicles', { params });
-        // API doc: { success: true, data: { vehicles: [...], meta: {...} } }
-        if (response.data?.success) {
-            return response.data.data; // Trả về { vehicles, meta }
+        const response = await apiClient.get('/api/vehicles', { params });
+        // Backend trả về: { status: 'success', results: number, total: number, data: array }
+        if (response.data?.status === 'success') {
+            return {
+                vehicles: response.data.data || [],
+                meta: {
+                    total: response.data.total || 0,
+                    count: response.data.results || 0,
+                    page: params.page || 1,
+                    limit: params.limit || 10,
+                    totalPages: Math.ceil((response.data.total || 0) / (params.limit || 10))
+                }
+            };
         } else {
             throw new Error(response.data?.message || 'Lấy danh sách xe thất bại.');
         }
@@ -30,9 +39,9 @@ const getAllVehicles = async (params = {}) => {
  */
 const getVehicleById = async (id) => {
     try {
-        const response = await apiClient.get(`/vehicles/${id}`);
-        // API doc: { success: true, data: { vehicle_object } }
-        if (response.data?.success && response.data?.data) {
+        const response = await apiClient.get(`/api/vehicles/${id}`);
+        // Backend trả về: { status: 'success', data: vehicle_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || `Không tìm thấy xe với ID ${id}.`);
@@ -52,9 +61,9 @@ const getVehicleById = async (id) => {
 const createVehicle = async (vehicleData) => {
     try {
         // Làm rõ backend có tự lấy ownerId không. Nếu không, frontend cần gửi.
-        const response = await apiClient.post('/vehicles', vehicleData);
-        // API doc: { success: true, data: { new_vehicle_object } }
-        if (response.data?.success && response.data?.data) {
+        const response = await apiClient.post('/api/vehicles', vehicleData);
+        // Backend trả về: { status: 'success', data: new_vehicle_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Đăng ký xe mới thất bại.');
@@ -81,9 +90,9 @@ const updateVehicle = async (id, vehicleData) => {
         delete payload.licensePlate;
         delete payload.ownerId;
 
-        const response = await apiClient.put(`/vehicles/${id}`, payload);
-        // API doc: { success: true, data: { updated_vehicle_object } }
-        if (response.data?.success && response.data?.data) {
+        const response = await apiClient.put(`/api/vehicles/${id}`, payload);
+        // Backend trả về: { status: 'success', data: updated_vehicle_object }
+        if (response.data?.status === 'success') {
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Cập nhật thông tin xe thất bại.');
@@ -104,9 +113,9 @@ const updateVehicle = async (id, vehicleData) => {
  */
 const deleteVehicle = async (id) => {
     try {
-        const response = await apiClient.delete(`/vehicles/${id}`);
-        // API doc: { success: true, message: "..." }
-        if (response.data?.success) {
+        const response = await apiClient.delete(`/api/vehicles/${id}`);
+        // Backend trả về: { status: 'success', message: "..." }
+        if (response.data?.status === 'success') {
             return response.data;
         } else {
             throw new Error(response.data?.message || 'Xóa thông tin xe thất bại.');
