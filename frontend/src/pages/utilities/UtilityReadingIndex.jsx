@@ -1,230 +1,419 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { utilityService } from '../../services/utility.service';
-import { studentService } from '../../services/student.service'; // Lấy tên SV
-import { roomService } from '../../services/room.service'; // Lấy phòng/tòa nhà
-import { buildingService } from '../../services/building.service'; // Lấy tòa nhà
-import { Button, Select, Input, Badge, DatePicker } from '../../components/shared'; // Thêm DatePicker nếu lọc theo tháng
-import PaginationTable from '../../components/shared/PaginationTable';
+import { roomService } from '../../services/room.service';
+import { buildingService } from '../../services/building.service';
+import { Button, Select, Input, Table, Pagination, Badge } from '../../components/shared';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import { PlusIcon, PencilSquareIcon, TrashIcon, BoltIcon, CloudIcon } from '@heroicons/react/24/outline'; // Thêm icon tiện ích
-import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns';
-import { vi } from 'date-fns/locale';
+import { PlusIcon, PencilSquareIcon, TrashIcon, BoltIcon } from '@heroicons/react/24/outline';
+import WaterDropIcon from '../../components/icons/WaterDropIcon';
+import { formatDate, formatMonthYear } from '../../utils/dateUtils';
 import { useDebounce } from '../../hooks/useDebounce';
 
-// Format tiền tệ
-const formatCurrency = (amount) => { /* ... */ }
-// Format tháng YYYY-MM (cho billingPeriod)
-const formatBillingPeriod = (period) => {
-    if (!period || typeof period !== 'string') return '-';
-    try {
-        const [year, month] = period.split('-');
-        if (year && month) {
-            return `Thg ${parseInt(month)}/${year}`;
-        }
-    } catch (e) { /* ignore */ }
-    return period; // Trả về gốc nếu không parse được
-}
+// Các hàm tiện ích bổ sung
+const getUtilityTypeIcon = (type) => {
+    switch (type) {
+        case 'ELECTRICITY':
+            return <BoltIcon className="h-5 w-5 mr-2 text-yellow-500" />;
+        case 'WATER':
+            return <WaterDropIcon className="h-5 w-5 mr-2 text-blue-500" />;
+        default:
+            return null;
+    }
+};
 
-// Options loại tiện ích
+// Define the utility type options
 const utilityTypeOptions = [
     { value: '', label: 'Tất cả loại' },
-    { value: 'electric', label: 'Điện' },
-    { value: 'water', label: 'Nước' },
+    { value: 'ELECTRICITY', label: 'Điện' },
+    { value: 'WATER', label: 'Nước' }
 ];
-// Options trạng thái (cần khớp backend)
-const utilityStatusOptions = [
-    { value: '', label: 'Tất cả trạng thái' },
-    { value: 'pending', label: 'Chờ thanh toán' }, // Giả sử có status này
-    { value: 'paid', label: 'Đã thanh toán' },
-    { value: 'billed', label: 'Đã tạo hóa đơn' }, // Ví dụ
-];
-// Màu badge
-const getStatusBadgeColor = (status) => {
-    switch (status?.toLowerCase()) {
-        case 'paid': return 'green';
-        case 'pending': return 'yellow';
-        case 'billed': return 'blue';
-        default: return 'gray';
+
+const getUtilityTypeText = (type) => {
+    switch (type) {
+        case 'ELECTRICITY':
+            return 'Tiền điện';
+        case 'WATER':
+            return 'Tiền nước';
+        default:
+            return 'Khác';
+    }
+};
+
+const getUtilityUnit = (type) => {
+    switch (type) {
+        case 'ELECTRICITY':
+            return 'kWh';
+        case 'WATER':
+            return 'm³';
+        default:
+            return '';
+    }
+};
+
+// Format date time
+const formatDateTime = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        return `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+    } catch (error) {
+        console.error("Lỗi format date:", error);
+        return dateString || 'N/A';
     }
 }
 
 const UtilityReadingIndex = () => {
+    const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
     const [readings, setReadings] = useState([]);
-    const [students, setStudents] = useState({}); // Cache SV
-    const [rooms, setRooms] = useState({}); // Cache phòng
-    const [buildings, setBuildings] = useState([]); // DS tòa nhà để lọc
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [meta, setMeta] = useState({ currentPage: 1, totalPages: 1, limit: 10, total: 0 });
     const [currentPage, setCurrentPage] = useState(1);
+    const [buildings, setBuildings] = useState([]);
+    const [rooms, setRooms] = useState([]);
+    const [filteredRooms, setFilteredRooms] = useState([]);
+    const [error, setError] = useState(null);
+
+    // Filters
     const [filters, setFilters] = useState({
-        type: '',
-        status: '',
-        dormitoryId: '',
+        search: '',
+        buildingId: '',
         roomId: '',
-        studentId: '',
-        billingPeriod: '', // YYYY-MM
+        type: '',
+        fromDate: '',
+        toDate: '',
     });
-    const navigate = useNavigate();
 
-    // Fetch data
-    const fetchReadings = useCallback(async (page = 1, currentFilters) => {
-        setIsLoading(true);
-        setError(null);
+    const debouncedSearch = useDebounce(filters.search, 500);
+
+    // Load buildings
+    const loadBuildings = useCallback(async () => {
         try {
-            const params = { page, limit: meta.limit };
-            Object.keys(currentFilters).forEach(key => {
-                if (currentFilters[key]) params[key] = currentFilters[key];
-            });
-            const data = await utilityService.getAllUtilityReadings(params);
-            const readingList = data.utilities || [];
-            setReadings(readingList);
-            setMeta(prev => ({ ...prev, ...data.meta }));
-            setCurrentPage(data.meta?.page || 1);
-
-            // Fetch thông tin liên quan (tối ưu hơn nếu backend trả về sẵn)
-            const studentIds = [...new Set(readingList.map(r => r.studentId).filter(id => id && !students[id]))];
-            const roomIds = [...new Set(readingList.map(r => r.roomId).filter(id => id && !rooms[id]))];
-
-            if (studentIds.length > 0) { /* ... fetch students ... */ }
-            if (roomIds.length > 0) { /* ... fetch rooms ... */ }
-
-        } catch (err) {
-            setError('Không thể tải danh sách ghi điện nước.');
-        } finally {
-            setIsLoading(false);
+            const response = await buildingService.getAllBuildings();
+            setBuildings([
+                { id: '', name: 'Tất cả tòa nhà' },
+                ...(Array.isArray(response.data) ? response.data : [])
+            ]);
+        } catch (error) {
+            console.error('Failed to load buildings:', error);
+            toast.error('Không thể tải danh sách tòa nhà');
         }
-    }, [meta.limit, students, rooms]);
-
-    // Fetch buildings cho filter
-    useEffect(() => {
-        const fetchFilterData = async () => {
-            try {
-                const buildingData = await buildingService.getAllBuildings({ limit: 1000 });
-                setBuildings(buildingData.dormitories || []);
-                // Fetch thêm students/rooms nếu cần cho filter Select
-            } catch (err) { console.error("Lỗi tải dữ liệu filter:", err); }
-        }
-        fetchFilterData();
     }, []);
 
+    // Load rooms
+    const loadRooms = useCallback(async () => {
+        try {
+            const response = await roomService.getAllRooms();
+            // Get the rooms array from response.rooms or fallback to empty array
+            const roomsData = response.rooms || [];
+            setRooms([
+                { id: '', number: 'Tất cả phòng' },
+                ...roomsData
+            ]);
+
+            // Filter rooms by building if selected
+            if (filters.buildingId) {
+                setFilteredRooms([
+                    { id: '', number: 'Tất cả phòng' },
+                    ...roomsData.filter(room => room.buildingId === filters.buildingId)
+                ]);
+            } else {
+                setFilteredRooms([
+                    { id: '', number: 'Tất cả phòng' },
+                    ...roomsData
+                ]);
+            }
+        } catch (error) {
+            console.error('Failed to load rooms:', error);
+            toast.error('Không thể tải danh sách phòng');
+        }
+    }, [filters.buildingId]);
+
+    // Load readings
+    const loadReadings = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            // Prepare query params
+            const params = {
+                page: currentPage,
+                limit: 10,
+                search: debouncedSearch,
+                buildingId: filters.buildingId,
+                roomId: filters.roomId,
+                type: filters.type,
+                fromDate: filters.fromDate,
+                toDate: filters.toDate,
+            };
+
+            const response = await utilityService.getAllUtilityReadings(params);
+
+            // Fix: Access the correct data structure from the response
+            setReadings(response.utilities || []);
+            setMeta({
+                currentPage: response.meta?.page || 1,
+                totalPages: response.meta?.totalPages || 1,
+                limit: response.meta?.limit || 10,
+                total: response.meta?.total || 0
+            });
+
+            // Debug: Log the response to see what data structure is returned
+            console.log('Utility readings response:', response);
+
+            if (response.utilities && response.utilities.length === 0) {
+                // If no data is returned, show a message to the user
+                toast.info('Không tìm thấy dữ liệu tiện ích phù hợp với bộ lọc');
+            }
+        } catch (error) {
+            console.error('Failed to load readings:', error);
+            toast.error('Không thể tải danh sách chỉ số tiện ích');
+            setError('Không thể tải danh sách chỉ số tiện ích');
+            // Reset readings to empty array on error
+            setReadings([]);
+            setMeta({ currentPage: 1, totalPages: 1, limit: 10, total: 0 });
+        } finally {
+            setLoading(false);
+        }
+    }, [currentPage, debouncedSearch, filters]);
 
     useEffect(() => {
-        fetchReadings(currentPage, filters);
-    }, [fetchReadings, currentPage, filters]);
+        loadBuildings();
+        loadRooms();
+    }, [loadBuildings, loadRooms]);
 
+    useEffect(() => {
+        loadReadings();
+    }, [loadReadings]);
 
-    // Handlers
-    const handleFilterChange = (e) => {
-        setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
-        setCurrentPage(1);
+    // Handle filter changes
+    const handleFilterChange = (field, value) => {
+        // Reset room selection when building changes
+        if (field === 'buildingId') {
+            setFilters({
+                ...filters,
+                [field]: value,
+                roomId: ''
+            });
+        } else {
+            setFilters({
+                ...filters,
+                [field]: value
+            });
+        }
+
+        // Reset to first page when filters change
+        if (currentPage !== 1) {
+            setCurrentPage(1);
+        }
     };
-    const handleBillingPeriodChange = (date) => {
-        // Format date thành YYYY-MM
-        const period = date ? format(date, 'yyyy-MM') : '';
-        setFilters(prev => ({ ...prev, billingPeriod: period }));
-        setCurrentPage(1);
+
+    // Clean up from the existing component
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        handleFilterChange(name, value);
+    }
+
+    // Handle date range selection
+    const handleDateChange = (field, date) => {
+        if (date) {
+            const formattedDate = new Date(date).toISOString().split('T')[0];
+            handleFilterChange(field, formattedDate);
+        } else {
+            handleFilterChange(field, '');
+        }
     };
 
-    const handleDelete = async (id, period, type) => {
-        if (window.confirm(`Bạn có chắc muốn xóa bản ghi ${type === 'electric' ? 'điện' : 'nước'} kỳ ${formatBillingPeriod(period)} không?`)) {
+    // Filter rooms when building selection changes
+    useEffect(() => {
+        if (filters.buildingId) {
+            setFilteredRooms([
+                { id: '', number: 'Tất cả phòng' },
+                ...rooms.filter(room => room.id && room.buildingId === filters.buildingId)
+            ]);
+        } else {
+            setFilteredRooms([
+                { id: '', number: 'Tất cả phòng' },
+                ...rooms.filter(room => room.id)
+            ]);
+        }
+    }, [filters.buildingId, rooms]);
+
+    // Delete reading
+    const handleDelete = async (id) => {
+        if (window.confirm('Bạn có chắc chắn muốn xóa chỉ số này không?')) {
             try {
-                await utilityService.deleteUtilityReading(id);
-                toast.success(`Đã xóa bản ghi thành công!`);
-                fetchReadings(currentPage, filters);
-            } catch (err) {
-                toast.error(err?.message || `Xóa bản ghi thất bại.`);
+                await utilityService.deleteMeterReading(id);
+                toast.success('Xóa chỉ số thành công');
+                loadReadings();
+            } catch (error) {
+                console.error('Failed to delete reading:', error);
+                toast.error('Không thể xóa chỉ số');
             }
         }
     };
+
+    // Handle page change
     const handlePageChange = (page) => {
-        // Đảm bảo trang mới hợp lệ
-        if (page > 0 && page <= meta.totalPages) {
-            setCurrentPage(page);
-            // Scroll lên đầu trang khi chuyển trang
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
+        setCurrentPage(page);
     };
 
-    // --- Cấu hình bảng ---
+    // Table columns
     const columns = useMemo(() => [
-        { Header: 'Kỳ', accessor: 'billingPeriod', Cell: ({ value }) => formatBillingPeriod(value) },
-        { Header: 'Loại', accessor: 'type', Cell: ({ value }) => value === 'electric' ? <BoltIcon className="h-5 w-5 text-yellow-500 inline-block mr-1" /> : <CloudIcon className="h-5 w-5 text-blue-500 inline-block mr-1" /> },
-        { Header: 'Phòng', accessor: 'roomId', Cell: ({ value }) => rooms[value] ? `${rooms[value].number} (${rooms[value].building?.name})` : `ID: ${value}` },
-        { Header: 'Sinh viên', accessor: 'studentId', Cell: ({ value }) => students[value]?.fullName || `ID: ${value}` },
-        { Header: 'Tiêu thụ', accessor: 'consumption', Cell: ({ value, row }) => `${value ?? '-'} ${row.original.type === 'electric' ? 'kWh' : 'm³'}` },
-        { Header: 'Thành tiền', accessor: 'amount', Cell: ({ value }) => formatCurrency(value) },
-        { Header: 'Trạng thái', accessor: 'status', Cell: ({ value }) => <Badge color={getStatusBadgeColor(value)}>{value?.toUpperCase() || 'N/A'}</Badge> },
         {
-            Header: 'Hành động',
-            accessor: 'actions',
+            Header: 'Kỳ',
+            accessor: 'billingMonth',
+            Cell: ({ row }) => (
+                <span>
+                    {`${row.original.billingMonth}/${row.original.billingYear}`}
+                </span>
+            )
+        },
+        {
+            Header: 'Loại',
+            accessor: 'type',
+            Cell: ({ value }) => (
+                <div className="flex items-center">
+                    {getUtilityTypeIcon(value)}
+                    <span>{getUtilityTypeText(value)}</span>
+                </div>
+            )
+        },
+        {
+            Header: 'Phòng',
+            accessor: 'room.number',
+            Cell: ({ row }) => (
+                <span className="font-medium">
+                    {row.original.room?.number ? `${row.original.room.number} (${row.original.room.building?.name || 'N/A'})` : '-'}
+                </span>
+            )
+        },
+        {
+            Header: 'Chỉ số',
+            accessor: 'indexValue',
+            Cell: ({ value, row }) => (
+                <span className="font-medium">
+                    {parseFloat(value).toLocaleString('vi-VN')} {getUtilityUnit(row.original.type)}
+                </span>
+            )
+        },
+        {
+            Header: 'Ngày lấy',
+            accessor: 'readingDate',
+            Cell: ({ value }) => formatDateTime(value)
+        },
+        {
+            Header: 'Thao tác',
+            id: 'actions',
             Cell: ({ row }) => (
                 <div className="flex space-x-2 justify-center">
-                    <Button variant="icon" onClick={() => navigate(`/utilities/${row.original.id}/edit`)} tooltip="Chỉnh sửa">
-                        <PencilSquareIcon className="h-5 w-5 text-yellow-600 hover:text-yellow-800" />
+                    <Button
+                        variant="icon"
+                        onClick={() => navigate(`/utilities/readings/edit/${row.original.id}`)}
+                        tooltip="Cập nhật"
+                    >
+                        <PencilSquareIcon className="h-5 w-5 text-indigo-600 hover:text-indigo-800" />
                     </Button>
-                    <Button variant="icon" onClick={() => handleDelete(row.original.id, row.original.billingPeriod, row.original.type)} tooltip="Xóa">
+                    <Button
+                        variant="icon"
+                        onClick={() => handleDelete(row.original.id)}
+                        tooltip="Xóa"
+                    >
                         <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
                     </Button>
                 </div>
-            ),
-        },
-    ], [navigate, students, rooms, currentPage, filters]);
-
-    // Options cho Selects
-    const buildingOptions = [{ value: '', label: 'Tất cả tòa nhà' }, ...buildings.map(b => ({ value: b.id.toString(), label: b.name }))];
-    // Cần fetch thêm rooms/students cho filter nếu muốn lọc theo phòng/SV cụ thể
+            )
+        }
+    ], [navigate]);
 
     return (
         <div className="space-y-4">
             <div className="flex flex-wrap justify-between items-center gap-4">
-                <h1 className="text-2xl font-semibold">Quản lý Ghi điện nước</h1>
-                <Button onClick={() => navigate('/utilities/new')} icon={PlusIcon}>
-                    Nhập chỉ số mới
+                <h1 className="text-2xl font-semibold">Quản lý chỉ số tiện ích</h1>
+                <Button variant="primary" onClick={() => navigate('/utilities/readings/create')}>
+                    <PlusIcon className="h-5 w-5 mr-1" />
+                    Thêm chỉ số mới
                 </Button>
             </div>
 
             {/* Bộ lọc */}
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
-                <Select label="Tòa nhà" name="dormitoryId" value={filters.dormitoryId} onChange={handleFilterChange} options={buildingOptions} />
-                {/* Select Phòng (cần load động theo tòa nhà) */}
-                <Select label="Loại" name="type" value={filters.type} onChange={handleFilterChange} options={utilityTypeOptions} />
-                <Select label="Trạng thái TT" name="status" value={filters.status} onChange={handleFilterChange} options={utilityStatusOptions} />
-                {/* Date Picker chọn tháng */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
+                <Input
+                    label="Tìm kiếm"
+                    id="search"
+                    name="search"
+                    value={filters.search}
+                    onChange={handleInputChange}
+                    placeholder="Tìm kiếm theo phòng, ghi chú..."
+                />
+                <Select
+                    label="Tòa nhà"
+                    id="buildingId"
+                    name="buildingId"
+                    value={filters.buildingId}
+                    onChange={(value) => handleFilterChange('buildingId', value)}
+                    options={buildings.map(building => ({
+                        value: building.id,
+                        label: building.name
+                    }))}
+                />
+                <Select
+                    label="Phòng"
+                    id="roomId"
+                    name="roomId"
+                    value={filters.roomId}
+                    onChange={(value) => handleFilterChange('roomId', value)}
+                    options={filteredRooms.map(room => ({
+                        value: room.id,
+                        label: room.number ? (room.id ? `${room.number}` : room.number) : 'Tất cả phòng'
+                    }))}
+                />
+                <Select
+                    label="Loại tiện ích"
+                    id="type"
+                    name="type"
+                    value={filters.type}
+                    onChange={(value) => handleFilterChange('type', value)}
+                    options={utilityTypeOptions}
+                />
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kỳ ghi</label>
-                    {/* Sử dụng thư viện DatePicker hỗ trợ chọn tháng/năm */}
-                    <Input type="month" name="billingPeriod" value={filters.billingPeriod} onChange={handleFilterChange} />
-                    {/* Hoặc dùng thư viện DatePicker như react-datepicker */}
-                    {/* <DatePicker selected={filters.billingPeriod ? parseISO(filters.billingPeriod + '-01') : null} onChange={handleBillingPeriodChange} dateFormat="MM/yyyy" showMonthYearPicker placeholderText="Chọn kỳ ghi..." /> */}
+                    <label className="block mb-2 text-sm font-medium">Từ ngày</label>
+                    <Input
+                        type="date"
+                        id="fromDate"
+                        name="fromDate"
+                        value={filters.fromDate}
+                        onChange={handleInputChange}
+                    />
                 </div>
-                {/* Có thể thêm filter theo Sinh viên */}
+                <div>
+                    <label className="block mb-2 text-sm font-medium">Đến ngày</label>
+                    <Input
+                        type="date"
+                        id="toDate"
+                        name="toDate"
+                        value={filters.toDate}
+                        onChange={handleInputChange}
+                    />
+                </div>
             </div>
 
             {/* Bảng dữ liệu */}
-            {isLoading ? (
+            {loading ? (
                 <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
             ) : error ? (
                 <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
-            ) : readings.length === 0 ? (
-                <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
-                    Không tìm thấy bản ghi điện nước nào.
-                </div>
             ) : (
-                <PaginationTable
-                    columns={columns}
-                    data={readings}
-                    currentPage={currentPage}
-                    totalPages={meta.totalPages}
-                    onPageChange={handlePageChange}
-                    totalRecords={meta.total}
-                    recordsPerPage={meta.limit}
-                    showingText={`Hiển thị bản ghi ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
-                    recordsText="bản ghi"
-                    pageText="Trang"
-                />
+                <>
+                    <Table columns={columns} data={readings} />
+                    {meta.totalPages > 1 && (
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={meta.totalPages}
+                            onPageChange={handlePageChange}
+                        />
+                    )}
+                </>
             )}
         </div>
     );
