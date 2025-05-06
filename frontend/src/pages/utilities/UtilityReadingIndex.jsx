@@ -27,7 +27,8 @@ const getUtilityTypeIcon = (type) => {
 const utilityTypeOptions = [
     { value: '', label: 'Tất cả loại' },
     { value: 'ELECTRICITY', label: 'Điện' },
-    { value: 'WATER', label: 'Nước' }
+    { value: 'WATER', label: 'Nước' },
+    { value: 'OTHER', label: 'Khác' }
 ];
 
 const getUtilityTypeText = (type) => {
@@ -77,15 +78,13 @@ const UtilityReadingIndex = () => {
 
     // Filters
     const [filters, setFilters] = useState({
-        search: '',
-        buildingId: '',
-        roomId: '',
+        roomNumber: '',
         type: '',
-        fromDate: '',
-        toDate: '',
+        month: '',
+        year: ''  // Changed from default year to empty string to represent "All years"
     });
 
-    const debouncedSearch = useDebounce(filters.search, 500);
+    const debouncedSearch = useDebounce(filters.roomNumber, 500);
 
     // Load buildings
     const loadBuildings = useCallback(async () => {
@@ -113,10 +112,10 @@ const UtilityReadingIndex = () => {
             ]);
 
             // Filter rooms by building if selected
-            if (filters.buildingId) {
+            if (filters.roomNumber) {
                 setFilteredRooms([
                     { id: '', number: 'Tất cả phòng' },
-                    ...roomsData.filter(room => room.buildingId === filters.buildingId)
+                    ...roomsData.filter(room => room.number === filters.roomNumber)
                 ]);
             } else {
                 setFilteredRooms([
@@ -128,7 +127,7 @@ const UtilityReadingIndex = () => {
             console.error('Failed to load rooms:', error);
             toast.error('Không thể tải danh sách phòng');
         }
-    }, [filters.buildingId]);
+    }, [filters.roomNumber]);
 
     // Load readings
     const loadReadings = useCallback(async () => {
@@ -139,17 +138,31 @@ const UtilityReadingIndex = () => {
             const params = {
                 page: currentPage,
                 limit: 10,
-                search: debouncedSearch,
-                buildingId: filters.buildingId,
-                roomId: filters.roomId,
-                type: filters.type,
-                fromDate: filters.fromDate,
-                toDate: filters.toDate,
             };
 
-            const response = await utilityService.getAllUtilityReadings(params);
+            // Add room number filter if provided
+            if (filters.roomNumber) {
+                params.roomNumber = filters.roomNumber;
+            }
 
-            // Fix: Access the correct data structure from the response
+            // Add utility type filter if selected
+            if (filters.type) {
+                params.type = filters.type;
+            }
+
+            // Add month/year filters if provided
+            if (filters.month) {
+                params.month = filters.month;
+            }
+
+            if (filters.year) {
+                params.year = filters.year;
+            }
+
+            console.log('Sending utility reading request with params:', params);
+            const response = await utilityService.getAllUtilityReadings(params);
+            console.log('Received utility readings response:', response);
+
             setReadings(response.utilities || []);
             setMeta({
                 currentPage: response.meta?.page || 1,
@@ -158,24 +171,21 @@ const UtilityReadingIndex = () => {
                 total: response.meta?.total || 0
             });
 
-            // Debug: Log the response to see what data structure is returned
-            console.log('Utility readings response:', response);
-
+            // Removed toast notification for empty results
             if (response.utilities && response.utilities.length === 0) {
-                // If no data is returned, show a message to the user
-                toast.info('Không tìm thấy dữ liệu tiện ích phù hợp với bộ lọc');
+                console.log('No utility readings found with the current filters');
+                // Toast notification removed as requested
             }
         } catch (error) {
             console.error('Failed to load readings:', error);
             toast.error('Không thể tải danh sách chỉ số tiện ích');
             setError('Không thể tải danh sách chỉ số tiện ích');
-            // Reset readings to empty array on error
             setReadings([]);
             setMeta({ currentPage: 1, totalPages: 1, limit: 10, total: 0 });
         } finally {
             setLoading(false);
         }
-    }, [currentPage, debouncedSearch, filters]);
+    }, [currentPage, filters]);
 
     useEffect(() => {
         loadBuildings();
@@ -188,19 +198,11 @@ const UtilityReadingIndex = () => {
 
     // Handle filter changes
     const handleFilterChange = (field, value) => {
-        // Reset room selection when building changes
-        if (field === 'buildingId') {
-            setFilters({
-                ...filters,
-                [field]: value,
-                roomId: ''
-            });
-        } else {
-            setFilters({
-                ...filters,
-                [field]: value
-            });
-        }
+        console.log(`Setting ${field} filter to:`, value);
+        setFilters({
+            ...filters,
+            [field]: value
+        });
 
         // Reset to first page when filters change
         if (currentPage !== 1) {
@@ -226,10 +228,10 @@ const UtilityReadingIndex = () => {
 
     // Filter rooms when building selection changes
     useEffect(() => {
-        if (filters.buildingId) {
+        if (filters.roomNumber) {
             setFilteredRooms([
                 { id: '', number: 'Tất cả phòng' },
-                ...rooms.filter(room => room.id && room.buildingId === filters.buildingId)
+                ...rooms.filter(room => room.number === filters.roomNumber)
             ]);
         } else {
             setFilteredRooms([
@@ -237,13 +239,13 @@ const UtilityReadingIndex = () => {
                 ...rooms.filter(room => room.id)
             ]);
         }
-    }, [filters.buildingId, rooms]);
+    }, [filters.roomNumber, rooms]);
 
     // Delete reading
     const handleDelete = async (id) => {
         if (window.confirm('Bạn có chắc chắn muốn xóa chỉ số này không?')) {
             try {
-                await utilityService.deleteMeterReading(id);
+                await utilityService.deleteUtilityReading(id);
                 toast.success('Xóa chỉ số thành công');
                 loadReadings();
             } catch (error) {
@@ -273,7 +275,7 @@ const UtilityReadingIndex = () => {
             Header: 'Loại',
             accessor: 'type',
             Cell: ({ value }) => (
-                <div className="flex items-center">
+                <div className="flex items-center justify-center">
                     {getUtilityTypeIcon(value)}
                     <span>{getUtilityTypeText(value)}</span>
                 </div>
@@ -337,36 +339,14 @@ const UtilityReadingIndex = () => {
             </div>
 
             {/* Bộ lọc */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
                 <Input
-                    label="Tìm kiếm"
-                    id="search"
-                    name="search"
-                    value={filters.search}
+                    label="Số phòng"
+                    id="roomNumber"
+                    name="roomNumber"
+                    value={filters.roomNumber}
                     onChange={handleInputChange}
-                    placeholder="Tìm kiếm theo phòng, ghi chú..."
-                />
-                <Select
-                    label="Tòa nhà"
-                    id="buildingId"
-                    name="buildingId"
-                    value={filters.buildingId}
-                    onChange={(value) => handleFilterChange('buildingId', value)}
-                    options={buildings.map(building => ({
-                        value: building.id,
-                        label: building.name
-                    }))}
-                />
-                <Select
-                    label="Phòng"
-                    id="roomId"
-                    name="roomId"
-                    value={filters.roomId}
-                    onChange={(value) => handleFilterChange('roomId', value)}
-                    options={filteredRooms.map(room => ({
-                        value: room.id,
-                        label: room.number ? (room.id ? `${room.number}` : room.number) : 'Tất cả phòng'
-                    }))}
+                    placeholder="Nhập số phòng..."
                 />
                 <Select
                     label="Loại tiện ích"
@@ -377,23 +357,27 @@ const UtilityReadingIndex = () => {
                     options={utilityTypeOptions}
                 />
                 <div>
-                    <label className="block mb-2 text-sm font-medium">Từ ngày</label>
+                    <label className="block mb-2 text-sm font-medium">Tháng</label>
                     <Input
-                        type="date"
-                        id="fromDate"
-                        name="fromDate"
-                        value={filters.fromDate}
+                        type="number"
+                        id="month"
+                        name="month"
+                        min="1"
+                        max="12"
+                        value={filters.month}
                         onChange={handleInputChange}
+                        placeholder="1-12"
                     />
                 </div>
                 <div>
-                    <label className="block mb-2 text-sm font-medium">Đến ngày</label>
+                    <label className="block mb-2 text-sm font-medium">Năm</label>
                     <Input
-                        type="date"
-                        id="toDate"
-                        name="toDate"
-                        value={filters.toDate}
+                        type="text"
+                        id="year"
+                        name="year"
+                        value={filters.year}
                         onChange={handleInputChange}
+                        placeholder="Tất cả"
                     />
                 </div>
             </div>

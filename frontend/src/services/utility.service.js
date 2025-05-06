@@ -10,7 +10,21 @@ import { toast } from 'react-hot-toast';
  */
 const getAllUtilityReadings = async (params = {}) => {
     try {
-        const response = await apiClient.get('/api/utilities', { params });
+        // Create a copy of params to avoid modifying the original
+        const queryParams = { ...params };
+
+        // Check if type is an object and convert it to a string value
+        if (queryParams.type && typeof queryParams.type === 'object') {
+            console.warn('Type parameter is an object, converting to string', queryParams.type);
+            // If it has a value property, use that, otherwise set to empty string
+            queryParams.type = queryParams.type.value || '';
+        }
+
+        console.log('Calling utility API with params:', queryParams);
+        // Make sure we're using the correct API path
+        const response = await apiClient.get('/api/utilities', { params: queryParams });
+        console.log('API response:', response.data);
+
         // Backend trả về: { status: 'success', results: number, total: number, data: array }
         if (response.data?.status === 'success') {
             return {
@@ -18,9 +32,9 @@ const getAllUtilityReadings = async (params = {}) => {
                 meta: {
                     total: response.data.total || 0,
                     count: response.data.results || 0,
-                    page: params.page || 1,
-                    limit: params.limit || 10,
-                    totalPages: Math.ceil((response.data.total || 0) / (params.limit || 10))
+                    page: queryParams.page || 1,
+                    limit: queryParams.limit || 10,
+                    totalPages: Math.ceil((response.data.total || 0) / (queryParams.limit || 10))
                 }
             };
         } else {
@@ -54,8 +68,7 @@ const getUtilityReadingById = async (id) => {
 
 /**
  * Tạo một bản ghi chỉ số điện/nước mới.
- * @param {object} readingData - Dữ liệu bản ghi { dormitoryId?, roomId?, studentId?, type, consumption, amount?, billingPeriod, status? }.
- *   Cần làm rõ các trường bắt buộc và optional với backend.
+ * @param {object} readingData - Dữ liệu bản ghi { roomId, type, readingDate, indexValue, billingMonth, billingYear, notes? }.
  * @returns {Promise<object>} Dữ liệu bản ghi vừa tạo.
  */
 const createUtilityReading = async (readingData) => {
@@ -63,14 +76,16 @@ const createUtilityReading = async (readingData) => {
         // Chuyển đổi kiểu dữ liệu nếu cần
         const payload = {
             ...readingData,
-            consumption: parseFloat(readingData.consumption) || 0,
-            amount: readingData.amount ? parseFloat(readingData.amount) : null, // Amount có thể tính ở backend?
-            // Đảm bảo studentId, roomId, dormitoryId là số nếu backend yêu cầu
-            studentId: readingData.studentId ? parseInt(readingData.studentId) : null,
-            roomId: readingData.roomId ? parseInt(readingData.roomId) : null,
-            dormitoryId: readingData.dormitoryId ? parseInt(readingData.dormitoryId) : null,
+            roomId: parseInt(readingData.roomId),
+            indexValue: parseFloat(readingData.indexValue),
+            billingMonth: parseInt(readingData.billingMonth),
+            billingYear: parseInt(readingData.billingYear),
         };
+
+        console.log('Creating utility reading with payload:', payload);
         const response = await apiClient.post('/api/utilities', payload);
+        console.log('Create response:', response.data);
+
         // Backend trả về: { status: 'success', data: new_utility_reading_object }
         if (response.data?.status === 'success') {
             return response.data.data;
@@ -89,20 +104,22 @@ const createUtilityReading = async (readingData) => {
 /**
  * Cập nhật thông tin một bản ghi chỉ số điện/nước.
  * @param {string|number} id - ID của bản ghi cần cập nhật.
- * @param {object} updateData - Dữ liệu cần cập nhật { consumption?, amount?, status? }.
+ * @param {object} updateData - Dữ liệu cần cập nhật { readingDate?, indexValue?, notes? }.
  * @returns {Promise<object>} Dữ liệu bản ghi sau khi cập nhật.
  */
 const updateUtilityReading = async (id, updateData) => {
     try {
         const payload = {
             ...updateData,
-            consumption: updateData.consumption ? parseFloat(updateData.consumption) : undefined, // Chỉ gửi nếu có thay đổi
-            amount: updateData.amount ? parseFloat(updateData.amount) : undefined,
+            indexValue: updateData.indexValue !== undefined ? parseFloat(updateData.indexValue) : undefined,
         };
         // Xóa các key undefined khỏi payload
         Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
 
+        console.log(`Updating utility reading ${id} with payload:`, payload);
         const response = await apiClient.put(`/api/utilities/${id}`, payload);
+        console.log('Update response:', response.data);
+
         // Backend trả về: { status: 'success', data: updated_utility_reading_object }
         if (response.data?.status === 'success') {
             return response.data.data;
@@ -125,7 +142,10 @@ const updateUtilityReading = async (id, updateData) => {
  */
 const deleteUtilityReading = async (id) => {
     try {
+        console.log(`Deleting utility reading with ID: ${id}`);
         const response = await apiClient.delete(`/api/utilities/${id}`);
+        console.log('Delete response:', response.data);
+
         // Backend trả về: { status: 'success', message: "..." }
         if (response.data?.status === 'success') {
             return response.data;

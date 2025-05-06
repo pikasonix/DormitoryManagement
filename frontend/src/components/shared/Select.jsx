@@ -29,7 +29,10 @@ const Select = ({
         id={name}
         name={name}
         value={value}
-        onChange={onChange}
+        onChange={(e) => {
+          // Pass the string value directly, not the event object or option object
+          if (onChange) onChange(e.target.value);
+        }}
         disabled={disabled}
         required={required}
         className={`
