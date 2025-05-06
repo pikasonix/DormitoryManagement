@@ -271,7 +271,7 @@ const UtilitiesPage = () => {
                         icon={PlusIcon}
                         onClick={() => navigate('/utilities/add')}
                     >
-                        Thêm chỉ số mới
+                        Thêm chỉ số
                     </Button>
                 </div>
             </div>

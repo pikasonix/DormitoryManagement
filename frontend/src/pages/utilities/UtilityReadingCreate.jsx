@@ -310,7 +310,7 @@ const UtilityReadingCreate = () => {
         <div className="container mx-auto px-4 py-6">
             <div className="flex items-center mb-6">
                 <button
-                    onClick={() => navigate('/utilities/readings')}
+                    onClick={() => navigate('/utilities')}
                     className="mr-4 p-2 rounded-full hover:bg-gray-200"
                 >
                     <ArrowLeftIcon className="h-6 w-6" />
@@ -455,7 +455,7 @@ const UtilityReadingCreate = () => {
                                             type="button"
                                             variant="secondary"
                                             className="mr-2"
-                                            onClick={() => navigate('/utilities/readings')}
+                                            onClick={() => navigate('/utilities')}
                                         >
                                             Quay lại
                                         </Button>
@@ -610,7 +610,7 @@ const UtilityReadingCreate = () => {
                                             type="button"
                                             variant="secondary"
                                             className="mr-2"
-                                            onClick={() => navigate('/utilities/readings')}
+                                            onClick={() => navigate('/utilities')}
                                         >
                                             Quay lại
                                         </Button>
@@ -758,7 +758,7 @@ const UtilityReadingCreate = () => {
                                 type="button"
                                 variant="secondary"
                                 className="mr-2"
-                                onClick={() => navigate('/utilities/readings')}
+                                onClick={() => navigate('/utilities')}
                             >
                                 Quay lại
                             </Button>
