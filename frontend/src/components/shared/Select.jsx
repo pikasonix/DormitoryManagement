@@ -30,8 +30,15 @@ const Select = ({
         name={name}
         value={value}
         onChange={(e) => {
-          // Pass the string value directly, not the event object or option object
-          if (onChange) onChange(e.target.value);
+          // Create a simulated event object that matches what handleFilterChange expects
+          if (onChange) {
+            onChange({
+              target: {
+                name: name,
+                value: e.target.value
+              }
+            });
+          }
         }}
         disabled={disabled}
         required={required}

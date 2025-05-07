@@ -57,13 +57,19 @@ const VehicleIndex = () => {
         setIsLoading(true);
         setError(null);
         try {
+            console.log('Current filters:', currentFilters);
+
             const params = {
                 page: page,
                 limit: meta.limit,
-                type: currentFilters.type || undefined,
-                status: currentFilters.status || undefined,
-                search: search || undefined, // API cần hỗ trợ search
+                vehicleType: currentFilters.type || undefined,
+                isActive: currentFilters.status === 'active' ? true :
+                    currentFilters.status === 'inactive' ? false : undefined,
+                licensePlate: search || undefined, // Chuyển search thành licensePlate param
             };
+
+            console.log('API params:', params);
+
             const data = await vehicleService.getAllVehicles(params);
             const vehicleList = data.vehicles || [];
             setVehicles(vehicleList);
@@ -85,11 +91,12 @@ const VehicleIndex = () => {
             }
 
         } catch (err) {
+            console.error('Error fetching vehicles:', err);
             setError('Không thể tải danh sách xe.');
         } finally {
             setIsLoading(false);
         }
-    }, [meta.limit, owners]); // Thêm owners dependency
+    }, [meta.limit, owners]);
 
     useEffect(() => {
         fetchVehicles(currentPage, filters, debouncedSearch);
@@ -97,7 +104,10 @@ const VehicleIndex = () => {
 
     // Handlers
     const handleFilterChange = (e) => {
-        setFilters(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        const name = e.target ? e.target.name : e.name;
+        const value = e.target ? e.target.value : e;
+
+        setFilters(prev => ({ ...prev, [name]: value }));
         setCurrentPage(1);
     };
 
@@ -207,9 +217,31 @@ const VehicleIndex = () => {
 
             {/* Bộ lọc */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
-                <Input label="Tìm biển số/Model" id="search" name="search" placeholder="Nhập biển số, model..." value={filters.search} onChange={handleFilterChange} />
-                <Select label="Loại xe" id="type" name="type" value={filters.type} onChange={handleFilterChange} options={vehicleTypeOptions} />
-                <Select label="Trạng thái" id="status" name="status" value={filters.status} onChange={handleFilterChange} options={vehicleStatusOptions} />
+                <Input label="Tìm biển số" id="search" name="search" placeholder="30-B2-97369" value={filters.search} onChange={handleFilterChange} />
+                <Select
+                    label="Loại xe"
+                    id="type"
+                    name="type"
+                    value={filters.type}
+                    onChange={(value) => {
+                        console.log('Vehicle type changed:', value);
+                        setFilters(prev => ({ ...prev, type: value }));
+                        setCurrentPage(1);
+                    }}
+                    options={vehicleTypeOptions}
+                />
+                <Select
+                    label="Trạng thái"
+                    id="status"
+                    name="status"
+                    value={filters.status}
+                    onChange={(value) => {
+                        console.log('Status changed:', value);
+                        setFilters(prev => ({ ...prev, status: value }));
+                        setCurrentPage(1);
+                    }}
+                    options={vehicleStatusOptions}
+                />
                 {/* Thêm filter theo chủ xe nếu cần */}
             </div>
 

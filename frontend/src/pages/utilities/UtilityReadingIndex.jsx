@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { utilityService } from '../../services/utility.service';
 import { roomService } from '../../services/room.service';
 import { buildingService } from '../../services/building.service';
-import { Button, Select, Input, Table } from '../../components/shared';
+import { Button, Select, Input } from '../../components/shared';
+import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { PlusIcon, PencilSquareIcon, TrashIcon, BoltIcon } from '@heroicons/react/24/outline';
@@ -393,18 +394,22 @@ const UtilityReadingIndex = () => {
                 <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
             ) : (
                 <>
-                    {/* Add debugging info - remove after fixing */}
                     {process.env.NODE_ENV === 'development' && readings.length === 0 && (
                         <div className="text-amber-800 bg-amber-100 p-2 mb-2 rounded text-sm">
                             API trả về dữ liệu nhưng không có kết quả phù hợp với bộ lọc
                         </div>
                     )}
-                    <Table
+                    <PaginationTable
                         columns={columns}
                         data={readings || []}
-                        currentPage={meta.currentPage}
+                        currentPage={currentPage}
                         totalPages={meta.totalPages}
                         onPageChange={handlePageChange}
+                        totalRecords={meta.total}
+                        recordsPerPage={meta.limit}
+                        showingText={`Hiển thị chỉ số ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
+                        recordsText="chỉ số"
+                        pageText="Trang"
                     />
                 </>
             )}

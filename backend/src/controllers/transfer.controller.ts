@@ -10,7 +10,7 @@ export class TransferController {
 
     async getAllTransfers(req: Request, res: Response, next: NextFunction) {
         try {
-            const { studentProfileId, fromRoomId, toRoomId, status, page, limit } = req.query;
+            const { studentProfileId, fromRoomId, toRoomId, status, page, limit, identifier, studentId } = req.query;
 
             const options: Prisma.RoomTransferFindManyArgs = { where: {} };
 
@@ -18,10 +18,93 @@ export class TransferController {
             if (studentProfileId) options.where!.studentProfileId = parseInt(studentProfileId as string);
             if (fromRoomId) options.where!.fromRoomId = parseInt(fromRoomId as string);
             if (toRoomId) options.where!.toRoomId = parseInt(toRoomId as string);
-            if (status && Object.values(TransferStatus).includes(status as TransferStatus)) {
-                options.where!.status = status as TransferStatus;
-            } else if (status) {
-                return next(new Error(`Trạng thái chuyển phòng không hợp lệ: ${status}`));
+
+            // Xử lý khi có tham số studentId (mã số sinh viên)
+            if (studentId) {
+                // Tìm studentProfile có studentId chứa studentId
+                const matchingStudents = await prisma.studentProfile.findMany({
+                    where: {
+                        studentId: {
+                            contains: studentId as string,
+                            mode: 'insensitive' // Case-insensitive search
+                        }
+                    },
+                    select: { id: true }
+                });
+
+                if (matchingStudents.length > 0) {
+                    const studentIds = matchingStudents.map(student => student.id);
+                    options.where!.studentProfileId = { in: studentIds };
+                } else {
+                    // Nếu không tìm thấy kết quả nào, trả về mảng rỗng
+                    options.where!.id = -1; // Không có ID nào là -1, đảm bảo không có kết quả trả về
+                }
+            }
+
+            // Xử lý tìm kiếm theo mã SV/phòng qua tham số identifier
+            if (identifier) {
+                const searchTerm = (identifier as string).trim();
+
+                // Tìm studentProfile có studentId chứa searchTerm
+                const matchingStudents = await prisma.studentProfile.findMany({
+                    where: {
+                        studentId: {
+                            contains: searchTerm,
+                            mode: 'insensitive' // Case-insensitive search
+                        }
+                    },
+                    select: { id: true }
+                });
+
+                // Tìm phòng có số phòng hoặc tên tòa nhà chứa searchTerm
+                const matchingRooms = await prisma.room.findMany({
+                    where: {
+                        OR: [
+                            { number: { contains: searchTerm, mode: 'insensitive' } },
+                            { building: { name: { contains: searchTerm, mode: 'insensitive' } } }
+                        ]
+                    },
+                    select: { id: true }
+                });
+
+                type OrConditionType =
+                    | { studentProfileId: number }
+                    | { fromRoomId: number }
+                    | { toRoomId: number };
+                const orConditions: OrConditionType[] = [];
+
+                if (matchingStudents.length > 0) {
+                    orConditions.push(...matchingStudents.map(student => ({ studentProfileId: student.id })));
+                }
+                // Add room conditions for both fromRoomId and toRoomId
+                if (matchingRooms.length > 0) {
+                    orConditions.push(...matchingRooms.map(room => ({ fromRoomId: room.id })));
+                    orConditions.push(...matchingRooms.map(room => ({ toRoomId: room.id })));
+                }
+
+                if (orConditions.length > 0) {
+                    if (options.where!.OR) {
+                        options.where!.AND = [
+                            { OR: options.where!.OR },
+                            { OR: orConditions }
+                        ];
+                        delete options.where!.OR;
+                    } else {
+                        options.where!.OR = orConditions;
+                    }
+                } else {
+                    // Nếu không tìm thấy kết quả nào, trả về mảng rỗng
+                    options.where!.id = -1; // Không có ID nào là -1, đảm bảo không có kết quả trả về
+                }
+            }
+
+            // Validate và xử lý trạng thái
+            if (status) {
+                if (Object.values(TransferStatus).includes(status as TransferStatus)) {
+                    options.where!.status = status as TransferStatus;
+                } else {
+                    return next(new Error(`Trạng thái chuyển phòng không hợp lệ: ${status}`));
+                }
             }
 
             // Phân trang

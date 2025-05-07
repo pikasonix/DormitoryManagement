@@ -1,3 +1,4 @@
+// File này đã chuyển hoàn toàn sang PaginationTable.jsx, file này không còn sử dụng nữa
 import React from 'react';
 import Pagination from './PaginationTable'; // Import the existing PaginationTable component
 

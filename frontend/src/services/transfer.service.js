@@ -10,6 +10,9 @@ import { toast } from 'react-hot-toast';
  */
 const getAllTransferRequests = async (params = {}) => {
     try {
+        if (params.status) {
+            console.log('Sending status to backend:', params.status);
+        }
         const response = await apiClient.get('/api/transfers', { params });
         // Backend trả về: { status: 'success', results: number, total: number, data: array }
         if (response.data?.status === 'success') {

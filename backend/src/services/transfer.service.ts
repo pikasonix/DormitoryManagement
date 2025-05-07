@@ -165,9 +165,6 @@ export class TransferService {
         if (!data.status || !Object.values(TransferStatus).includes(data.status as TransferStatus)) {
             throw new Error(`Trạng thái chuyển phòng không hợp lệ: ${data.status}`);
         }
-        if ((data.status === TransferStatus.APPROVED || data.status === TransferStatus.COMPLETED) && !data.approvedById) {
-            throw new Error('Cần cung cấp ID người duyệt (approvedById) khi duyệt hoặc hoàn thành.');
-        }
 
         try {
             const updatedTransfer = await prisma.$transaction(async (tx) => {
