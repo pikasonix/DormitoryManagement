@@ -14,10 +14,10 @@ import { useDebounce } from '../../hooks/useDebounce';
 // Options loại xe
 const vehicleTypeOptions = [
     { value: '', label: 'Tất cả loại xe' },
-    { value: 'car', label: 'Ô tô' },
-    { value: 'motorcycle', label: 'Xe máy' },
-    { value: 'bicycle', label: 'Xe đạp' },
-    { value: 'electric_scooter', label: 'Xe máy điện' }, // Ví dụ
+    { value: 'MOTORBIKE', label: 'Xe máy' },
+    { value: 'BICYCLE', label: 'Xe đạp' },
+    { value: 'CAR', label: 'Ô tô' },
+    { value: 'ELECTRIC_SCOOTER', label: 'Xe máy điện' },
 ];
 
 // Options trạng thái
@@ -124,13 +124,63 @@ const VehicleIndex = () => {
 
     // --- Cấu hình bảng ---
     const columns = useMemo(() => [
-        { Header: 'Biển số', accessor: 'licensePlate', Cell: ({ value }) => <span className='font-mono font-semibold'>{value}</span> },
-        { Header: 'Chủ xe', accessor: 'ownerId', Cell: ({ value }) => owners[value] || `ID: ${value}` },
-        { Header: 'Loại xe', accessor: 'type', Cell: ({ value }) => vehicleTypeOptions.find(opt => opt.value === value)?.label || value }, // Hiển thị label
-        { Header: 'Hãng/Model', accessor: 'model' },
-        { Header: 'Màu sắc', accessor: 'color' },
-        { Header: 'Trạng thái', accessor: 'status', Cell: ({ value }) => <Badge color={getStatusBadgeColor(value)}>{value?.toUpperCase() || 'N/A'}</Badge> },
-        { Header: 'Ngày ĐK', accessor: 'createdAt', Cell: ({ value }) => format(parseISO(value), 'dd/MM/yyyy') }, // Giả sử có createdAt
+        {
+            Header: 'No.',
+            accessor: 'parkingCardNo',
+            Cell: ({ value }) => <span className='font-mono font-semibold'>{value || 'N/A'}</span>
+        },
+        {
+            Header: 'Sinh Viên',
+            accessor: 'studentProfile',
+            Cell: ({ value }) => (
+                <div>
+                    <div className="font-semibold">{value?.studentId || 'N/A'}</div>
+                    <div className="text-sm text-gray-600">{value?.phoneNumber || 'N/A'}</div>
+                </div>
+            )
+        },
+        {
+            Header: 'Loại xe',
+            accessor: 'vehicleType',
+            Cell: ({ value }) => {
+                const typeLabel = vehicleTypeOptions.find(opt => opt.value === value)?.label || value;
+                return <span className="capitalize">{typeLabel}</span>;
+            }
+        },
+        {
+            Header: 'Biển số',
+            accessor: 'licensePlate',
+            Cell: ({ value }) => <span className='font-mono font-semibold'>{value}</span>
+        },
+        {
+            Header: 'Hãng(Model)',
+            accessor: 'brand',
+            Cell: ({ value, row }) => {
+                const brand = value || '';
+                const model = row.original.model || '';
+                return <span>{brand}{brand && model ? ' - ' : ''}{model}</span>;
+            }
+        },
+        {
+            Header: 'Màu',
+            accessor: 'color'
+        },
+        {
+            Header: 'Trạng thái',
+            accessor: 'isActive',
+            Cell: ({ value }) =>
+                <Badge color={value ? 'green' : 'gray'}>
+                    {value ? 'Active' : 'Inactive'}
+                </Badge>
+        },
+        {
+            Header: 'Ngày đăng ký',
+            accessor: 'registrationDate',
+            Cell: ({ value, row }) => {
+                const date = row.original.startDate || value;
+                return date ? format(parseISO(date), 'dd/MM/yyyy') : 'N/A';
+            }
+        },
         {
             Header: 'Hành động',
             accessor: 'actions',
@@ -145,7 +195,7 @@ const VehicleIndex = () => {
                 </div>
             ),
         },
-    ], [navigate, owners, currentPage, filters, debouncedSearch]);
+    ], [navigate]);
 
     return (
         <div className="space-y-4">
@@ -153,7 +203,6 @@ const VehicleIndex = () => {
                 <h1 className="text-2xl font-semibold">Quản lý Xe đăng ký</h1>
                 {/* Nút Thêm xe (Admin/Staff tạo hộ?) */}
                 {/* <Button onClick={() => navigate('/vehicles/new')} icon={PlusIcon}>Thêm Xe</Button> */}
-                <p className='text-sm text-gray-600'>Sinh viên đăng ký xe tại trang cá nhân hoặc mục "Đăng ký xe (SV)".</p>
             </div>
 
             {/* Bộ lọc */}

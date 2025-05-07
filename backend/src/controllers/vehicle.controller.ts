@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { VehicleService } from '../services/vehicle.service';
 import { deleteFile } from '../services/file.service';
-import { Prisma, VehicleType } from '@prisma/client';
+import { Prisma, VehicleType, FeeType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaClient } from '@prisma/client';
 
@@ -70,7 +70,7 @@ export class VehicleController {
             const {
                 studentProfileId, // Có thể lấy từ req.user nếu là sinh viên tự đăng ký, hoặc từ body nếu Admin/Staff tạo hộ
                 vehicleType, licensePlate, startDate,
-                brand, model, color, parkingCardNo, isActive, endDate, monthlyFee, notes, imageIds
+                brand, model, color, parkingCardNo, isActive, endDate, notes, imageIds
             } = req.body;
             const requesterUserId = req.user?.userId;
             const requesterRole = req.user?.role;
@@ -83,10 +83,10 @@ export class VehicleController {
                 const studentProfile = await prisma.studentProfile.findUnique({ where: { userId: requesterUserId }, select: { id: true } });
                 if (!studentProfile) return next(new Error('Không tìm thấy hồ sơ sinh viên của bạn.'));
                 targetStudentProfileId = studentProfile.id;
-                // Không cho sinh viên tự set parkingCardNo, isActive, monthlyFee, endDate?
-                if (parkingCardNo !== undefined || isActive !== undefined || monthlyFee !== undefined || endDate !== undefined) {
+                // Không cho sinh viên tự set parkingCardNo, isActive, endDate
+                if (parkingCardNo !== undefined || isActive !== undefined || endDate !== undefined) {
                     console.warn(`Student (User ID: ${requesterUserId}) attempted to set restricted fields during vehicle registration.`);
-                    // return next(new Error('Bạn không có quyền đặt số thẻ, trạng thái, phí hoặc ngày kết thúc.'));
+                    // return next(new Error('Bạn không có quyền đặt số thẻ, trạng thái hoặc ngày kết thúc.'));
                 }
 
             } else if ((requesterRole === 'ADMIN' || requesterRole === 'STAFF') && studentProfileId) {
@@ -114,7 +114,6 @@ export class VehicleController {
                 parkingCardNo: (requesterRole !== 'STUDENT' ? parkingCardNo : undefined),
                 isActive: (requesterRole !== 'STUDENT' ? isActive : true), // Sinh viên tự đăng ký thì mặc định active
                 endDate: (requesterRole !== 'STUDENT' ? endDate : undefined),
-                monthlyFee: (requesterRole !== 'STUDENT' ? monthlyFee : undefined),
                 imageIds: imageIds ? (Array.isArray(imageIds) ? imageIds.map(Number) : [Number(imageIds)]) : undefined
             };
 
@@ -133,7 +132,7 @@ export class VehicleController {
         try {
             const id = parseInt(req.params.id);
             // Lấy dữ liệu cập nhật từ body
-            const { vehicleType, licensePlate, brand, model, color, parkingCardNo, isActive, startDate, endDate, monthlyFee, notes, imageIds } = req.body;
+            const { vehicleType, licensePlate, brand, model, color, parkingCardNo, isActive, startDate, endDate, notes, imageIds } = req.body;
 
             // Validate VehicleType enum
             if (vehicleType && !Object.values(VehicleType).includes(vehicleType as VehicleType)) {
@@ -143,7 +142,7 @@ export class VehicleController {
 
             const updateData = {
                 vehicleType: vehicleType as VehicleType,
-                licensePlate, brand, model, color, parkingCardNo, isActive, startDate, endDate, monthlyFee, notes,
+                licensePlate, brand, model, color, parkingCardNo, isActive, startDate, endDate, notes,
                 // Đảm bảo imageIds là mảng số
                 imageIds: imageIds ? (Array.isArray(imageIds) ? imageIds.map(Number).filter(n => !isNaN(n)) : [Number(imageIds)].filter(n => !isNaN(n))) : undefined
             };

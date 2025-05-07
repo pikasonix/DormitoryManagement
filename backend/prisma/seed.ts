@@ -6,8 +6,9 @@ import {
   RoomType,
   RoomStatus,
   StudentStatus,
-  Amenity,
-  PaymentType,
+  // Amenity, // Amenity type is inferred or not directly used as enum here
+  PaymentType, // Used by InvoiceItem
+  FeeType,     // New, used by FeeRate and potentially InvoiceItem
   InvoiceStatus,
   UtilityType,
   MaintenanceStatus,
@@ -16,12 +17,15 @@ import {
   MediaType,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { Decimal } from '@prisma/client/runtime/library';
+import { Decimal } from '@prisma/client/runtime/library'; // Correct import for Decimal
 
 const prisma = new PrismaClient();
 
 // --- Helper Functions ---
 function getRandomElement<T>(arr: T[]): T {
+  if (arr.length === 0) {
+    throw new Error("Cannot get random element from an empty array.");
+  }
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
@@ -30,36 +34,33 @@ function getRandomDate(start: Date, end: Date): Date {
 }
 
 // Helper function that now returns null instead of creating media data
-function createPlaceholderMediaData(type: MediaType, namePrefix: string, index: number) {
-  return null; // No longer creating media data
-}
+// function createPlaceholderMediaData(type: MediaType, namePrefix: string, index: number) {
+//   return null; // No longer creating media data
+// }
 
 async function main() {
   console.log('Start seeding ...');
 
   // --- Clean Up Existing Data (Optional but recommended for development) ---
-  // Delete in reverse order of dependencies to avoid constraint errors
   console.log('Deleting existing data...');
-  // Delete records referencing Media first or records Media references
-  await prisma.user.updateMany({ data: { avatarId: null } }); // Disconnect avatar first
-  // Now delete other records...
+  await prisma.user.updateMany({ data: { avatarId: null } });
+
   await prisma.payment.deleteMany();
   await prisma.invoiceItem.deleteMany();
   await prisma.invoice.deleteMany();
   await prisma.utilityMeterReading.deleteMany();
-  await prisma.maintenance.deleteMany({ where: {} }); // Xóa Maintenance trước khi xóa Media liên quan
+  await prisma.maintenance.deleteMany();
   await prisma.roomTransfer.deleteMany();
-  await prisma.vehicleRegistration.deleteMany({ where: {} }); // Xóa VehicleReg trước khi xóa Media liên quan
+  await prisma.vehicleRegistration.deleteMany();
   await prisma.roomAmenity.deleteMany();
-  await prisma.studentProfile.deleteMany({ where: {} }); // Xóa StudentProfile trước User
-  await prisma.staffProfile.deleteMany({ where: {} }); // Xóa StaffProfile trước User
-  // Delete Media *before* deleting the models it might be linked to via direct relation fields
-  await prisma.media.deleteMany({ where: {} }); // <-- Added Media cleanup
-  // Delete models that might have relations TO Media (like User's avatarId)
-  await prisma.user.deleteMany({ where: {} }); // This should cascade delete profiles if onDelete: Cascade is set
-  await prisma.room.deleteMany({ where: {} }); // Xóa Room trước Building
-  await prisma.building.deleteMany({ where: {} });
-  await prisma.amenity.deleteMany({ where: {} });
+  await prisma.feeRate.deleteMany(); // New: Clean up FeeRate
+  await prisma.studentProfile.deleteMany();
+  await prisma.staffProfile.deleteMany();
+  await prisma.media.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.room.deleteMany();
+  await prisma.building.deleteMany();
+  await prisma.amenity.deleteMany();
   console.log('Existing data deleted.');
 
   // --- Create Amenities ---
@@ -68,12 +69,89 @@ async function main() {
     data: [
       { name: 'Điều hòa', description: 'Máy lạnh làm mát phòng' },
       { name: 'Nóng lạnh', description: 'Bình nước nóng cho sinh hoạt' },
-      { name: '2 WC', description: '2 Nhà vệ sinh' },
-      { name: '2 Nhà tắm', description: '2 Nhà tắm' },
+      { name: 'WC Trong Phòng', description: 'Nhà vệ sinh trong phòng' }, // Changed from "2 WC" to be more general for amenity
+      { name: 'Nhà tắm Trong Phòng', description: 'Nhà tắm trong phòng' }, // Changed
       { name: 'Tủ đồ cá nhân', description: 'Tủ có khóa riêng cho mỗi sinh viên' },
+      { name: 'Giường tầng', description: 'Giường tầng có đệm' },
+      { name: 'Bàn học', description: 'Bàn học cá nhân' },
     ],
   });
   console.log(`Created ${amenities.length} amenities.`);
+
+  // --- Create Fee Rates ---
+  console.log('Creating fee rates...');
+  const feeRates = {
+    room6: await prisma.feeRate.create({
+      data: {
+        name: 'Tiền phòng KTX (Phòng 6)',
+        feeType: FeeType.ROOM_FEE,
+        roomType: RoomType.ROOM_6,
+        unitPrice: new Decimal(800000),
+        unit: 'tháng',
+        effectiveFrom: new Date(2023, 0, 1), // Jan 1, 2023
+        isActive: true,
+        description: 'Đơn giá tiền phòng cho phòng 6 người',
+      },
+    }),
+    room8: await prisma.feeRate.create({
+      data: {
+        name: 'Tiền phòng KTX (Phòng 8)',
+        feeType: FeeType.ROOM_FEE,
+        roomType: RoomType.ROOM_8,
+        unitPrice: new Decimal(600000),
+        unit: 'tháng',
+        effectiveFrom: new Date(2023, 0, 1),
+        isActive: true,
+        description: 'Đơn giá tiền phòng cho phòng 8 người',
+      },
+    }),
+    electricity: await prisma.feeRate.create({
+      data: {
+        name: 'Tiền điện sinh hoạt',
+        feeType: FeeType.ELECTRICITY,
+        unitPrice: new Decimal(3500),
+        unit: 'kWh',
+        effectiveFrom: new Date(2023, 0, 1),
+        isActive: true,
+        description: 'Đơn giá điện theo quy định',
+      },
+    }),
+    water: await prisma.feeRate.create({
+      data: {
+        name: 'Tiền nước sinh hoạt',
+        feeType: FeeType.WATER,
+        unitPrice: new Decimal(15000),
+        unit: 'm3',
+        effectiveFrom: new Date(2023, 0, 1),
+        isActive: true,
+        description: 'Đơn giá nước theo quy định',
+      },
+    }),
+    parkingMotorbike: await prisma.feeRate.create({
+      data: {
+        name: 'Phí gửi xe máy',
+        feeType: FeeType.PARKING,
+        vehicleType: VehicleType.MOTORBIKE,
+        unitPrice: new Decimal(80000),
+        unit: 'tháng',
+        effectiveFrom: new Date(2023, 0, 1),
+        isActive: true,
+      },
+    }),
+    parkingBicycle: await prisma.feeRate.create({
+      data: {
+        name: 'Phí gửi xe đạp',
+        feeType: FeeType.PARKING,
+        vehicleType: VehicleType.BICYCLE,
+        unitPrice: new Decimal(30000),
+        unit: 'tháng',
+        effectiveFrom: new Date(2023, 0, 1),
+        isActive: true,
+      },
+    }),
+  };
+  console.log(`Created ${Object.keys(feeRates).length} fee rates.`);
+
 
   // --- Create Buildings ---
   console.log('Creating buildings...');
@@ -81,29 +159,47 @@ async function main() {
     data: {
       name: 'B3',
       address: 'KTX Bách Khoa Hà Nội, Khu B',
-      description: 'Tòa nhà dành cho sinh viên nam',
+      description: 'Tòa nhà KTX hiện đại, gần căng tin',
+      // images: { create: [ ...media data... ] } // If seeding media
     },
   });
   const buildingB9 = await prisma.building.create({
     data: {
       name: 'B9',
       address: 'KTX Bách Khoa Hà Nội, Khu B',
-      description: 'Tòa nhà dành cho sinh viên nữ',
+      description: 'Tòa nhà KTX mới nâng cấp, có phòng tự học',
+      // images: { create: [ ...media data... ] } // If seeding media
     },
   });
   console.log(`Created buildings: ${buildingB3.name}, ${buildingB9.name}`);
 
   // --- Create Rooms ---
   console.log('Creating rooms...');
-  const rooms: Array<Awaited<ReturnType<typeof prisma.room.create>>> = []; // Explicit type
-  const roomTypes = [RoomType.ROOM_8, RoomType.ROOM_6];
-  const capacities = { [RoomType.ROOM_8]: 8, [RoomType.ROOM_6]: 6 };
-  const prices = { [RoomType.ROOM_8]: new Decimal(600000), [RoomType.ROOM_6]: new Decimal(800000) };
+  const rooms: Array<Awaited<ReturnType<typeof prisma.room.create>>> = [];
+  const roomTypes = [RoomType.ROOM_8, RoomType.ROOM_6, RoomType.ROOM_10, RoomType.ROOM_12, RoomType.MANAGEMENT]; // Added all types
+  const capacities = {
+    [RoomType.ROOM_12]: 12,
+    [RoomType.ROOM_10]: 10,
+    [RoomType.ROOM_8]: 8,
+    [RoomType.ROOM_6]: 6,
+    [RoomType.MANAGEMENT]: 2, // Example capacity for management room
+  };
+
+  const amenityBed = amenities.find(a => a.name === 'Giường tầng');
+  const amenityLocker = amenities.find(a => a.name === 'Tủ đồ cá nhân');
+  const amenityAC = amenities.find(a => a.name === 'Điều hòa');
+  const amenityHeater = amenities.find(a => a.name === 'Nóng lạnh');
+  const amenityWC = amenities.find(a => a.name === 'WC Trong Phòng'); // Use general amenity
+  const amenityDesk = amenities.find(a => a.name === 'Bàn học');
+
+  if (!amenityBed || !amenityLocker || !amenityAC || !amenityHeater || !amenityWC || !amenityDesk) {
+    throw new Error("Required base amenities not found!");
+  }
 
   for (const building of [buildingB3, buildingB9]) {
     for (let floor = 1; floor <= 5; floor++) {
       for (let roomNum = 1; roomNum <= 10; roomNum++) {
-        const type = getRandomElement(roomTypes);
+        const type = getRandomElement(roomTypes.filter(rt => rt !== RoomType.MANAGEMENT)); // Exclude management for general student rooms
         const roomNumberStr = `${floor}0${roomNum}`;
         const room = await prisma.room.create({
           data: {
@@ -113,15 +209,16 @@ async function main() {
             capacity: capacities[type],
             floor: floor,
             status: RoomStatus.AVAILABLE,
-            price: prices[type],
             description: `Phòng ${capacities[type]} người, tầng ${floor}, tòa ${building.name}`,
-            // Add amenities
+            // images: { create: [ ...media data... ] } // If seeding media
             amenities: {
               create: [
-                { amenityId: getRandomElement(amenities.filter(a => ['Điều hòa', 'Nóng lạnh'].includes(a.name))).id, quantity: 1 },
-                { amenityId: getRandomElement(amenities.filter(a => ['Tủ đồ cá nhân'].includes(a.name))).id, quantity: capacities[type] },
-                // Fixed typo: '2 WC', '2 Nhà tắm' not in capacities[type] quantity logic
-                { amenityId: getRandomElement(amenities.filter(a => ['2 WC', '2 Nhà tắm'].includes(a.name))).id, quantity: 2 },
+                { amenityId: amenityAC.id, quantity: 1 },
+                { amenityId: amenityHeater.id, quantity: 1 },
+                { amenityId: amenityWC.id, quantity: (type === RoomType.ROOM_6 || type === RoomType.ROOM_8) ? 1 : 2 }, // Example: More WCs for larger rooms
+                { amenityId: amenityLocker.id, quantity: capacities[type] },
+                { amenityId: amenityBed.id, quantity: capacities[type] },
+                { amenityId: amenityDesk.id, quantity: capacities[type] },
               ],
             },
           },
@@ -129,6 +226,25 @@ async function main() {
         rooms.push(room);
       }
     }
+    // Create one management room per building
+    const managementRoom = await prisma.room.create({
+      data: {
+        buildingId: building.id,
+        number: `VP${building.name}`,
+        type: RoomType.MANAGEMENT,
+        capacity: capacities[RoomType.MANAGEMENT],
+        floor: 1,
+        status: RoomStatus.AVAILABLE,
+        description: `Phòng quản lý tòa ${building.name}`,
+        amenities: {
+          create: [
+            { amenityId: amenityAC.id, quantity: 1 },
+            { amenityId: amenityDesk.id, quantity: 2 },
+          ]
+        }
+      }
+    });
+    rooms.push(managementRoom);
   }
   console.log(`Created ${rooms.length} rooms.`);
 
@@ -139,12 +255,15 @@ async function main() {
     where: { email: 'admin@example.com' },
     update: {
       password: adminPassword,
+      isActive: true,
+      role: Role.ADMIN,
     },
     create: {
       email: 'admin@example.com',
       password: adminPassword,
       role: Role.ADMIN,
       isActive: true,
+      // avatarId: createdMedia.id, // If seeding media
     },
   });
   console.log(`Created admin user: ${adminUser.email}`);
@@ -153,9 +272,9 @@ async function main() {
   console.log('Creating staff users and profiles...');
   const staffPassword = await bcrypt.hash('staff123', 10);
   const staffData = [
-    { email: 'staff1@example.com', fullName: 'Nguyễn Văn An', position: 'Quản lý B3', gender: Gender.MALE, managedBuildingId: buildingB3.id },
-    { email: 'staff2@example.com', fullName: 'Trần Thị Bình', position: 'Quản lý B9', gender: Gender.FEMALE, managedBuildingId: buildingB9.id },
-    { email: 'staff3@example.com', fullName: 'Lê Minh Cường', position: 'Nhân viên kỹ thuật', gender: Gender.MALE, managedBuildingId: null },
+    { email: 'staff.b3@example.com', fullName: 'Nguyễn Văn An', position: 'Quản lý tòa B3', gender: Gender.MALE, managedBuildingId: buildingB3.id },
+    { email: 'staff.b9@example.com', fullName: 'Trần Thị Bình', position: 'Quản lý tòa B9', gender: Gender.FEMALE, managedBuildingId: buildingB9.id },
+    { email: 'staff.tech@example.com', fullName: 'Lê Minh Cường', position: 'Nhân viên kỹ thuật', gender: Gender.MALE, managedBuildingId: null },
   ];
   const createdStaffProfiles: Array<Awaited<ReturnType<typeof prisma.staffProfile.create>>> = [];
   for (const staff of staffData) {
@@ -165,20 +284,21 @@ async function main() {
         password: staffPassword,
         role: Role.STAFF,
         isActive: true,
+        // avatarId: createdMedia.id, // If seeding media
         staffProfile: {
           create: {
             fullName: staff.fullName,
             phoneNumber: `0987654${Math.floor(Math.random() * 900) + 100}`,
             position: staff.position,
-            identityCardNumber: `0010${Math.floor(Math.random() * 90000000) + 10000000}`, // Example unique ID
+            identityCardNumber: `0010${Math.floor(Math.random() * 90000000) + 10000000}`,
             gender: staff.gender,
             birthDate: getRandomDate(new Date(1980, 0, 1), new Date(1995, 11, 31)),
-            address: 'Hà Nội',
+            address: '1 Dai Co Viet, Hai Ba Trung, Hanoi',
             managedBuildingId: staff.managedBuildingId,
           },
         },
       },
-      include: { staffProfile: true }, // Include the profile in the result
+      include: { staffProfile: true },
     });
     if (user.staffProfile) {
       createdStaffProfiles.push(user.staffProfile);
@@ -186,76 +306,97 @@ async function main() {
     console.log(`Created staff: ${user.email} - ${staff.fullName}`);
   }
   console.log(`Created ${createdStaffProfiles.length} staff profiles.`);
-  const assignedStaff = createdStaffProfiles.find(s => s.position === 'Nhân viên kỹ thuật'); // Find the technician
+  const assignedStaffForMaintenance = createdStaffProfiles.find(s => s.position === 'Nhân viên kỹ thuật');
 
   // --- Create Student Users and Profiles ---
   console.log('Creating student users and profiles...');
   const studentPassword = await bcrypt.hash('student123', 10);
-  const firstNamesMale = ['Hùng', 'Dũng', 'Minh', 'Khải', 'Sơn', 'Tuấn', 'Đức', 'Hoàng', 'Nam', 'Quân'];
-  const firstNamesFemale = ['Lan', 'Hoa', 'Mai', 'Hương', 'Nga', 'Linh', 'Trang', 'Thảo', 'Hà', 'Thu'];
-  const lastNames = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Huỳnh', 'Phan', 'Vũ', 'Võ', 'Đặng'];
-  const faculties = ['CNTT', 'Điện tử Viễn thông', 'Cơ khí', 'Kinh tế Quản lý', 'Ngoại ngữ', 'Toán tin'];
-  const provinces = ['Hà Nội', 'Hải Phòng', 'Đà Nẵng', 'TP HCM', 'Nghệ An', 'Thanh Hóa', 'Hà Tĩnh', 'Nam Định', 'Thái Bình'];
+  const firstNamesMale = ['Hùng', 'Dũng', 'Minh', 'Khải', 'Sơn', 'Tuấn', 'Đức', 'Hoàng', 'Nam', 'Quân', 'Việt', 'Long', 'Phúc', 'Trung', 'Hiếu'];
+  const firstNamesFemale = ['Lan', 'Hoa', 'Mai', 'Hương', 'Nga', 'Linh', 'Trang', 'Thảo', 'Hà', 'Thu', 'Ngọc', 'Anh', 'Phương', 'Yến', 'Oanh'];
+  const lastNames = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Hoàng', 'Huỳnh', 'Phan', 'Vũ', 'Võ', 'Đặng', 'Bùi', 'Đỗ', 'Hồ', 'Ngô', 'Dương'];
+  const faculties = ['CNTT', 'Điện tử Viễn thông', 'Cơ khí', 'Kinh tế Quản lý', 'Ngoại ngữ', 'Toán tin', 'Vật liệu', 'Hóa học', 'Sinh học - Thực phẩm', 'Vật lý kỹ thuật'];
+  const provinces = ['Hà Nội', 'Hải Phòng', 'Đà Nẵng', 'TP HCM', 'Nghệ An', 'Thanh Hóa', 'Hà Tĩnh', 'Nam Định', 'Thái Bình', 'Bắc Ninh', 'Hải Dương', 'Quảng Ninh', 'Phú Thọ', 'Vĩnh Phúc'];
+  const priorityObjects = ['Con thương binh', 'Hộ nghèo', 'Dân tộc thiểu số', null, null, null]; // Added null for non-priority
 
-  let availableRooms = await prisma.room.findMany({
-    where: { status: { not: RoomStatus.UNDER_MAINTENANCE }, capacity: { gt: 0 } },
+  let availableStudentRooms = await prisma.room.findMany({
+    where: {
+      status: { notIn: [RoomStatus.UNDER_MAINTENANCE, RoomStatus.FULL] },
+      type: { notIn: [RoomType.MANAGEMENT] }, // Students should not be in management rooms
+      capacity: { gt: 0 }
+    },
+    include: { building: true }, // Include building to determine gender
     orderBy: { buildingId: 'asc' }
   });
+
   const createdStudentProfiles: Array<Awaited<ReturnType<typeof prisma.studentProfile.create>>> = [];
 
-  for (let i = 1; i <= 50; i++) {
-    if (availableRooms.length === 0) {
+  for (let i = 1; i <= 150; i++) { // Increased number of students
+    if (availableStudentRooms.length === 0) {
       console.warn("No more available rooms to assign students.");
       break;
     }
 
-    const roomIndex = Math.floor(Math.random() * availableRooms.length);
-    const assignedRoom = availableRooms[roomIndex];
+    const roomIndex = Math.floor(Math.random() * availableStudentRooms.length);
+    const assignedRoom = availableStudentRooms[roomIndex];
 
-    const gender = assignedRoom.buildingId === buildingB3.id ? Gender.MALE : Gender.FEMALE;
+    // Determine gender based on building (assuming B3 is male, B9 is female)
+    // This needs to be adapted if building gender assignment is different or more complex
+    const gender = assignedRoom.building?.name === 'B3' ? Gender.MALE : Gender.FEMALE;
+
     const firstName = gender === Gender.MALE ? getRandomElement(firstNamesMale) : getRandomElement(firstNamesFemale);
     const lastName = getRandomElement(lastNames);
-    const fullName = `${lastName} ${firstName}`;
-    const email = `student${i}@example.com`;
-    const studentId = `20${18 + Math.floor(i / 10)}${String(1000 + i).padStart(4, '0')}`; // Ensure 4 digits for ID part
-    const courseYear = 63 + Math.floor(i / 15);
-    // Generate a more unique ID card number
-    const birthDate = getRandomDate(new Date(2000, 0, 1), new Date(2004, 11, 31)); // Declare and initialize birthDate
-    const identityCardNumber = `0${String(Math.floor(Math.random() * 99)).padStart(2, '0')}${String(gender === Gender.MALE ? 1 : 0)}${String(birthDate.getFullYear()).slice(-2)}${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
+    const fullName = `${lastName} Văn ${firstName}`.replace('Văn Văn', 'Văn').replace('Văn Thị', 'Thị'); // Basic name construction
+    if (gender === Gender.FEMALE) {
+      fullName.replace('Văn', 'Thị'); // Common convention
+    }
+
+    const email = `student${i.toString().padStart(3, '0')}@example.com`;
+    const studentIdYear = 18 + Math.floor(i / 20); // For student IDs like 2018xxxx, 2019xxxx
+    const studentIdSuffix = String(1000 + i).slice(-4); // Ensure 4 digits for ID part
+    const studentId = `20${studentIdYear}${studentIdSuffix}`;
+    const courseYear = 63 + Math.floor(i / 25); // K63, K64, etc.
+
+    const birthDate = getRandomDate(new Date(1999, 0, 1), new Date(2005, 11, 31));
+    // Simplified identity card number. Real generation is complex.
+    const identityCardNumber = `0${String(Math.floor(Math.random() * 99)).padStart(2, '0')}${String(birthDate.getFullYear()).slice(-2)}${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`;
 
 
     try {
-      const birthDate = getRandomDate(new Date(2000, 0, 1), new Date(2004, 11, 31));
-      const identityCardNumber = `0${String(Math.floor(Math.random() * 90) + 10)}${String(gender === Gender.MALE ? 1 : 0)}${String(birthDate.getFullYear()).slice(-2)}${String(Math.floor(Math.random() * 999999)).padStart(6, '0')}`; // More realistic CCCD format
-
       const user = await prisma.user.create({
         data: {
           email: email,
           password: studentPassword,
           role: Role.STUDENT,
           isActive: true,
+          // avatarId: createdMedia.id, // If seeding media
           studentProfile: {
             create: {
               studentId: studentId,
               fullName: fullName,
               gender: gender,
-              birthDate: birthDate, // Use defined birthDate
-              identityCardNumber: identityCardNumber, // Use more unique ID
+              birthDate: birthDate,
+              identityCardNumber: identityCardNumber,
+              ethnicity: 'Kinh',
+              priorityObject: getRandomElement(priorityObjects),
               phoneNumber: `0912345${String(i).padStart(3, '0')}`,
-              personalEmail: `personal${i}@mail.com`,
+              personalEmail: `personal.student${i.toString().padStart(3, '0')}@mail.com`,
               faculty: getRandomElement(faculties),
               courseYear: courseYear,
-              className: `${getRandomElement(faculties).substring(0, 2)}${courseYear}-${String(i % 5 + 1).padStart(2, '0')}`,
+              className: `${faculties[0].substring(0, 2)}${courseYear}A${String(i % 5 + 1)}`, // Example class name
               permanentProvince: getRandomElement(provinces),
-              permanentAddress: `Số ${i}, Đường ABC, ${getRandomElement(provinces)}`,
+              permanentDistrict: 'Quận/Huyện ABC',
+              permanentAddress: `Số ${i}, Đường XYZ, Phường 123`,
               status: StudentStatus.RENTING,
-              startDate: getRandomDate(new Date(2023, 8, 1), new Date(2024, 1, 1)),
-              contractEndDate: new Date(2025, 5, 30),
-              checkInDate: new Date(),
-              fatherName: `${getRandomElement(lastNames)} Văn ${getRandomElement(firstNamesMale)}`,
+              startDate: getRandomDate(new Date(2023, 7, 15), new Date(2024, 1, 28)), // Aug 15, 2023 to Feb 28, 2024
+              contractEndDate: new Date(2025, 5, 30), // June 30, 2025
+              checkInDate: new Date(), // Assume checked in today for simplicity
+              fatherName: `${getRandomElement(lastNames)} Văn ${getRandomElement(firstNamesMale)}`.replace('Văn Văn', 'Văn'),
+              fatherDobYear: birthDate.getFullYear() - (25 + Math.floor(Math.random() * 10)),
               motherName: `${getRandomElement(lastNames)} Thị ${getRandomElement(firstNamesFemale)}`,
-              emergencyContactRelation: 'Bố/Mẹ',
+              motherDobYear: birthDate.getFullYear() - (23 + Math.floor(Math.random() * 10)),
+              emergencyContactRelation: 'Bố',
               emergencyContactPhone: `0900000${String(i).padStart(3, '0')}`,
+              emergencyContactAddress: `Địa chỉ khẩn cấp của SV ${i}`,
               roomId: assignedRoom.id,
             },
           },
@@ -274,14 +415,15 @@ async function main() {
             where: { id: updatedRoom.id },
             data: { status: RoomStatus.FULL }
           });
-          availableRooms.splice(roomIndex, 1);
+          // Remove full room from available list
+          availableStudentRooms = availableStudentRooms.filter(r => r.id !== updatedRoom.id);
         }
         console.log(`Created student: ${user.email} - ${fullName} in Room ${assignedRoom.number} (${updatedRoom.actualOccupancy}/${updatedRoom.capacity})`);
       }
 
     } catch (error: any) {
-      if (error.code === 'P2002') {
-        console.warn(`Skipping student ${i} (${email}/${studentId}) due to unique constraint violation. Fields: ${error.meta?.target?.join(', ')}`);
+      if (error.code === 'P2002' && error.meta?.target) { // Check if target exists
+        console.warn(`Skipping student ${i} (${email}/${studentId}) due to unique constraint violation on fields: ${error.meta.target.join(', ')}`);
       } else {
         console.error(`Failed to create student ${i} (${email}):`, error);
       }
@@ -291,40 +433,56 @@ async function main() {
 
   // --- Create Sample Invoices ---
   console.log('Creating sample invoices...');
-  // ... (Invoice creation logic remains largely the same) ...
-  // (No direct changes needed here based on the Media model introduction)
   const createdInvoices: Array<Awaited<ReturnType<typeof prisma.invoice.create>>> = [];
-  for (const studentProfile of createdStudentProfiles.slice(0, 20)) { // Create invoices for first 20 students
-    if (!studentProfile.roomId) continue; // Skip if student isn't in a room
+
+  for (const studentProfile of createdStudentProfiles.slice(0, Math.min(50, createdStudentProfiles.length))) {
+    if (!studentProfile.roomId) continue;
 
     const room = await prisma.room.findUnique({ where: { id: studentProfile.roomId } });
     if (!room) continue;
+
+    // Determine room fee rate
+    let currentRoomFeeRate;
+    if (room.type === RoomType.ROOM_6) currentRoomFeeRate = feeRates.room6;
+    else if (room.type === RoomType.ROOM_8) currentRoomFeeRate = feeRates.room8;
+    // Add other room types if you have FeeRates for them
+    else {
+      console.warn(`No FeeRate defined for room type ${room.type} of room ${room.number}. Skipping room fee invoice.`);
+      continue;
+    }
+    if (!currentRoomFeeRate) {
+      console.warn(`FeeRate not found for room type ${room.type}. Skipping room fee invoice for student ${studentProfile.studentId}`);
+      continue;
+    }
+
+
+    const billingMonth = 5; // May
+    const billingYear = 2024;
 
     // 1. Room Fee Invoice (Personal)
     const roomFeeInvoice = await prisma.invoice.create({
       data: {
         studentProfileId: studentProfile.id,
-        billingMonth: 5,
-        billingYear: 2024,
-        issueDate: new Date(2024, 4, 1), // May 1st
-        dueDate: new Date(2024, 4, 15), // May 15th
-        paymentDeadline: new Date(2024, 4, 30), // May 30th
-        totalAmount: room.price, // Use room's price
+        billingMonth: billingMonth,
+        billingYear: billingYear,
+        issueDate: new Date(billingYear, billingMonth - 1, 1), // May 1st
+        dueDate: new Date(billingYear, billingMonth - 1, 15),  // May 15th
+        paymentDeadline: new Date(billingYear, billingMonth - 1, 25), // May 25th
+        totalAmount: currentRoomFeeRate.unitPrice, // Get price from FeeRate
         status: getRandomElement([InvoiceStatus.PAID, InvoiceStatus.UNPAID, InvoiceStatus.OVERDUE]),
         items: {
           create: {
-            type: PaymentType.ROOM_FEE,
-            description: `Tiền phòng tháng 5/2024 - Phòng ${room.number}`,
-            amount: room.price,
+            type: PaymentType.ROOM_FEE, // Matches InvoiceItem schema
+            description: `Tiền phòng T${billingMonth}/${billingYear} - Phòng ${room.number} (${room.type})`,
+            amount: currentRoomFeeRate.unitPrice,
           }
         }
       },
       include: { items: true }
     });
     createdInvoices.push(roomFeeInvoice);
-    console.log(`Created ROOM_FEE invoice ${roomFeeInvoice.id} for student ${studentProfile.studentId}`);
+    console.log(`Created ROOM_FEE invoice ${roomFeeInvoice.id} (Total: ${roomFeeInvoice.totalAmount}) for student ${studentProfile.studentId}`);
 
-    // 2. Create payments for PAID invoices
     if (roomFeeInvoice.status === InvoiceStatus.PAID) {
       await prisma.payment.create({
         data: {
@@ -332,51 +490,66 @@ async function main() {
           studentProfileId: studentProfile.id,
           amount: roomFeeInvoice.totalAmount,
           paymentDate: getRandomDate(roomFeeInvoice.issueDate, roomFeeInvoice.dueDate),
-          paymentMethod: getRandomElement(['Chuyển khoản', 'Tiền mặt']),
+          paymentMethod: getRandomElement(['Chuyển khoản', 'Tiền mặt', 'VNPay']),
         }
       });
-      console.log(`Created payment for invoice ${roomFeeInvoice.id}`);
-      // Update paid amount on invoice
       await prisma.invoice.update({
         where: { id: roomFeeInvoice.id },
         data: { paidAmount: roomFeeInvoice.totalAmount }
       });
+      console.log(`Created payment for PAID invoice ${roomFeeInvoice.id}`);
     }
   }
 
-  // 3. Utility Invoice (Per Room - Example for one room)
-  const roomForUtility = await prisma.room.findFirst({ where: { actualOccupancy: { gt: 0 } } });
-  if (roomForUtility) {
+  // 3. Utility Invoice (Per Room - Example for a few rooms)
+  const roomsForUtilityInvoice = await prisma.room.findMany({
+    where: { actualOccupancy: { gt: 0 }, type: { notIn: [RoomType.MANAGEMENT] } },
+    take: 5, // Create utility invoices for 5 rooms
+  });
+
+  for (const roomForUtility of roomsForUtilityInvoice) {
+    const billingMonth = 5; // May
+    const billingYear = 2024;
+    const prevBillingMonth = 4;
+    const prevBillingYear = 2024;
+
     // Create some dummy readings first
+    const oldElectricityReading = Math.random() * 1000 + 500; // 500 - 1500
+    const newElectricityReading = oldElectricityReading + (Math.random() * 100 + 50); // consumed 50-150 kWh
+    const oldWaterReading = Math.random() * 200 + 50; // 50 - 250
+    const newWaterReading = oldWaterReading + (Math.random() * 20 + 10); // consumed 10-30 m3
+
     await prisma.utilityMeterReading.createMany({
       data: [
-        { roomId: roomForUtility.id, type: UtilityType.ELECTRICITY, readingDate: new Date(2024, 3, 30), indexValue: 1500.5, billingMonth: 4, billingYear: 2024 },
-        { roomId: roomForUtility.id, type: UtilityType.ELECTRICITY, readingDate: new Date(2024, 4, 30), indexValue: 1650.0, billingMonth: 5, billingYear: 2024 },
-        { roomId: roomForUtility.id, type: UtilityType.WATER, readingDate: new Date(2024, 3, 30), indexValue: 300.0, billingMonth: 4, billingYear: 2024 },
-        { roomId: roomForUtility.id, type: UtilityType.WATER, readingDate: new Date(2024, 4, 30), indexValue: 350.0, billingMonth: 5, billingYear: 2024 },
+        { roomId: roomForUtility.id, type: UtilityType.ELECTRICITY, readingDate: new Date(prevBillingYear, prevBillingMonth - 1, 28), indexValue: oldElectricityReading, billingMonth: prevBillingMonth, billingYear: prevBillingYear },
+        { roomId: roomForUtility.id, type: UtilityType.ELECTRICITY, readingDate: new Date(billingYear, billingMonth - 1, 28), indexValue: newElectricityReading, billingMonth: billingMonth, billingYear: billingYear },
+        { roomId: roomForUtility.id, type: UtilityType.WATER, readingDate: new Date(prevBillingYear, prevBillingMonth - 1, 28), indexValue: oldWaterReading, billingMonth: prevBillingMonth, billingYear: prevBillingYear },
+        { roomId: roomForUtility.id, type: UtilityType.WATER, readingDate: new Date(billingYear, billingMonth - 1, 28), indexValue: newWaterReading, billingMonth: billingMonth, billingYear: billingYear },
       ]
     });
-    console.log(`Created utility readings for Room ${roomForUtility.number}`);
 
-    const electricityAmount = new Decimal((1650.0 - 1500.5) * 3500); // Example calculation
-    const waterAmount = new Decimal((350.0 - 300.0) * 15000); // Example calculation
+    const electricityConsumed = new Decimal(newElectricityReading - oldElectricityReading);
+    const waterConsumed = new Decimal(newWaterReading - oldWaterReading);
+
+    const electricityAmount = electricityConsumed.mul(feeRates.electricity.unitPrice);
+    const waterAmount = waterConsumed.mul(feeRates.water.unitPrice);
     const totalUtilityAmount = electricityAmount.add(waterAmount);
 
     const utilityInvoice = await prisma.invoice.create({
       data: {
-        roomId: roomForUtility.id, // Linked to room
-        billingMonth: 5,
-        billingYear: 2024,
-        issueDate: new Date(2024, 5, 5), // June 5th
-        dueDate: new Date(2024, 5, 20), // June 20th
-        paymentDeadline: new Date(2024, 5, 25), // June 25th
+        roomId: roomForUtility.id,
+        billingMonth: billingMonth,
+        billingYear: billingYear,
+        issueDate: new Date(billingYear, billingMonth, 5), // June 5th for May utilities
+        dueDate: new Date(billingYear, billingMonth, 20),
+        paymentDeadline: new Date(billingYear, billingMonth, 25),
         totalAmount: totalUtilityAmount,
         status: InvoiceStatus.UNPAID,
-        notes: `Hóa đơn điện nước tháng 5/2024 cho phòng ${roomForUtility.number}`,
+        notes: `Hóa đơn điện nước T${billingMonth}/${billingYear} cho phòng ${roomForUtility.number}`,
         items: {
           create: [
-            { type: PaymentType.ELECTRICITY, description: 'Tiền điện T5/2024 (Chỉ số: 1650.0 - 1500.5 = 149.5 kWh)', amount: electricityAmount },
-            { type: PaymentType.WATER, description: 'Tiền nước T5/2024 (Chỉ số: 350.0 - 300.0 = 50 m³)', amount: waterAmount },
+            { type: PaymentType.ELECTRICITY, description: `Tiền điện T${billingMonth} (CS: ${newElectricityReading.toFixed(1)} - ${oldElectricityReading.toFixed(1)} = ${electricityConsumed.toFixed(1)} kWh)`, amount: electricityAmount },
+            { type: PaymentType.WATER, description: `Tiền nước T${billingMonth} (CS: ${newWaterReading.toFixed(1)} - ${oldWaterReading.toFixed(1)} = ${waterConsumed.toFixed(1)} m³)`, amount: waterAmount },
           ]
         }
       },
@@ -387,117 +560,120 @@ async function main() {
   }
   console.log(`Created ${createdInvoices.length} total invoices.`);
 
+
   // --- Create Sample Maintenance Requests ---
   console.log('Creating maintenance requests...');
-  const roomsWithStudents = await prisma.room.findMany({
-    where: { actualOccupancy: { gt: 0 } },
-    include: { residents: true }
+  const roomsWithStudentsForMaintenance = await prisma.room.findMany({
+    where: { actualOccupancy: { gt: 0 }, type: { notIn: [RoomType.MANAGEMENT] } },
+    include: { residents: { select: { userId: true, fullName: true } } }, // Select only needed fields
+    take: 5,
   });
-  if (roomsWithStudents.length > 0 && createdStudentProfiles.length > 0 && assignedStaff) {
-    const roomToReport1 = getRandomElement(roomsWithStudents);
-    const reportingStudent1 = getRandomElement(roomToReport1.residents);
 
-    if (reportingStudent1) {
+  if (assignedStaffForMaintenance && roomsWithStudentsForMaintenance.length > 0) {
+    for (const roomToReport of roomsWithStudentsForMaintenance) {
+      if (roomToReport.residents.length === 0) continue;
+      const reportingStudent = getRandomElement(roomToReport.residents);
+      const issueType = getRandomElement(['Điều hòa', 'Bóng đèn', 'Vòi nước', 'Cửa sổ']);
+      const status = getRandomElement([MaintenanceStatus.PENDING, MaintenanceStatus.ASSIGNED, MaintenanceStatus.IN_PROGRESS]);
+
       await prisma.maintenance.create({
         data: {
-          roomId: roomToReport1.id,
-          reportedById: reportingStudent1.userId, // SỬA: dùng userId thay vì id
-          issue: 'Điều hòa bị chảy nước, không mát.',
-          reportDate: new Date(),
-          status: MaintenanceStatus.PENDING,
+          roomId: roomToReport.id,
+          reportedById: reportingStudent.userId, // Correctly uses userId from StudentProfile
+          issue: `${issueType} phòng ${roomToReport.number} bị hỏng/cần sửa. (${reportingStudent.fullName} báo)`,
+          reportDate: getRandomDate(new Date(2024, 3, 1), new Date()), // Reported between Apr 1 and today
+          status: status,
+          assignedToId: status !== MaintenanceStatus.PENDING ? assignedStaffForMaintenance.id : null,
+          // images: { create: [ ...media data... ] } // If seeding media
         }
       });
-      console.log(`Created maintenance request (AC) for room ${roomToReport1.number}.`);
-    } else {
-      console.log(`Could not find student in room ${roomToReport1.number} for maintenance request 1.`);
+      console.log(`Created maintenance request (${issueType}) for room ${roomToReport.number} by student userId ${reportingStudent.userId}.`);
     }
-
-    const roomToReport2 = getRandomElement(roomsWithStudents);
-    const reportingStudent2 = getRandomElement(roomToReport2.residents);
-    if (reportingStudent2) {
-      await prisma.maintenance.create({
-        data: {
-          roomId: roomToReport2.id,
-          reportedById: reportingStudent2.userId, // SỬA: dùng userId thay vì id
-          issue: 'Bóng đèn nhà vệ sinh bị cháy.',
-          reportDate: new Date(Date.now() - 86400000 * 2), // 2 days ago
-          status: MaintenanceStatus.ASSIGNED,
-          assignedToId: assignedStaff.id, // Assign to the technician
-        }
-      });
-      console.log(`Created maintenance request (Light) for room ${roomToReport2.number}.`);
-    } else {
-      console.log(`Could not find student in room ${roomToReport2.number} for maintenance request 2.`);
-    }
-
   } else {
-    console.log("Skipping maintenance requests creation (no rooms with students, no students, or no assigned staff).");
+    console.log("Skipping maintenance requests: No staff for assignment or no students in rooms.");
   }
 
   // --- Create Sample Vehicle Registration ---
   console.log('Creating vehicle registrations...');
-  const studentsForVehicles = createdStudentProfiles.slice(0, 5); // Take first 5 students
+  const studentsForVehicles = createdStudentProfiles.slice(0, Math.min(20, createdStudentProfiles.length));
   for (const student of studentsForVehicles) {
     const vehicleType = getRandomElement([VehicleType.MOTORBIKE, VehicleType.BICYCLE]);
+    let parkingFeeRate;
+    if (vehicleType === VehicleType.MOTORBIKE) parkingFeeRate = feeRates.parkingMotorbike;
+    else if (vehicleType === VehicleType.BICYCLE) parkingFeeRate = feeRates.parkingBicycle;
+
+    if (!parkingFeeRate) {
+      console.warn(`No parking fee rate found for ${vehicleType} for student ${student.studentId}`);
+      continue;
+    }
+
     await prisma.vehicleRegistration.create({
       data: {
         studentProfileId: student.id,
         vehicleType: vehicleType,
         licensePlate: vehicleType === VehicleType.MOTORBIKE
-          ? `29-${getRandomElement(['H1', 'B1', 'K1'])}-${String(Math.floor(Math.random() * 90000) + 10000).padStart(5, '0')}`
-          : `B-${student.studentId}`, // Example license plate for bicycle
-        brand: getRandomElement(['Honda', 'Yamaha', 'Thống Nhất', 'Giant']),
-        color: getRandomElement(['Đen', 'Trắng', 'Đỏ', 'Xanh']),
-        parkingCardNo: `PK${student.studentId}${Math.floor(Math.random() * 10)}`, // Example unique card number
+          ? `${getRandomElement(['29', '30', '99'])}-${getRandomElement(['H1', 'B2', 'K1'])}-${String(Math.floor(Math.random() * 90000) + 10000).padStart(5, '0')}`
+          : `Bike-${student.studentId.slice(-4)}`,
+        brand: vehicleType === VehicleType.MOTORBIKE ? getRandomElement(['Honda', 'Yamaha', 'Suzuki']) : getRandomElement(['Thống Nhất', 'Giant', 'ASAMA']),
+        color: getRandomElement(['Đen', 'Trắng', 'Đỏ', 'Xanh', 'Bạc']),
+        parkingCardNo: `PK${String(student.id).padStart(4, '0')}${vehicleType.substring(0, 1)}`,
         isActive: true,
-        startDate: student.startDate,
-        monthlyFee: new Decimal(getRandomElement([50000, 80000])),
+        startDate: student.startDate, // Assume parking starts when student starts
+        // endDate: // Optional
+        // notes: // Optional
+        // images: { create: [ ...media data... ] } // If seeding media
+        // monthlyFee is GONE, it's in FeeRate
       }
     });
+    // Note: An invoice for parking would be created separately based on this registration and FeeRate.
   }
-  console.log(`Created ${studentsForVehicles.length} vehicle registrations.`);
+  console.log(`Created ${studentsForVehicles.length} vehicle registrations. Parking fees are in FeeRate.`);
+
 
   // --- Create Sample Room Transfer (Optional) ---
   console.log('Creating a sample room transfer request...');
-  // ... (Room Transfer logic remains the same) ...
-  // (No direct changes needed here based on the Media model introduction)
-  const studentToTransfer = createdStudentProfiles.find(s => s.roomId !== null);
+  const studentToTransfer = createdStudentProfiles.find(s => s.roomId !== null && s.status === StudentStatus.RENTING);
+
   if (studentToTransfer && studentToTransfer.roomId) {
-    const currentRoom = await prisma.room.findUnique({
+    const currentRoomDetails = await prisma.room.findUnique({
       where: { id: studentToTransfer.roomId },
-      select: { buildingId: true }
+      select: { buildingId: true, type: true }
     });
-    if (currentRoom && currentRoom.buildingId) {
-      const currentBuildingId = currentRoom.buildingId;
+
+    if (currentRoomDetails) {
       const targetRoom = await prisma.room.findFirst({
         where: {
-          status: RoomStatus.AVAILABLE,
-          buildingId: currentBuildingId,
-          id: { not: studentToTransfer.roomId }
+          status: RoomStatus.AVAILABLE, // Or HAS_VACANCY if you implement that
+          buildingId: currentRoomDetails.buildingId, // Transfer within the same building for simplicity
+          type: currentRoomDetails.type, // Prefer same room type
+          id: { not: studentToTransfer.roomId },
+          actualOccupancy: { lt: prisma.room.fields.capacity } // Ensure there's actual space
         },
       });
-      const approvingStaff = createdStaffProfiles.find(s => s.managedBuildingId === currentBuildingId);
+
+      const approvingStaff = createdStaffProfiles.find(s => s.managedBuildingId === currentRoomDetails.buildingId) || createdStaffProfiles.find(s => s.position?.includes('Quản lý'));
+
       if (targetRoom && approvingStaff) {
         await prisma.roomTransfer.create({
           data: {
             studentProfileId: studentToTransfer.id,
             fromRoomId: studentToTransfer.roomId,
             toRoomId: targetRoom.id,
-            transferDate: new Date(Date.now() + 86400000 * 7),
-            reason: 'Muốn chuyển sang phòng gần bạn bè hơn.',
+            transferDate: new Date(Date.now() + 86400000 * 7), // 7 days from now
+            reason: 'Muốn chuyển sang phòng gần bạn bè hơn / phòng thoáng hơn.',
             status: TransferStatus.PENDING,
-            // approvedById: approvingStaff.id // Uncomment if status is APPROVED
+            // approvedById: approvingStaff.id // Set this if status is APPROVED
           }
         });
-        console.log(`Created a room transfer request for student ${studentToTransfer.studentId} (Room ${studentToTransfer.roomId}) to room ${targetRoom.number}.`);
+        console.log(`Created a PENDING room transfer request for student ${studentToTransfer.studentId} from room ID ${studentToTransfer.roomId} to room ID ${targetRoom.id}.`);
       } else {
-        console.log(`Skipping room transfer: Could not find suitable target room or approving staff for building ${currentBuildingId}.`);
+        console.log(`Skipping room transfer: Could not find suitable target room (available, same building/type) or approving staff for student ${studentToTransfer.studentId}.`);
       }
     } else {
-      console.log(`Skipping room transfer: Could not find current room details for student ${studentToTransfer.studentId} (roomId: ${studentToTransfer.roomId}).`);
+      console.log(`Skipping room transfer: Could not find current room details for student ${studentToTransfer.studentId}.`);
     }
   } else {
-    console.log("Skipping room transfer: Could not find any student currently assigned to a room.");
+    console.log("Skipping room transfer: Could not find a suitable student (renting, in a room) to create a transfer request.");
   }
 
   console.log('Seeding finished.');
@@ -505,9 +681,9 @@ async function main() {
 
 main()
   .catch(async (e) => {
-    console.error(e);
+    console.error("Seeding failed:", e);
     await prisma.$disconnect();
-    //process.exit(1); // Exit with error code
+    //process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();

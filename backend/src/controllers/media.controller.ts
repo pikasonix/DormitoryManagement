@@ -25,7 +25,7 @@ export class MediaController {
                 return next(new Error('Không có file nào được tải lên.'));
             }
 
-            const { mediaType, alt, isPublic } = req.body;
+            const { mediaType } = req.body;
 
             // Validate mediaType
             if (!mediaType || !Object.values(MediaType).includes(mediaType as MediaType)) {
@@ -43,13 +43,10 @@ export class MediaController {
 
             const createData = {
                 filename: uploadedFile.filename,
-                originalFilename: uploadedFile.originalname,
                 path: filePath,
                 mimeType: uploadedFile.mimetype,
                 size: uploadedFile.size,
                 mediaType: mediaType as MediaType,
-                alt: alt || null,
-                isPublic: isPublic !== undefined ? Boolean(isPublic) : true,
             };
 
             // Thực hiện transaction
@@ -88,16 +85,13 @@ export class MediaController {
     // Lấy danh sách Media (có thể lọc và phân trang)
     async getAllMedia(req: Request, res: Response, next: NextFunction) {
         try {
-            const { mediaType, isPublic, page, limit } = req.query;
+            const { mediaType, page, limit } = req.query;
 
             const options: Prisma.MediaFindManyArgs = { where: {} };
 
             // Xây dựng bộ lọc
             if (mediaType && Object.values(MediaType).includes(mediaType as MediaType)) {
                 options.where!.mediaType = mediaType as MediaType;
-            }
-            if (isPublic !== undefined) {
-                options.where!.isPublic = isPublic === 'true';
             }
 
             // Phân trang
@@ -139,14 +133,12 @@ export class MediaController {
     async updateMedia(req: Request, res: Response, next: NextFunction) {
         try {
             const id = parseInt(req.params.id);
-            const { alt, isPublic } = req.body;
 
-            const updateData = {
-                alt: alt,
-                isPublic: isPublic !== undefined ? Boolean(isPublic) : undefined,
-            };
+            // Since all updateable fields (like alt) have been removed from schema
+            // We're just returning the media object without updates
+            // Or you can consider removing this endpoint completely if no longer needed
 
-            const updatedMedia = await mediaService.update(id, updateData);
+            const updatedMedia = await mediaService.update(id, {});
             res.status(200).json({
                 status: 'success',
                 data: updatedMedia

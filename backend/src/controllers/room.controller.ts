@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, Prisma, RoomStatus, RoomType } from '@prisma/client';
+import { PrismaClient, Prisma, RoomStatus, RoomType, FeeType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { deleteFile } from '../services/file.service';
 
@@ -127,13 +127,13 @@ export class RoomController {
   async createRoom(req: Request, res: Response, next: NextFunction) {
     try {
       const {
-        buildingId, number, type, capacity, floor, status, price, description,
+        buildingId, number, type, capacity, floor, status, description,
         amenities,
         imageIds
       } = req.body;
 
-      if (!buildingId || !number || !type || !capacity || !floor || price === undefined || price === null) {
-        return next(new Error('Thiếu trường bắt buộc: buildingId, number, type, capacity, floor, price'));
+      if (!buildingId || !number || !type || !capacity || !floor) {
+        return next(new Error('Thiếu trường bắt buộc: buildingId, number, type, capacity, floor'));
       }
       if (!Object.values(RoomType).includes(type as RoomType)) {
         return next(new Error(`Loại phòng không hợp lệ: ${type}`));
@@ -154,7 +154,6 @@ export class RoomController {
           capacity: parseInt(capacity),
           floor: parseInt(floor),
           status: (status as RoomStatus) || RoomStatus.AVAILABLE,
-          price: new Decimal(price),
           description: description || null,
           actualOccupancy: 0,
           amenities: amenities && Array.isArray(amenities) && amenities.length > 0 ? {
@@ -196,7 +195,7 @@ export class RoomController {
       }
 
       const {
-        number, type, capacity, floor, status, price, description,
+        number, type, capacity, floor, status, description,
         amenities,
         imageIds
       } = req.body;
@@ -259,7 +258,6 @@ export class RoomController {
           capacity: capacity ? parseInt(capacity) : undefined,
           floor: floor ? parseInt(floor) : undefined,
           status: status as RoomStatus,
-          price: price !== undefined && price !== null ? new Decimal(price) : undefined,
           description: description,
           images: imagesUpdate,
           amenities: amenitiesUpdate

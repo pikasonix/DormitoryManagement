@@ -170,7 +170,6 @@ model Room {
   actualOccupancy Int          @default(0) // Số người thực tế đang ở
   floor           Int          // Tầng số mấy
   status          RoomStatus   @default(AVAILABLE) // Trạng thái phòng
-  price           Decimal      @db.Decimal(12, 2) // Giá phòng chuẩn (VND)
   description     String?      // Mô tả thêm về phòng
   images          Media[]      @relation("RoomImages") // Ảnh của phòng
 
@@ -237,6 +236,26 @@ model RoomAmenity {
   @@map("room_amenities")
 }
 
+// --- Bảng quản lý đơn giá các loại phí ---
+// Bảng này giúp lưu trữ lịch sử giá và quản lý tập trung mọi loại phí
+
+model FeeRate {
+  id             Int          @id @default(autoincrement())
+  name           String       // Tên loại phí (vd: "Tiền điện", "Tiền nước", "Phí gửi xe máy")
+  feeType        FeeType      // Loại phí (ROOM_FEE, ELECTRICITY, WATER, PARKING, OTHER_FEE)
+  roomType       RoomType?    // Chỉ áp dụng cho loại phòng nào (nếu là ROOM_FEE)
+  vehicleType    VehicleType? // Chỉ áp dụng cho loại phương tiện nào (nếu là PARKING)
+  unitPrice      Decimal      @db.Decimal(12, 2) // Đơn giá (VNĐ/kWh, VNĐ/m3, VNĐ/tháng)
+  unit           String?      // Đơn vị tính (kWh, m3, tháng, ...)
+  effectiveFrom  DateTime     // Thời điểm bắt đầu áp dụng mức giá này
+  effectiveTo    DateTime?    // Thời điểm kết thúc áp dụng, null nếu vẫn còn hiệu lực
+  description    String?      // Mô tả thêm
+  isActive       Boolean      @default(true) // Trạng thái kích hoạt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("fee_rates")
+}
 
 // --- Billing and Payments ---
 
@@ -283,7 +302,8 @@ model InvoiceItem {
   @@map("invoice_items")
 }
 
-enum PaymentType {
+// Enum cho loại phí - sử dụng chung cho FeeRate và InvoiceItem
+enum FeeType {
   ROOM_FEE    // Tiền phòng
   ELECTRICITY // Tiền điện
   WATER       // Tiền nước
@@ -291,6 +311,15 @@ enum PaymentType {
   OTHER_FEE   // Phí khác
   // DEPOSIT  // Tiền cọc (nếu cần quản lý)
   // FINE     // Phí phạt (nếu cần)
+}
+
+// Giữ nguyên enum này để tương thích với code cũ
+enum PaymentType {
+  ROOM_FEE    // Tiền phòng
+  ELECTRICITY // Tiền điện
+  WATER       // Tiền nước
+  PARKING     // Phí gửi xe
+  OTHER_FEE   // Phí khác
 }
 
 enum InvoiceStatus {
@@ -418,7 +447,6 @@ model VehicleRegistration {
   isActive         Boolean        @default(true)
   startDate        DateTime
   endDate          DateTime?
-  monthlyFee       Decimal?       @db.Decimal(12, 2) // Phí gửi xe hàng tháng
   notes            String?
   images           Media[]        @relation("VehicleImages") // Ảnh xe
   createdAt        DateTime       @default(now())
@@ -439,13 +467,10 @@ enum VehicleType {
 model Media {
   id               Int          @id @default(autoincrement())
   filename         String       // Tên file
-  originalFilename String       // Tên file gốc từ người dùng upload
   path             String       // Đường dẫn lưu trữ trên server/cloud
   mimeType         String       // Kiểu MIME (vd: image/jpeg, image/png)
   size             Int          // Kích thước file (bytes)
-  alt              String?      // Text mô tả ảnh (alt text) nếu cần
   mediaType        MediaType    // Loại media (xác định role của file)
-  isPublic         Boolean      @default(true) // File công khai hay riêng tư
   uploadedAt       DateTime     @default(now()) // Thời điểm upload
 
   // Các quan hệ truy ngược

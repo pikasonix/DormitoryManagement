@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { utilityService } from '../../services/utility.service';
 import { roomService } from '../../services/room.service';
 import { buildingService } from '../../services/building.service';
-import { Button, Select, Input, Table, Pagination, Badge } from '../../components/shared';
+import { Button, Select, Input, Table } from '../../components/shared';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { PlusIcon, PencilSquareIcon, TrashIcon, BoltIcon } from '@heroicons/react/24/outline';
 import WaterDropIcon from '../../components/icons/WaterDropIcon';
-import { formatDate, formatMonthYear } from '../../utils/dateUtils';
+import { format, parseISO } from 'date-fns';
 import { useDebounce } from '../../hooks/useDebounce';
 
 // Các hàm tiện ích bổ sung
@@ -163,7 +163,16 @@ const UtilityReadingIndex = () => {
             const response = await utilityService.getAllUtilityReadings(params);
             console.log('Received utility readings response:', response);
 
-            setReadings(response.utilities || []);
+            // Debug info
+            console.log('Utilities array:', response.utilities);
+            console.log('Is utilities an array?', Array.isArray(response.utilities));
+            console.log('Utilities length:', response.utilities ? response.utilities.length : 'N/A');
+            console.log('First utility item:', response.utilities && response.utilities.length > 0 ? response.utilities[0] : 'No items');
+
+            // Important: Ensure we have an array of readings even if the API returns nothing
+            setReadings(Array.isArray(response.utilities) ? response.utilities : []);
+
+            // Update pagination metadata - ensure default values if response.meta is missing
             setMeta({
                 currentPage: response.meta?.page || 1,
                 totalPages: response.meta?.totalPages || 1,
@@ -171,11 +180,6 @@ const UtilityReadingIndex = () => {
                 total: response.meta?.total || 0
             });
 
-            // Removed toast notification for empty results
-            if (response.utilities && response.utilities.length === 0) {
-                console.log('No utility readings found with the current filters');
-                // Toast notification removed as requested
-            }
         } catch (error) {
             console.error('Failed to load readings:', error);
             toast.error('Không thể tải danh sách chỉ số tiện ích');
@@ -389,14 +393,19 @@ const UtilityReadingIndex = () => {
                 <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
             ) : (
                 <>
-                    <Table columns={columns} data={readings} />
-                    {meta.totalPages > 1 && (
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={meta.totalPages}
-                            onPageChange={handlePageChange}
-                        />
+                    {/* Add debugging info - remove after fixing */}
+                    {process.env.NODE_ENV === 'development' && readings.length === 0 && (
+                        <div className="text-amber-800 bg-amber-100 p-2 mb-2 rounded text-sm">
+                            API trả về dữ liệu nhưng không có kết quả phù hợp với bộ lọc
+                        </div>
                     )}
+                    <Table
+                        columns={columns}
+                        data={readings || []}
+                        currentPage={meta.currentPage}
+                        totalPages={meta.totalPages}
+                        onPageChange={handlePageChange}
+                    />
                 </>
             )}
         </div>

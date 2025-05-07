@@ -1,5 +1,5 @@
 import React from 'react';
-import Pagination from './PaginationTable';
+import Pagination from './PaginationTable'; // Import the existing PaginationTable component
 
 const Table = ({
   columns = [],
@@ -25,6 +25,7 @@ const Table = ({
         {totalPages > 1 && (
           <div className="border-t border-gray-200">
             <Pagination
+              columns={columns} // Pass columns
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={onPageChange}
@@ -116,6 +117,7 @@ const Table = ({
           {totalPages > 1 && (
             <div className="border-t border-gray-200">
               <Pagination
+                columns={columns} // Pass columns
                 currentPage={currentPage}
                 totalPages={totalPages}
                 onPageChange={onPageChange}

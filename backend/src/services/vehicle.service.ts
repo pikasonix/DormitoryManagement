@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma, VehicleRegistration, VehicleType, StudentProfile } from '@prisma/client';
+import { PrismaClient, Prisma, VehicleRegistration, VehicleType, StudentProfile, FeeType } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 const prisma = new PrismaClient();
@@ -15,7 +15,13 @@ export class VehicleService {
                 ...options,
                 include: {
                     studentProfile: {
-                        select: { id: true, fullName: true, studentId: true, room: { select: { number: true, building: { select: { name: true } } } } }
+                        select: {
+                            id: true,
+                            fullName: true,
+                            studentId: true,
+                            phoneNumber: true,
+                            room: { select: { number: true, building: { select: { name: true } } } }
+                        }
                     },
                     images: true,
                     ...(options?.include || {})
@@ -44,7 +50,11 @@ export class VehicleService {
                 where: { id },
                 ...options,
                 include: {
-                    studentProfile: { include: { user: { select: { email: true, avatar: true } } } },
+                    studentProfile: {
+                        include: {
+                            user: { select: { email: true, avatar: true } }
+                        },
+                    },
                     images: true,
                     ...(options?.include || {})
                 },
@@ -79,7 +89,6 @@ export class VehicleService {
         isActive?: boolean;
         startDate: Date | string;
         endDate?: Date | string | null;
-        monthlyFee?: number | string | Decimal | null;
         notes?: string;
         imageIds?: number[];
     }): Promise<VehicleRegistration> {
@@ -117,7 +126,6 @@ export class VehicleService {
                     isActive: data.isActive !== undefined ? data.isActive : true,
                     startDate: new Date(data.startDate),
                     endDate: data.endDate ? new Date(data.endDate) : null,
-                    monthlyFee: data.monthlyFee !== undefined && data.monthlyFee !== null ? new Decimal(data.monthlyFee) : null,
                     notes: data.notes,
                     images: data.imageIds && data.imageIds.length > 0 ? {
                         connect: data.imageIds.map(id => ({ id }))
@@ -159,7 +167,6 @@ export class VehicleService {
         isActive?: boolean;
         startDate?: Date | string;
         endDate?: Date | string | null;
-        monthlyFee?: number | string | Decimal | null;
         notes?: string;
         imageIds?: number[];
     }): Promise<{ registration: VehicleRegistration; oldImagePaths: string[] }> {
@@ -223,7 +230,6 @@ export class VehicleService {
                     isActive: data.isActive,
                     startDate: data.startDate ? new Date(data.startDate) : undefined,
                     endDate: data.endDate !== undefined ? (data.endDate ? new Date(data.endDate) : null) : undefined,
-                    monthlyFee: data.monthlyFee !== undefined ? (data.monthlyFee !== null ? new Decimal(data.monthlyFee) : null) : undefined,
                     notes: data.notes,
                     images: imagesUpdate
                 };

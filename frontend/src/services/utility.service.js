@@ -158,6 +158,31 @@ const deleteUtilityReading = async (id) => {
     }
 };
 
+/**
+ * Lấy biểu phí hiện tại cho các tiện ích (điện, nước)
+ * @returns {Promise<Array>} Danh sách biểu phí hiện hành
+ */
+const getUtilityFeeRates = async () => {
+    try {
+        const response = await apiClient.get('/api/fee-rates', {
+            params: {
+                feeType: ['ELECTRICITY', 'WATER'],
+                isActive: true,
+                current: true
+            }
+        });
+
+        if (response.data?.status === 'success') {
+            return response.data.data || [];
+        } else {
+            throw new Error(response.data?.message || 'Không thể lấy biểu phí tiện ích.');
+        }
+    } catch (error) {
+        console.error('Lỗi service getUtilityFeeRates:', error.response?.data || error.message);
+        throw error.response?.data || error;
+    }
+};
+
 // Export service object
 export const utilityService = {
     getAllUtilityReadings,
@@ -165,4 +190,5 @@ export const utilityService = {
     createUtilityReading,
     updateUtilityReading,
     deleteUtilityReading,
+    getUtilityFeeRates,
 };

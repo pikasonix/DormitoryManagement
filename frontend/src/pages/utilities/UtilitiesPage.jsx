@@ -15,6 +15,7 @@ const UtilitiesPage = () => {
     const [utilities, setUtilities] = useState([]);
     const [buildings, setBuildings] = useState([]);
     const [rooms, setRooms] = useState([]);
+    const [feeRates, setFeeRates] = useState({});
     const [filters, setFilters] = useState({
         buildingId: '',
         roomId: '',
@@ -32,7 +33,7 @@ const UtilitiesPage = () => {
 
     const roomOptions = [
         { value: '', label: 'Tất cả phòng' },
-        ...rooms.map(room => ({ value: room.id.toString(), label: room.roomCode }))
+        ...rooms.map(room => ({ value: room.id.toString(), label: `${room.number}` }))
     ];
 
     const typeOptions = [
@@ -61,8 +62,8 @@ const UtilitiesPage = () => {
     const columns = [
         {
             header: 'Phòng',
-            accessor: 'room.roomCode',
-            cell: ({ row }) => row.room?.roomCode || 'N/A',
+            accessor: 'room.number',
+            cell: ({ row }) => row.room?.number || 'N/A',
         },
         {
             header: 'Tòa nhà',
@@ -90,11 +91,36 @@ const UtilitiesPage = () => {
             )
         },
         {
-            header: 'Thời gian đọc',
-            accessor: 'readingTime',
+            header: 'Đơn giá',
+            accessor: 'feeRate',
+            cell: ({ row }) => {
+                const rate = feeRates[row.type];
+                return (
+                    <span>
+                        {rate ? new Intl.NumberFormat('vi-VN').format(rate) : 'N/A'} VND
+                    </span>
+                );
+            }
+        },
+        {
+            header: 'Thành tiền',
+            accessor: 'total',
+            cell: ({ row }) => {
+                const rate = feeRates[row.type];
+                const total = rate && row.value ? rate * row.value : null;
+                return (
+                    <span className="font-medium">
+                        {total ? new Intl.NumberFormat('vi-VN').format(total) : 'N/A'} VND
+                    </span>
+                );
+            }
+        },
+        {
+            header: 'Ngày ghi số',
+            accessor: 'readingDate',
             cell: ({ row }) => (
-                <Tooltip content={row.readingTime ? format(parseISO(row.readingTime), 'dd/MM/yyyy HH:mm') : 'N/A'}>
-                    <span>{row.readingTime ? format(parseISO(row.readingTime), 'dd/MM/yyyy') : 'N/A'}</span>
+                <Tooltip content={row.readingDate ? format(parseISO(row.readingDate), 'dd/MM/yyyy HH:mm') : 'N/A'}>
+                    <span>{row.readingDate ? format(parseISO(row.readingDate), 'dd/MM/yyyy') : 'N/A'}</span>
                 </Tooltip>
             )
         },
@@ -113,15 +139,15 @@ const UtilitiesPage = () => {
                 let label = 'Không xác định';
 
                 switch (row.status) {
-                    case 'pending':
+                    case 'PENDING':
                         variant = 'warning';
                         label = 'Chờ xử lý';
                         break;
-                    case 'processed':
+                    case 'PROCESSED':
                         variant = 'success';
                         label = 'Đã xử lý';
                         break;
-                    case 'error':
+                    case 'ERROR':
                         variant = 'error';
                         label = 'Lỗi';
                         break;
@@ -160,13 +186,26 @@ const UtilitiesPage = () => {
         const loadInitialData = async () => {
             try {
                 setIsLoading(true);
-                const [buildingsData, utilitiesData] = await Promise.all([
+                // Fetch fee rates for utilities (electricity and water)
+                const [buildingsData, utilitiesData, feeRatesData] = await Promise.all([
                     buildingService.getAllBuildings({ limit: 100 }),
                     utilityService.getAllUtilityReadings(filters),
+                    utilityService.getUtilityFeeRates()
                 ]);
 
                 setBuildings(buildingsData || []);
                 setUtilities(utilitiesData || []);
+
+                // Process fee rates and store in state
+                if (feeRatesData && Array.isArray(feeRatesData)) {
+                    const ratesObj = {};
+                    feeRatesData.forEach(rate => {
+                        if (rate.feeType === 'ELECTRICITY' || rate.feeType === 'WATER') {
+                            ratesObj[rate.feeType] = rate.amount;
+                        }
+                    });
+                    setFeeRates(ratesObj);
+                }
             } catch (error) {
                 console.error('Failed to load initial data:', error);
                 showToast('Không thể tải dữ liệu. Vui lòng thử lại sau.', 'error');

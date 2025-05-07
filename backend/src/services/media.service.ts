@@ -9,13 +9,10 @@ export class MediaService {
      */
     async create(data: {
         filename: string;
-        originalFilename: string;
         path: string;
         mimeType: string;
         size: number;
         mediaType: MediaType;
-        alt?: string;
-        isPublic?: boolean;
     }): Promise<Media> {
         try {
             if (!Object.values(MediaType).includes(data.mediaType)) {
@@ -25,13 +22,10 @@ export class MediaService {
             const newMedia = await prisma.media.create({
                 data: {
                     filename: data.filename,
-                    originalFilename: data.originalFilename,
                     path: data.path,
                     mimeType: data.mimeType,
                     size: data.size,
                     mediaType: data.mediaType,
-                    alt: data.alt,
-                    isPublic: data.isPublic !== undefined ? data.isPublic : true,
                 }
             });
             return newMedia;
@@ -86,20 +80,14 @@ export class MediaService {
     /**
      * Cập nhật thông tin metadata của Media
      */
-    async update(id: number, data: {
-        alt?: string;
-        isPublic?: boolean;
-    }): Promise<Media> {
+    async update(id: number, data: {}): Promise<Media> {
         if (isNaN(id)) {
             throw new Error('ID Media không hợp lệ');
         }
         try {
             const updatedMedia = await prisma.media.update({
                 where: { id },
-                data: {
-                    alt: data.alt,
-                    isPublic: data.isPublic
-                }
+                data: {}
             });
             return updatedMedia;
         } catch (error) {
