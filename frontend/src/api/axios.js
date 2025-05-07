@@ -89,6 +89,16 @@ apiClient.interceptors.response.use(
       if (status === 401 && !originalRequest._retry) {
         originalRequest._retry = true; // Đánh dấu đã xử lý lỗi 401 này
 
+        // Kiểm tra xem request có phải là request đăng nhập không
+        const isLoginRequest = originalRequest.url.includes('/auth/login');
+
+        if (isLoginRequest) {
+          // Đây là lỗi khi cố gắng đăng nhập - để component xử lý
+          console.log('[Axios Interceptor] Login attempt failed with 401');
+          // Không xử lý đặc biệt, để component login tự xử lý lỗi
+          return Promise.reject(error);
+        }
+
         console.error('[Axios Response Interceptor] Unauthorized (401). Logging out...');
 
         // Xóa token và thông tin user khỏi localStorage.

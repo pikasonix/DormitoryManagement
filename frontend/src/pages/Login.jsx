@@ -33,12 +33,14 @@ const Login = () => {
     setIsSubmitting(true);
     try {
       // Gọi login từ context
-      const success = await login({ email, password }); // Hàm login context nên trả về boolean
-      // Nếu login thành công, useEffect ở trên sẽ tự động điều hướng
+      const success = await login({ email, password });
+
+      // Nếu login thất bại, hiển thị thông báo lỗi trong form
+      // nhưng giữ người dùng ở trang đăng nhập để họ có thể thử lại
       if (!success) {
-        // Nếu hàm login trả về false (chỉ ra lỗi mà không ném), set lỗi form
-        setFormError('Email hoặc mật khẩu không chính xác.');
+        setFormError('Email hoặc mật khẩu không chính xác. Vui lòng thử lại.');
       }
+      // Nếu login thành công, useEffect ở trên sẽ tự động điều hướng
     } catch (caughtError) {
       // Trường hợp hàm login ném lỗi (dù interceptor/context đã xử lý toast)
       console.error('[Login Page] Login failed:', caughtError);

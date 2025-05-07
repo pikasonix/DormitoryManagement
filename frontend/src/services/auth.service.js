@@ -40,6 +40,12 @@ const login = async (email, password) => {
             return userData;
         }
 
+        // Xử lý trường hợp thông tin đăng nhập không chính xác (401)
+        if (error.response?.status === 401) {
+            console.log('Đăng nhập thất bại: Thông tin đăng nhập không chính xác');
+            throw new Error(error.response?.data?.message || 'Email hoặc mật khẩu không chính xác');
+        }
+
         const errorMessage = error.response?.data?.message || error.message || 'Lỗi không xác định';
         console.error('Lỗi dịch vụ đăng nhập:', errorMessage);
         throw new Error(errorMessage);

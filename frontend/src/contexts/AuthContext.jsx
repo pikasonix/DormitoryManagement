@@ -98,6 +98,7 @@ export const AuthProvider = ({ children }) => {
       return true;
     } catch (error) {
       console.error("[AuthContext] Login failed:", error);
+      // Display error toast but don't navigate away
       toast.error(error.message || 'Đăng nhập thất bại');
       return false;
     } finally {
