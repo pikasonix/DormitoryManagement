@@ -3,22 +3,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.resetPasswordTemplate = void 0;
 const resetPasswordTemplate = (name, resetLink) => `
 <div style="text-align: center;">
-  <h1>Reset Password</h1>
-  <p>Hai ${name},</p>
-  <p>Kami menerima permintaan untuk reset password akun Anda.</p>
-  <p>Klik tombol di bawah ini untuk melanjutkan proses reset password:</p>
+  <h1>Đặt Lại Mật Khẩu</h1>
+  <p>Xin chào ${name},</p>
+  <p>Chúng tôi đã nhận được yêu cầu đặt lại mật khẩu tài khoản của bạn.</p>
+  <p>Vui lòng nhấp vào nút bên dưới để tiếp tục quá trình đặt lại mật khẩu:</p>
   
   <a href="${resetLink}" class="button" style="color: white;">
-    Reset Password
+    Đặt Lại Mật Khẩu
   </a>
   
   <p style="margin-top: 20px;">
-    Link ini akan kadaluarsa dalam 1 jam.
-    Jika Anda tidak meminta reset password, abaikan email ini.
+    Liên kết này sẽ hết hạn trong vòng 1 giờ.
+    Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.
   </p>
   
   <p style="font-size: 12px; color: #666; margin-top: 30px;">
-    Jika tombol tidak berfungsi, copy dan paste link berikut ke browser Anda:<br>
+    Nếu nút không hoạt động, vui lòng sao chép và dán liên kết sau vào trình duyệt của bạn:<br>
     <span style="color: #4f46e5;">${resetLink}</span>
   </p>
 </div>

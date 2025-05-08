@@ -1,8 +1,0 @@
-<svg width="200" height="50" viewBox="0 0 200 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <style>
-    .title { font: bold 24px sans-serif; fill: #4F46E5; }
-    .subtitle { font: 12px sans-serif; fill: #6B7280; }
-  </style>
-  <text x="10" y="30" class="title">ADMINCARE</text>
-  <text x="10" y="45" class="subtitle">QUẢN LÝ KÍ TÚC XÁ</text>
-</svg> 

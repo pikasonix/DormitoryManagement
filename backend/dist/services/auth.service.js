@@ -23,155 +23,150 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AuthService = void 0;
+exports.getUserLoginHistory = exports.saveLoginLog = exports.AuthService = void 0;
 const client_1 = require("@prisma/client");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const jwt_config_1 = require("../config/jwt.config");
-const email_service_1 = require("./email.service");
 const crypto_1 = __importDefault(require("crypto"));
+const prisma = new client_1.PrismaClient();
+const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 class AuthService {
-    constructor() {
-        this.prisma = new client_1.PrismaClient();
-    }
-    register(email, password, name) {
+    /**
+     * Xác thực thông tin đăng nhập và trả về thông tin user cơ bản nếu thành công.
+     * @param email
+     * @param password
+     * @returns User object (không có password) nếu hợp lệ
+     * @throws AppError nếu thông tin không hợp lệ hoặc user không active
+     */
+    validateUser(email, password) {
         return __awaiter(this, void 0, void 0, function* () {
-            const existingUser = yield this.prisma.user.findUnique({ where: { email } });
-            if (existingUser) {
-                throw new Error('Email already registered');
-            }
-            const hashedPassword = yield bcryptjs_1.default.hash(password, 10);
-            const user = yield this.prisma.user.create({
-                data: {
-                    email,
-                    password: hashedPassword,
-                    name
-                }
+            const user = yield prisma.user.findUnique({
+                where: { email },
+                include: { avatar: true }
             });
-            // Send welcome email directly
-            yield email_service_1.emailService.sendEmail(email, 'Welcome to QUẢN LÝ KÍ TÚC XÁ', `<h1>Welcome ${name}!</h1><p>Thank you for registering.</p>`);
-            const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
-            return userWithoutPassword;
-        });
-    }
-    login(email, password) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const user = yield this.prisma.user.findUnique({ where: { email } });
             if (!user) {
-                throw new Error('Invalid credentials');
+                throw new Error('Email hoặc mật khẩu không chính xác');
+            }
+            if (!user.isActive) {
+                throw new Error('Tài khoản đã bị vô hiệu hóa');
             }
             const isValidPassword = yield bcryptjs_1.default.compare(password, user.password);
             if (!isValidPassword) {
-                throw new Error('Invalid credentials');
-            }
-            const token = jsonwebtoken_1.default.sign({ userId: user.id, email: user.email }, jwt_config_1.config.secret, { expiresIn: jwt_config_1.config.expiresIn });
-            const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
-            return {
-                user: userWithoutPassword,
-                token
-            };
-        });
-    }
-    getProfile(userId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const user = yield this.prisma.user.findUnique({ where: { id: userId } });
-            if (!user) {
-                throw new Error('User not found');
+                throw new Error('Email hoặc mật khẩu không chính xác');
             }
             const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
             return userWithoutPassword;
         });
     }
-    updateProfile(userId, data) {
+    /**
+     * Lấy thông tin User và Profile liên quan dựa trên userId.
+     * @param userId
+     * @returns Object chứa thông tin User (không password) và Profile (Student/Staff)
+     * @throws AppError nếu user không tìm thấy
+     */
+    getUserWithProfile(userId) {
         return __awaiter(this, void 0, void 0, function* () {
-            const user = yield this.prisma.user.update({
+            const user = yield prisma.user.findUnique({
                 where: { id: userId },
-                data
+                include: {
+                    avatar: true,
+                    studentProfile: {
+                        include: { room: { include: { building: true } } }
+                    },
+                    staffProfile: {
+                        include: { managedBuilding: true }
+                    }
+                }
             });
+            if (!user) {
+                throw new Error('Người dùng không tồn tại');
+            }
             const { password: _ } = user, userWithoutPassword = __rest(user, ["password"]);
-            return userWithoutPassword;
+            const profile = user.studentProfile || user.staffProfile || null;
+            return { user: userWithoutPassword, profile };
         });
     }
+    /**
+     * Thay đổi mật khẩu cho người dùng đã xác thực.
+     * @param userId ID người dùng
+     * @param oldPassword Mật khẩu cũ
+     * @param newPassword Mật khẩu mới
+     * @throws AppError nếu user không tồn tại hoặc mật khẩu cũ không đúng
+     */
     changePassword(userId, oldPassword, newPassword) {
         return __awaiter(this, void 0, void 0, function* () {
-            const user = yield this.prisma.user.findUnique({ where: { id: userId } });
+            const user = yield prisma.user.findUnique({ where: { id: userId } });
             if (!user) {
-                throw new Error('User not found');
+                throw new Error('Người dùng không tồn tại');
             }
             const isValidPassword = yield bcryptjs_1.default.compare(oldPassword, user.password);
             if (!isValidPassword) {
-                throw new Error('Invalid old password');
+                throw new Error('Mật khẩu cũ không chính xác');
             }
             const hashedPassword = yield bcryptjs_1.default.hash(newPassword, 10);
-            yield this.prisma.user.update({
+            yield prisma.user.update({
                 where: { id: userId },
                 data: { password: hashedPassword }
             });
-            return { message: 'Password changed successfully' };
+            return { message: 'Đổi mật khẩu thành công' };
         });
     }
+    /**
+     * Yêu cầu đặt lại mật khẩu, tạo token và gửi email.
+     * @param email Email của người dùng
+     * @throws AppError nếu email không tồn tại hoặc lỗi gửi mail
+     */
     requestPasswordReset(email) {
         return __awaiter(this, void 0, void 0, function* () {
+            const user = yield prisma.user.findUnique({ where: { email } });
+            if (!user) {
+                console.warn(`Password reset request for non-existent email: ${email}`);
+                return { message: 'Nếu email của bạn tồn tại trong hệ thống, bạn sẽ nhận được link đặt lại mật khẩu.' };
+            }
+            const resetToken = crypto_1.default.randomBytes(32).toString('hex');
+            const expiryDate = new Date(Date.now() + 3600000);
             try {
-                const user = yield this.prisma.user.findUnique({ where: { email } });
-                if (!user) {
-                    throw new Error('Email tidak terdaftar');
-                }
-                const resetToken = crypto_1.default.randomBytes(32).toString('hex');
-                const hashedToken = yield bcryptjs_1.default.hash(resetToken, 10);
-                yield this.prisma.user.update({
+                yield prisma.user.update({
                     where: { id: user.id },
                     data: {
-                        resetToken: hashedToken,
-                        resetTokenExpiry: new Date(Date.now() + 3600000) // 1 jam
+                        resetToken: resetToken,
+                        resetTokenExpiry: expiryDate
                     }
                 });
-                const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-                try {
-                    yield email_service_1.emailService.sendEmail(email, 'Reset Password', `
-            <h1>Reset Password</h1>
-            <p>Anda menerima email ini karena Anda (atau seseorang) telah meminta reset password.</p>
-            <p>Klik link berikut untuk mereset password Anda:</p>
-            <a href="${resetUrl}">Reset Password</a>
-            <p>Link ini akan kadaluarsa dalam 1 jam.</p>
-            <p>Jika Anda tidak meminta reset password, abaikan email ini.</p>
-          `);
-                }
-                catch (error) {
-                    // Rollback perubahan jika email gagal terkirim
-                    yield this.prisma.user.update({
-                        where: { id: user.id },
-                        data: {
-                            resetToken: null,
-                            resetTokenExpiry: null
-                        }
-                    });
-                    throw new Error('Gagal mengirim email reset password. Silakan coba lagi nanti.');
-                }
-                return { message: 'Link reset password telah dikirim ke email Anda' };
+                const resetUrl = `${FRONTEND_URL}/reset-password?token=${resetToken}`;
+                console.log(`Password reset requested for ${email}. Token: ${resetToken}`);
+                console.log(`Reset URL: ${resetUrl}`);
+                return { message: 'Nếu email của bạn tồn tại trong hệ thống, bạn sẽ nhận được link đặt lại mật khẩu.' };
             }
             catch (error) {
-                throw error;
+                console.error("Error during password reset request:", error);
+                throw new Error('Đã xảy ra lỗi khi gửi yêu cầu đặt lại mật khẩu. Vui lòng thử lại.');
             }
         });
     }
+    /**
+     * Đặt lại mật khẩu bằng token.
+     * @param token Token nhận được từ email
+     * @param newPassword Mật khẩu mới
+     * @throws AppError nếu token không hợp lệ, hết hạn hoặc lỗi cập nhật
+     */
     resetPassword(token, newPassword) {
         return __awaiter(this, void 0, void 0, function* () {
-            const user = yield this.prisma.user.findFirst({
+            if (!token || !newPassword) {
+                throw new Error('Token và mật khẩu mới là bắt buộc');
+            }
+            const user = yield prisma.user.findFirst({
                 where: {
-                    resetToken: { not: null },
+                    resetToken: token,
                     resetTokenExpiry: { gt: new Date() }
                 }
             });
             if (!user) {
-                throw new Error('Invalid or expired reset token');
-            }
-            const isValidToken = yield bcryptjs_1.default.compare(token, user.resetToken);
-            if (!isValidToken) {
-                throw new Error('Invalid reset token');
+                throw new Error('Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn');
             }
             const hashedPassword = yield bcryptjs_1.default.hash(newPassword, 10);
-            yield this.prisma.user.update({
+            yield prisma.user.update({
                 where: { id: user.id },
                 data: {
                     password: hashedPassword,
@@ -179,8 +174,60 @@ class AuthService {
                     resetTokenExpiry: null
                 }
             });
-            return { message: 'Password reset successfully' };
+            return { message: 'Đặt lại mật khẩu thành công' };
         });
     }
 }
 exports.AuthService = AuthService;
+/**
+ * Lưu log đăng nhập của người dùng (chỉ cho ADMIN và STAFF)
+ */
+const saveLoginLog = (data) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        // Kiểm tra xem user có phải là ADMIN hoặc STAFF không
+        const user = yield prisma.user.findUnique({
+            where: { id: data.userId },
+            select: { role: true }
+        });
+        // Chỉ lưu log cho ADMIN và STAFF
+        if (user && (user.role === 'ADMIN' || user.role === 'STAFF')) {
+            return prisma.loginLog.create({
+                data
+            });
+        }
+        // Nếu không phải ADMIN hoặc STAFF, không lưu log
+        return null;
+    }
+    catch (error) {
+        console.error('Error saving login log:', error);
+        // Không throw error để không làm gián đoạn quá trình đăng nhập
+        return null;
+    }
+});
+exports.saveLoginLog = saveLoginLog;
+/**
+ * Lấy lịch sử đăng nhập của người dùng
+ */
+const getUserLoginHistory = (userId_1, ...args_1) => __awaiter(void 0, [userId_1, ...args_1], void 0, function* (userId, page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+    const [logs, total] = yield Promise.all([
+        prisma.loginLog.findMany({
+            where: { userId },
+            orderBy: { timestamp: 'desc' },
+            skip,
+            take: limit,
+        }),
+        prisma.loginLog.count({ where: { userId } })
+    ]);
+    const totalPages = Math.ceil(total / limit);
+    return {
+        data: logs,
+        meta: {
+            total,
+            page,
+            limit,
+            totalPages
+        }
+    };
+});
+exports.getUserLoginHistory = getUserLoginHistory;

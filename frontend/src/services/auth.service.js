@@ -263,6 +263,36 @@ const updateProfile = async (profileData) => {
     }
 };
 
+/**
+ * Lấy lịch sử đăng nhập của người dùng
+ * @param {number} userId - ID người dùng (tùy chọn, mặc định sẽ lấy thông tin người dùng hiện tại)
+ * @param {number} page - Số trang (pagination)
+ * @param {number} limit - Số record trên mỗi trang
+ * @returns {Promise<object>} - Dữ liệu lịch sử đăng nhập và thông tin phân trang
+ */
+const getLoginHistory = async (userId = null, page = 1, limit = 10) => {
+    try {
+        const endpoint = userId
+            ? `/auth/login-history/${userId}?page=${page}&limit=${limit}`
+            : `/auth/login-history?page=${page}&limit=${limit}`;
+
+        const response = await apiClient.get(endpoint);
+
+        if (response.data?.success) {
+            return {
+                data: response.data.data,
+                meta: response.data.meta
+            };
+        } else {
+            throw new Error(response.data?.message || 'Không thể lấy lịch sử đăng nhập');
+        }
+    } catch (error) {
+        const errorMessage = error.response?.data?.message || error.message || 'Lỗi không xác định';
+        console.error('Lỗi khi lấy lịch sử đăng nhập:', errorMessage);
+        throw new Error(errorMessage);
+    }
+};
+
 // Export các hàm service đã định nghĩa
 export const authService = {
     login,
@@ -271,4 +301,5 @@ export const authService = {
     changePassword,
     register,
     updateProfile, // Thêm hàm updateProfile vào export
+    getLoginHistory // Thêm hàm getLoginHistory vào export
 };

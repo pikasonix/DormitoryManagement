@@ -25,6 +25,7 @@ model User {
 
   staffProfile   StaffProfile?   // Liên kết 1-1 đến hồ sơ nhân viên (nếu là STAFF)
   studentProfile StudentProfile? // Liên kết 1-1 đến hồ sơ sinh viên (nếu là STUDENT)
+  loginLogs      LoginLog[]     // Lịch sử đăng nhập của người dùng
 
   @@map("users")
 }
@@ -230,7 +231,7 @@ model RoomAmenity {
   notes      String?  // Ghi chú thêm
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   @@id([roomId, amenityId])
   @@map("room_amenities")
@@ -493,4 +494,18 @@ enum MediaType {
   VEHICLE_IMAGE   // Ảnh xe
   MAINTENANCE_IMAGE // Ảnh báo cáo bảo trì
   OTHER           // Loại ảnh khác
+}
+
+// Model lưu lịch sử đăng nhập (chỉ cho ADMIN và STAFF)
+model LoginLog {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  timestamp   DateTime  @default(now())
+  ipAddress   String?
+  userAgent   String?
+  status      String    // SUCCESS hoặc FAILED
+  location    String?   // Thông tin vị trí (có thể lấy từ IP)
+
+  @@index([userId])
 }

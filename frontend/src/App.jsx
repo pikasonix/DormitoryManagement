@@ -27,7 +27,7 @@ import MaintenanceRequestForm from './pages/maintenance/MaintenanceRequestForm';
 import InvoiceIndex from './pages/invoices/InvoiceIndex';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import PaymentIndex from './pages/payments/PaymentIndex';
-// import PaymentForm from './pages/payments/PaymentForm'; // Bỏ comment nếu dùng
+// import PaymentForm from './pages/payments/PaymentForm'; 
 import UtilityReadingIndex from './pages/utilities/UtilityReadingIndex';
 import UtilityReadingForm from './pages/utilities/UtilityReadingForm';
 import UtilityReadingCreate from './pages/utilities/UtilityReadingCreate';
@@ -35,20 +35,17 @@ import VehicleIndex from './pages/vehicles/VehicleIndex';
 import VehicleForm from './pages/vehicles/VehicleForm';
 import TransferIndex from './pages/transfers/TransferIndex';
 import TransferRequestForm from './pages/transfers/TransferRequestForm';
-import NotFound from './pages/NotFound'; // Import trang 404 Not Found
-import ForgotPassword from './pages/ForgotPassword'; // Import trang Quên mật khẩu
-import Register from './pages/Register'; // Import trang Đăng ký
+import NotFound from './pages/NotFound';
+import ForgotPassword from './pages/ForgotPassword';
+import Register from './pages/Register';
 import StudentProfilePage from './pages/profile/StudentProfilePage';
 import StudentProfileEditPage from './pages/profile/StudentProfileEditPage';
-// Import StaffProfilePage
 import StaffProfilePage from './pages/profile/StaffProfilePage';
-// Import StaffProfileEditPage
 import StaffProfileEditPage from './pages/profile/StaffProfileEditPage';
-// LoadingSpinner không cần import ở đây nữa, các Route Guard tự xử lý
+import AdminProfilePage from './pages/profile/AdminProfilePage';
 
 
 function App() {
-  // Không cần định nghĩa Route Guards ở đây nữa
   return (
     <Routes>
       {/* Public Route */}
@@ -69,6 +66,7 @@ function App() {
           <ProfileRouter
             studentComponent={<StudentProfilePage />}
             staffComponent={<StaffProfilePage />}
+            adminComponent={<AdminProfilePage />}
           />
         } />
         <Route path="/profile/edit" element={

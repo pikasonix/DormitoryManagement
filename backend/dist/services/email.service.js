@@ -29,6 +29,9 @@ class EmailService {
             }
         });
     }
+    /**
+     * Gửi email đến người nhận
+     */
     sendEmail(to, subject, html) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
@@ -43,7 +46,6 @@ class EmailService {
             }
             catch (error) {
                 console.error('Email sending failed:', error);
-                // Handle error berdasarkan tipenya
                 if (error instanceof Error) {
                     throw new Error(`Failed to send email: ${error.message}`);
                 }

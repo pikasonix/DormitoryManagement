@@ -13,80 +13,142 @@ exports.DashboardService = void 0;
 const client_1 = require("@prisma/client");
 const prisma = new client_1.PrismaClient();
 class DashboardService {
+    /**
+     * Lấy các số liệu thống kê tổng quan cho dashboard.
+     */
     getStats() {
         return __awaiter(this, void 0, void 0, function* () {
-            const [totalResidents, totalRooms, maleResidents, femaleResidents] = yield Promise.all([
-                prisma.resident.count(),
+            const [totalStudents, totalRooms, maleStudents, femaleStudents, totalBuildings, pendingMaintenance] = yield Promise.all([
+                prisma.studentProfile.count(),
                 prisma.room.count(),
-                prisma.resident.count({ where: { gender: 'MALE' } }),
-                prisma.resident.count({ where: { gender: 'FEMALE' } })
+                prisma.studentProfile.count({ where: { gender: 'MALE' } }),
+                prisma.studentProfile.count({ where: { gender: 'FEMALE' } }),
+                prisma.building.count(),
+                prisma.maintenance.count({ where: { status: 'PENDING' } })
             ]);
             return {
-                totalResidents,
+                totalStudents,
                 totalRooms,
-                maleResidents,
-                femaleResidents
+                totalBuildings,
+                maleStudents,
+                femaleStudents,
+                pendingMaintenance
             };
         });
     }
-    getResidentsByGender() {
+    /**
+     * Thống kê sinh viên theo giới tính.
+     */
+    getStudentsByGender() {
         return __awaiter(this, void 0, void 0, function* () {
-            const residents = yield prisma.resident.groupBy({
+            const stats = yield prisma.studentProfile.groupBy({
                 by: ['gender'],
-                _count: true
+                _count: {
+                    gender: true
+                },
             });
-            return residents.map(item => ({
+            return stats.map(item => ({
                 gender: item.gender,
-                count: item._count
+                count: item._count.gender
             }));
         });
     }
-    getResidentsByEducation() {
+    /**
+     * Thống kê sinh viên theo Khoa/Viện.
+     */
+    getStudentsByFaculty() {
         return __awaiter(this, void 0, void 0, function* () {
-            const residents = yield prisma.resident.groupBy({
-                by: ['education'],
-                _count: true
+            const stats = yield prisma.studentProfile.groupBy({
+                by: ['faculty'],
+                _count: {
+                    faculty: true
+                },
+                orderBy: {
+                    _count: {
+                        faculty: 'desc'
+                    }
+                }
             });
-            return residents.map(item => ({
-                education: item.education,
-                count: item._count
+            return stats.map(item => ({
+                faculty: item.faculty || 'Chưa xác định',
+                count: item._count.faculty
             }));
         });
     }
-    getRecentResidents() {
+    /**
+     * Lấy danh sách sinh viên được tạo gần đây.
+     * @param limit Số lượng sinh viên cần lấy (mặc định 5)
+     */
+    getRecentStudents() {
         return __awaiter(this, arguments, void 0, function* (limit = 5) {
-            return prisma.resident.findMany({
+            return prisma.studentProfile.findMany({
                 take: limit,
                 orderBy: { createdAt: 'desc' },
                 select: {
                     id: true,
-                    name: true,
-                    education: true,
+                    fullName: true,
+                    faculty: true,
                     gender: true,
                     createdAt: true,
+                    user: {
+                        select: { email: true }
+                    },
                     room: {
                         select: {
-                            number: true
+                            number: true,
+                            building: { select: { name: true } }
                         }
                     }
                 }
             });
         });
     }
+    /**
+     * Lấy thông tin về tình trạng sử dụng phòng.
+     */
     getRoomOccupancy() {
         return __awaiter(this, void 0, void 0, function* () {
             const rooms = yield prisma.room.findMany({
-                include: {
-                    _count: {
-                        select: { residents: true }
+                select: {
+                    id: true,
+                    number: true,
+                    capacity: true,
+                    actualOccupancy: true,
+                    status: true,
+                    building: {
+                        select: { name: true }
                     }
-                }
+                },
+                orderBy: [
+                    { building: { name: 'asc' } },
+                    { number: 'asc' }
+                ]
             });
             return rooms.map(room => ({
+                roomId: room.id,
+                buildingName: room.building.name,
                 roomNumber: room.number,
                 capacity: room.capacity,
-                occupied: room._count.residents,
-                available: room.capacity - room._count.residents
+                occupied: room.actualOccupancy,
+                available: room.capacity - room.actualOccupancy,
+                status: room.status
+            }));
+        });
+    }
+    /**
+    * Lấy thống kê báo cáo bảo trì theo trạng thái.
+    */
+    getMaintenanceStatsByStatus() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const stats = yield prisma.maintenance.groupBy({
+                by: ['status'],
+                _count: {
+                    status: true
+                },
+            });
+            return stats.map(item => ({
+                status: item.status,
+                count: item._count.status
             }));
         });
     }

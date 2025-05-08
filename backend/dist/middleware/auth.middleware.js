@@ -12,43 +12,50 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.authMiddleware = void 0;
+exports.checkRole = exports.authMiddleware = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const client_1 = require("@prisma/client");
-const prisma = new client_1.PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = process.env.JWT_SECRET || 'your-default-secret';
+// Authentication middleware
 const authMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const authHeader = req.headers.authorization;
-        if (!authHeader) {
-            return res.status(401).json({
-                message: 'No token provided'
-            });
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return next(new Error('Authentication token is required and must be Bearer type'));
         }
-        const token = authHeader.split(' ')[1]; // Bearer TOKEN
-        if (!token) {
-            return res.status(401).json({
-                message: 'No token provided'
-            });
-        }
+        const token = authHeader.split(' ')[1];
         const decoded = jsonwebtoken_1.default.verify(token, JWT_SECRET);
-        const user = yield prisma.user.findUnique({
-            where: { id: decoded.userId }
-        });
-        if (!user) {
-            return res.status(401).json({
-                message: 'User not found'
-            });
-        }
-        // Attach user to request object
-        req.user = user;
+        req.user = {
+            userId: decoded.userId,
+            email: decoded.email,
+            role: decoded.role
+        };
         next();
     }
     catch (error) {
-        console.error('Auth middleware error:', error);
-        return res.status(401).json({
-            message: 'Invalid token'
-        });
+        let errorMessage = 'Invalid or expired token';
+        if (error.name === 'TokenExpiredError') {
+            errorMessage = 'Authentication token has expired';
+        }
+        else if (error.name === 'JsonWebTokenError') {
+            errorMessage = 'Invalid authentication token';
+        }
+        else {
+            console.error('Auth middleware error:', error);
+        }
+        next(new Error(errorMessage));
     }
 });
 exports.authMiddleware = authMiddleware;
+// Role-based access control middleware
+const checkRole = (allowedRoles) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return next(new Error('User authentication data is missing'));
+        }
+        if (!allowedRoles.includes(req.user.role)) {
+            return next(new Error('Forbidden: You do not have permission to access this resource'));
+        }
+        next();
+    };
+};
+exports.checkRole = checkRole;

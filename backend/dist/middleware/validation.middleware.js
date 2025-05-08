@@ -10,17 +10,35 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validate = void 0;
+const zod_1 = require("zod");
+// Middleware factory for Zod schema validation
 const validate = (schema) => {
-    return (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    return (req, _res, next) => __awaiter(void 0, void 0, void 0, function* () {
         try {
-            yield schema.parseAsync(req.body);
+            // Validate request data against provided schema
+            yield schema.parseAsync({
+                body: req.body,
+                query: req.query,
+                params: req.params
+            });
             next();
         }
         catch (error) {
-            res.status(400).json({
-                message: 'Validation error',
-                errors: error.errors
-            });
+            if (error instanceof zod_1.ZodError) {
+                // Format validation errors
+                const formattedErrors = error.errors.map(e => ({
+                    field: e.path.join('.'),
+                    message: e.message
+                }));
+                const validationError = new Error("Dữ liệu không hợp lệ.");
+                validationError.statusCode = 400;
+                validationError.errors = formattedErrors;
+                validationError.isValidationError = true;
+                next(validationError);
+            }
+            else {
+                next(error);
+            }
         }
     });
 };

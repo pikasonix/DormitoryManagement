@@ -1,16 +1,15 @@
 import axios from 'axios';
 import { toast } from 'react-hot-toast'; // Đảm bảo đã cài đặt react-hot-toast
 
-// Lấy Base URL từ biến môi trường Vite, có giá trị mặc định nếu không được đặt
 // Sử dụng VITE_API_URL như đã thảo luận trước đó
-const API_BASE_URL = import.meta.env.VITE_API_URL;
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://192.168.1.12:5002';
 
 // Kiểm tra xem VITE_API_URL đã được định nghĩa chưa
-if (!API_BASE_URL) {
-  console.error("Lỗi cấu hình: VITE_API_URL chưa được định nghĩa trong file .env");
-  // Có thể hiển thị lỗi cho người dùng hoặc dừng ứng dụng
-  toast.error("Lỗi cấu hình phía client: Không tìm thấy địa chỉ máy chủ API.");
+if (!import.meta.env.VITE_API_URL) {
+  console.warn("Cảnh báo: VITE_API_URL chưa được định nghĩa trong file .env, sử dụng địa chỉ IP mặc định");
 }
+
+console.log('API đang kết nối đến:', API_BASE_URL);
 
 // Tạo một instance Axios mới với cấu hình tùy chỉnh
 const apiClient = axios.create({

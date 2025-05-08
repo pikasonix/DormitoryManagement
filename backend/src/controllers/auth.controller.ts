@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { PrismaClient, Role, StudentProfile, StaffProfile, Gender, StudentStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions, Secret } from 'jsonwebtoken';
+import { saveLoginLog, getUserLoginHistory } from '../services/auth.service';
+import { getLocationFromIP } from '../utils/ip-location';
 
 // Interfaces
 interface RequestWithUser extends Request {
@@ -57,6 +59,18 @@ export class AuthController {
 
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
+        // Lưu log đăng nhập thất bại nếu là ADMIN hoặc STAFF
+        if (user.role === Role.ADMIN || user.role === Role.STAFF) {
+          const location = await getLocationFromIP(req.ip);
+          await saveLoginLog({
+            userId: user.id,
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+            status: 'FAILED',
+            location
+          });
+        }
+
         return res.status(401).json({ message: 'Email hoặc mật khẩu không chính xác' });
       }
 
@@ -79,6 +93,16 @@ export class AuthController {
         profile = await prisma.staffProfile.findUnique({
           where: { userId: user.id },
           include: { managedBuilding: true }
+        });
+
+        // Lưu log đăng nhập thành công cho ADMIN và STAFF
+        const location = await getLocationFromIP(req.ip);
+        await saveLoginLog({
+          userId: user.id,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+          status: 'SUCCESS',
+          location
         });
       }
 
@@ -262,6 +286,50 @@ export class AuthController {
       return res.status(500).json({
         success: false,
         message: 'Đã xảy ra lỗi trong quá trình đăng ký'
+      });
+    }
+  }
+
+  static async getLoginHistory(req: RequestWithUser, res: Response): Promise<Response> {
+    try {
+      const userId = parseInt(req.params.userId || (req.user?.userId || 0).toString());
+
+      // Kiểm tra quyền truy cập - chỉ cho phép user xem lịch sử của chính họ hoặc Admin xem của bất kỳ ai
+      if (req.user?.userId !== userId && req.user?.role !== Role.ADMIN) {
+        return res.status(403).json({
+          success: false,
+          message: 'Bạn không có quyền xem lịch sử đăng nhập này'
+        });
+      }
+
+      // Kiểm tra user có phải là ADMIN hoặc STAFF không
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { role: true }
+      });
+
+      if (!user || (user.role !== Role.ADMIN && user.role !== Role.STAFF)) {
+        return res.status(403).json({
+          success: false,
+          message: 'Chỉ có thể xem lịch sử đăng nhập của Admin hoặc Staff'
+        });
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      const loginHistory = await getUserLoginHistory(userId, page, limit);
+
+      return res.json({
+        success: true,
+        data: loginHistory.data,
+        meta: loginHistory.meta
+      });
+    } catch (error) {
+      console.error('Get login history error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Đã xảy ra lỗi khi lấy lịch sử đăng nhập'
       });
     }
   }

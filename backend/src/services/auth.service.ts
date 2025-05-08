@@ -169,3 +169,70 @@ export class AuthService {
     return { message: 'Đặt lại mật khẩu thành công' };
   }
 }
+
+/**
+ * Lưu log đăng nhập của người dùng (chỉ cho ADMIN và STAFF)
+ */
+const saveLoginLog = async (data: {
+  userId: number;
+  ipAddress?: string;
+  userAgent?: string;
+  status: 'SUCCESS' | 'FAILED';
+  location?: string;
+}) => {
+  try {
+    // Kiểm tra xem user có phải là ADMIN hoặc STAFF không
+    const user = await prisma.user.findUnique({
+      where: { id: data.userId },
+      select: { role: true }
+    });
+
+    // Chỉ lưu log cho ADMIN và STAFF
+    if (user && (user.role === 'ADMIN' || user.role === 'STAFF')) {
+      return prisma.loginLog.create({
+        data
+      });
+    }
+
+    // Nếu không phải ADMIN hoặc STAFF, không lưu log
+    return null;
+  } catch (error) {
+    console.error('Error saving login log:', error);
+    // Không throw error để không làm gián đoạn quá trình đăng nhập
+    return null;
+  }
+};
+
+/**
+ * Lấy lịch sử đăng nhập của người dùng
+ */
+const getUserLoginHistory = async (userId: number, page = 1, limit = 10) => {
+  const skip = (page - 1) * limit;
+
+  const [logs, total] = await Promise.all([
+    prisma.loginLog.findMany({
+      where: { userId },
+      orderBy: { timestamp: 'desc' },
+      skip,
+      take: limit,
+    }),
+    prisma.loginLog.count({ where: { userId } })
+  ]);
+
+  const totalPages = Math.ceil(total / limit);
+
+  return {
+    data: logs,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages
+    }
+  };
+};
+
+export {
+  saveLoginLog,
+  getUserLoginHistory
+};
