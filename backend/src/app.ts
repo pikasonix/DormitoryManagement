@@ -13,6 +13,7 @@ import { errorMiddleware } from './middleware/error.middleware';
 const app = express();
 
 // --- Cấu hình CORS ---
+const isDev = process.env.NODE_ENV !== 'production';
 const allowedOrigins = [
   process.env.FRONTEND_URL || 'http://localhost:5173',
   'http://localhost:4173',
@@ -22,7 +23,17 @@ const allowedOrigins = [
 ];
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.some(allowed => typeof allowed === 'string' ? allowed === origin : allowed.test(origin))) {
+    // For development, allow all origins
+    if (isDev) {
+      callback(null, true);
+      return;
+    }
+
+    if (!origin || allowedOrigins.some(allowed =>
+      typeof allowed === 'string'
+        ? allowed === origin
+        : allowed.test(origin)
+    )) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));

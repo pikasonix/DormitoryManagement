@@ -1,29 +1,35 @@
 import { Request, Response, NextFunction } from 'express'; // Thêm NextFunction
 import { PrismaClient } from '@prisma/client';
+import { DashboardService } from '../services/dashboard.service';
 
 // Lưu ý: Nên sử dụng một instance PrismaClient duy nhất (singleton)
 // được khởi tạo ở một file khác (vd: src/utils/prisma.ts) và import vào đây.
 const prisma = new PrismaClient();
+const dashboardService = new DashboardService();
 
 export class DashboardController {
   // Lấy các số liệu thống kê tổng quan
   async getStats(_req: Request, res: Response, next: NextFunction) { // Thêm next
     try {
-      // Đổi prisma.resident thành prisma.studentProfile
-      const [totalStudents, totalRooms, totalUsers, totalBuildings] = await Promise.all([
-        prisma.studentProfile.count(), // Đổi tên biến và model
-        prisma.room.count(),
-        prisma.user.count(),
-        prisma.building.count() // Thêm số lượng tòa nhà nếu cần
-      ]);
+      // Sử dụng service để lấy dữ liệu thống kê
+      const stats = await dashboardService.getStats();
+
+      // Lấy thêm thông tin về số phòng trống
+      const availableRooms = await prisma.room.count({
+        where: { status: 'AVAILABLE' }
+      });
+
+      // Lấy thông tin về hóa đơn chưa thanh toán
+      const unpaidInvoices = await prisma.invoice.count({
+        where: { status: 'UNPAID' }
+      });
 
       res.status(200).json({ // Thêm status code và chuẩn hóa response
         status: 'success',
         data: {
-          totalStudents, // Đổi tên key
-          totalRooms,
-          totalUsers,
-          totalBuildings
+          ...stats,
+          availableRooms,
+          unpaidInvoices
         }
       });
     } catch (error) {

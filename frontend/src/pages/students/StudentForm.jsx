@@ -239,10 +239,10 @@ const StudentForm = () => {
   // Options for room select
   const roomOptions = [
     { value: '', label: '-- Chọn phòng --' },
-    ...rooms.map(room => ({
+    ...(Array.isArray(rooms) ? rooms.map(room => ({
       value: room.id.toString(),
       label: `Phòng ${room.number} (${room.building?.name}) - ${room.capacity} chỗ`
-    }))
+    })) : [])
   ];
 
   if (isLoading) return (

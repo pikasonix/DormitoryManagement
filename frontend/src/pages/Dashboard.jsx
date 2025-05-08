@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext'; // Sử dụng AuthContext
-import apiClient from '../api/axios'; // Sử dụng apiClient đã cấu hình
-import { Card } from '../components/shared'; // Sử dụng Card component
-import LoadingSpinner from '../components/shared/LoadingSpinner'; // Sử dụng LoadingSpinner
+import { useAuth } from '../contexts/AuthContext';
+import apiClient from '../api/axios';
+import { Card } from '../components/shared';
+import LoadingSpinner from '../components/shared/LoadingSpinner';
 import { Pie } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -42,42 +42,41 @@ const Dashboard = () => {
         if (user.role === 'ADMIN' || user.role === 'STAFF') {
           // --- Fetch data cho Admin/Staff ---
           const [
-            dashboardRes,  // Add dashboard API call
+            dashboardRes,
             roomRes,
             maintenanceRes,
             invoiceRes
           ] = await Promise.allSettled([
-            // Use dashboard stats API to get the total students count
+            // Use dashboard stats API to get all the stats we need
             apiClient.get('/dashboard/stats'),
-            // Lấy danh sách phòng để tính toán trạng thái
-            apiClient.get('/rooms'), // API này chưa có phân trang, lấy hết
-            // Lấy yêu cầu bảo trì đang chờ (dùng limit=1)
+            // Still get room info for the chart data
+            apiClient.get('/rooms'),
+            // These are kept for backwards compatibility but we'll
+            // use the dashboard stats for the UI metrics
             apiClient.get('/maintenance?status=PENDING&limit=1'),
-            // Lấy hóa đơn chưa thanh toán (dùng limit=1)
             apiClient.get('/invoices?status=UNPAID&limit=1'),
           ]);
 
-          // Xử lý kết quả student từ dashboard API
-          const totalStudents = dashboardRes.status === 'fulfilled' ? (dashboardRes.value.data?.data?.totalStudents ?? 0) : 0;
+          // Get stats from dashboard API
+          const dashboardData = dashboardRes.status === 'fulfilled' ? dashboardRes.value.data?.data : null;
+
+          // Extract stats from dashboard API response
+          const totalStudents = dashboardData?.totalStudents ?? 0;
+          const availableRooms = dashboardData?.availableRooms ?? 0;
+          const pendingMaintenance = dashboardData?.pendingMaintenance ?? 0;
+          const pendingInvoices = dashboardData?.unpaidInvoices ?? 0;
 
           // Xử lý kết quả room
-          let roomStats = { total: 0, available: 0, occupied: 0, maintenance: 0 };
+          let roomStats = { total: 0, available: availableRooms, occupied: 0, maintenance: 0 };
           if (roomRes.status === 'fulfilled' && roomRes.value.data?.data) {
             const rooms = roomRes.value.data.data;
             roomStats.total = rooms.length;
             rooms.forEach(room => {
               // Giả sử status là 'AVAILABLE', 'OCCUPIED', 'UNDER_MAINTENANCE', 'FULL'
-              if (room.status === 'AVAILABLE') roomStats.available++;
-              else if (room.status === 'OCCUPIED' || room.status === 'FULL') roomStats.occupied++;
+              if (room.status === 'OCCUPIED' || room.status === 'FULL') roomStats.occupied++;
               else if (room.status === 'UNDER_MAINTENANCE') roomStats.maintenance++;
             });
           }
-
-          // Xử lý kết quả maintenance
-          const pendingMaintenance = maintenanceRes.status === 'fulfilled' ? (maintenanceRes.value.data?.meta?.total ?? 0) : 0;
-
-          // Xử lý kết quả invoice
-          const pendingInvoices = invoiceRes.status === 'fulfilled' ? (invoiceRes.value.data?.meta?.total ?? 0) : 0;
 
           setStats({
             totalStudents,
