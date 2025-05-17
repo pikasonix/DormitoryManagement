@@ -5,7 +5,7 @@ import { Button, Select, Badge, Input } from '../../components/shared';
 import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import { EyeIcon, CheckCircleIcon, XCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -165,14 +165,7 @@ const TransferIndex = () => {
             accessor: 'actions',
             Cell: ({ row }) => (
                 <div className="flex space-x-2 justify-center items-center">
-                    {/* Chi tiết yêu cầu */}
-                    <Button
-                        variant="icon"
-                        onClick={() => navigate(`/transfers/${row.original.id}`)}
-                        tooltip="Xem chi tiết"
-                    >
-                        <EyeIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
-                    </Button>                    {/* Buttons for PENDING requests */}
+                    {/* Buttons for PENDING requests */}
                     {row.original.status === 'PENDING' && (
                         <>
                             <Button

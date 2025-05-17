@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast';
  */
 const getAllRooms = async (params = {}) => {
   try {
-    const response = await apiClient.get('/rooms', { params });
+    const response = await apiClient.get('/api/rooms', { params });
     // Controller trả về { status: 'success', results: number, total: number, data: [...] }
     if (response.data?.status === 'success' && Array.isArray(response.data?.data)) {
       console.log('Room data from API:', response.data.data[0]); // For debugging: Check building info
@@ -40,7 +40,7 @@ const getAllRooms = async (params = {}) => {
  */
 const getRoomById = async (id) => {
   try {
-    const response = await apiClient.get(`/rooms/${id}`);
+    const response = await apiClient.get(`/api/rooms/${id}`);
     // Controller trả về { status: 'success', data: room_object }
     if (response.data?.status === 'success' && response.data?.data) {
       return response.data.data;
@@ -62,7 +62,7 @@ const createRoom = async (roomData) => {
   try {
     // Controller yêu cầu amenities là [{ amenityId, quantity?, notes? }]
     // Controller yêu cầu imageIds là [number]
-    const response = await apiClient.post('/rooms', roomData);
+    const response = await apiClient.post('/api/rooms', roomData);
     // Controller trả về { status: 'success', data: new_room_object }
     if (response.data?.status === 'success' && response.data?.data) {
       return response.data.data;
@@ -86,7 +86,7 @@ const createRoom = async (roomData) => {
  */
 const updateRoom = async (id, roomData) => {
   try {
-    const response = await apiClient.put(`/rooms/${id}`, roomData);
+    const response = await apiClient.put(`/api/rooms/${id}`, roomData);
     // Controller trả về { status: 'success', data: updated_room_object }
     if (response.data?.status === 'success' && response.data?.data) {
       return response.data.data;
@@ -109,7 +109,7 @@ const updateRoom = async (id, roomData) => {
  */
 const deleteRoom = async (id) => {
   try {
-    const response = await apiClient.delete(`/rooms/${id}`);
+    const response = await apiClient.delete(`/api/rooms/${id}`);
     // Controller trả về { status: 'success', message: "...", data: null }
     if (response.data?.status === 'success') {
       return response.data;
@@ -137,7 +137,7 @@ const uploadMedia = async (file, context = 'room-image') => {
 
   try {
     // **Sử dụng endpoint upload media chính xác**
-    const response = await apiClient.post('/media/upload', formData, {
+    const response = await apiClient.post('/api/media/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
     // **Kiểm tra cấu trúc response upload chính xác**

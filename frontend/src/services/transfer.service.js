@@ -64,7 +64,7 @@ const getTransferRequestById = async (id) => {
 const createTransferRequest = async (requestData) => {
     try {
         // Cần làm rõ backend có tự lấy studentId/currentRoomId không
-        const response = await apiClient.post('/api/transfers', requestData);
+        const response = await apiClient.post('/api/transfers/request', requestData);
         // Backend trả về: { status: 'success', data: new_transfer_request_object }
         if (response.data?.status === 'success') {
             return response.data.data;

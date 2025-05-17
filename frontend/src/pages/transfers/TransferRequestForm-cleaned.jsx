@@ -276,19 +276,85 @@ const TransferRequestForm = () => {
             if (errorMsg.includes('đã có một yêu cầu chuyển phòng đang chờ xử lý')) {
                 // Trích xuất ID yêu cầu đang tồn tại từ thông báo lỗi
                 const existingRequestId = errorMsg.match(/\(ID: (\d+)\)/)?.[1];
-                const viewURL = existingRequestId ? `/transfers/${existingRequestId}` : '/profile/transfers';                // Tạo thông báo thân thiện với link trực tiếp
+                const viewURL = existingRequestId ? `/transfers/${existingRequestId}` : '/profile/transfers';
+
+                // Tạo thông báo thân thiện với link trực tiếp
                 const friendlyMessage = existingRequestId
-                    ? `Bạn đã có một yêu cầu chuyển phòng đang chờ xử lý (mã: ${existingRequestId}).`
-                    : 'Bạn đã có một yêu cầu chuyển phòng đang chờ xử lý.';
+                    ? `Bạn đã có một yêu cầu chuyển phòng đang chờ xử lý (mã: ${existingRequestId}). Vui lòng đợi quản lý xử lý yêu cầu hiện tại hoặc hủy yêu cầu đó trước khi tạo yêu cầu mới.`
+                    : 'Bạn đã có một yêu cầu chuyển phòng đang chờ xử lý. Vui lòng đợi quản lý xử lý yêu cầu hiện tại hoặc hủy yêu cầu đó trước khi tạo yêu cầu mới.';
 
                 // Hiển thị lỗi
-                setErrors({
-                    general: friendlyMessage + ' Bạn có thể xem chi tiết trong trang "Yêu cầu của tôi" hoặc hủy yêu cầu đó để tạo yêu cầu mới.',
-                    actions: true,
-                    existingRequestId: existingRequestId
-                });
-
+                setErrors({ general: friendlyMessage });
                 toast.error(friendlyMessage, { duration: 5000 }); // Tăng thời gian hiển thị toast lên 5s
+
+                // Sử dụng dialog xác nhận với nhiều tùy chọn
+                import('sweetalert2').then((Swal) => {
+                    Swal.default.fire({
+                        title: 'Đã có yêu cầu chuyển phòng',
+                        icon: 'info',
+                        html: `
+                                <p>Bạn đã có một yêu cầu chuyển phòng đang chờ xử lý${existingRequestId ? ` <b>(mã: ${existingRequestId})</b>` : ''}.</p>
+                                <p class="mt-2">Bạn có thể:</p>
+                            `,
+                        showCancelButton: true,
+                        showDenyButton: true,
+                        confirmButtonText: 'Xem yêu cầu hiện tại',
+                        denyButtonText: 'Hủy yêu cầu hiện tại',
+                        cancelButtonText: 'Đóng',
+                        confirmButtonColor: '#3085d6',
+                        denyButtonColor: '#d33',
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            // Chuyển đến trang xem chi tiết hoặc danh sách
+                            navigate(viewURL);
+                        } else if (result.isDenied && existingRequestId) {
+                            // Hiển thị xác nhận hủy yêu cầu
+                            Swal.default.fire({
+                                title: 'Xác nhận hủy yêu cầu',
+                                text: `Bạn có chắc chắn muốn hủy yêu cầu chuyển phòng (mã: ${existingRequestId})?`,
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonColor: '#d33',
+                                cancelButtonColor: '#3085d6',
+                                confirmButtonText: 'Hủy yêu cầu',
+                                cancelButtonText: 'Giữ nguyên'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    // Gọi API hủy yêu cầu chuyển phòng
+                                    transferService.deleteTransferRequest(existingRequestId)
+                                        .then(() => {
+                                            toast.success('Đã hủy yêu cầu chuyển phòng thành công!');
+                                            // Thông báo người dùng có thể tạo yêu cầu mới
+                                            Swal.default.fire({
+                                                title: 'Đã hủy thành công',
+                                                text: 'Bạn đã hủy yêu cầu chuyển phòng thành công. Bạn có thể tạo yêu cầu mới ngay bây giờ.',
+                                                icon: 'success',
+                                                confirmButtonText: 'Tạo yêu cầu mới',
+                                                showCancelButton: true,
+                                                cancelButtonText: 'Để sau'
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    // Refresh trang để tạo yêu cầu mới
+                                                    window.location.reload();
+                                                }
+                                            });
+                                        })
+                                        .catch((err) => {
+                                            console.error('Lỗi khi hủy yêu cầu:', err);
+                                            toast.error('Không thể hủy yêu cầu chuyển phòng. ' + (err.message || ''));
+                                        });
+                                }
+                            });
+                        }
+                    });
+                }).catch(err => {
+                    console.error('Lỗi khi tải thư viện SweetAlert:', err);
+                    // Fallback khi không thể tải SweetAlert
+                    const confirmRedirect = window.confirm('Bạn có muốn xem danh sách yêu cầu chuyển phòng của mình không?');
+                    if (confirmRedirect) {
+                        navigate('/profile/transfers');
+                    }
+                });
                 return;
             }
 
@@ -350,56 +416,10 @@ const TransferRequestForm = () => {
                             ? `Phòng ${currentRoom.number} (${currentRoom.building?.name || 'N/A'})`
                             : 'Đang tải thông tin...'}
                     </p>
-                </div>                {/* Lỗi chung */}
-                {errors.general && (
-                    <div className="rounded-md bg-red-50 p-4 mb-4">
-                        <div className="flex">
-                            <div className="flex-shrink-0">
-                                {/* SVG icon for error */}
-                                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
-                                </svg>
-                            </div>
-                            <div className="ml-3">
-                                <p className="text-sm text-red-700">{errors.general}</p>
-                                {errors.actions && (
-                                    <div className="mt-4 flex gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => navigate(errors.existingRequestId ? `/transfers/${errors.existingRequestId}` : '/profile/transfers')}
-                                            className="rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-800 hover:bg-red-100"
-                                        >
-                                            Xem yêu cầu hiện tại
-                                        </button>
-                                        {errors.existingRequestId && (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    if (window.confirm(`Bạn có chắc chắn muốn hủy yêu cầu chuyển phòng (mã: ${errors.existingRequestId})?`)) {
-                                                        transferService.deleteTransferRequest(errors.existingRequestId)
-                                                            .then(() => {
-                                                                toast.success('Đã hủy yêu cầu chuyển phòng thành công!');
-                                                                if (window.confirm('Bạn đã hủy yêu cầu chuyển phòng thành công. Tạo yêu cầu mới ngay bây giờ?')) {
-                                                                    window.location.reload();
-                                                                }
-                                                            })
-                                                            .catch((err) => {
-                                                                console.error('Lỗi khi hủy yêu cầu:', err);
-                                                                toast.error('Không thể hủy yêu cầu chuyển phòng. ' + (err.message || ''));
-                                                            });
-                                                    }
-                                                }}
-                                                className="rounded-md bg-red-100 px-3 py-2 text-sm font-medium text-red-800 hover:bg-red-200"
-                                            >
-                                                Hủy yêu cầu hiện tại
-                                            </button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
+                </div>
+
+                {/* Lỗi chung */}
+                {errors.general && <p className="text-sm text-red-600">{errors.general}</p>}
 
                 {/* Chọn tòa nhà */}
                 <Select
