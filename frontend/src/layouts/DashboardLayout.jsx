@@ -90,9 +90,8 @@ const DashboardLayout = () => {
       { name: 'Quản lý thanh toán', href: '/payments', icon: CurrencyDollarIcon, roles: ['ADMIN', 'STAFF'] },
       { name: 'Điện nước', href: '/utilities', icon: CalculatorIcon, roles: ['ADMIN', 'STAFF'] },
       { name: 'Quản lý phương tiện', href: '/vehicles', icon: TruckIcon, roles: ['ADMIN', 'STAFF'] },
-      { name: 'Đăng ký phương tiện', href: '/vehicles/register', icon: TruckIcon, roles: ['STUDENT'] },
-      { name: 'Quản lý chuyển phòng', href: '/transfers', icon: ArrowsRightLeftIcon, roles: ['ADMIN', 'STAFF'] },
-      { name: 'Đăng ký chuyển phòng', href: '/transfers/request', icon: ArrowsRightLeftIcon, roles: ['STUDENT'] },
+      { name: 'Đăng ký phương tiện', href: '/vehicles/register', icon: TruckIcon, roles: ['STUDENT'] }, { name: 'Quản lý chuyển phòng', href: '/transfers', icon: ArrowsRightLeftIcon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Đăng ký chuyển phòng', href: '/transfers', icon: ArrowsRightLeftIcon, roles: ['STUDENT'] },
     ];
 
     if (!user || !user.role) return [];

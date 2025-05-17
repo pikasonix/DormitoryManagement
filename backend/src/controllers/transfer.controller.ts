@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { TransferService } from '../services/transfer.service';
-import { PrismaClient, Prisma, TransferStatus } from '@prisma/client';
+import { PrismaClient, Prisma, TransferStatus, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -11,94 +11,57 @@ export class TransferController {
     async getAllTransfers(req: Request, res: Response, next: NextFunction) {
         try {
             const { studentProfileId, fromRoomId, toRoomId, status, page, limit, identifier, studentId } = req.query;
+            const userId = req.user?.userId;
+            const userRole = req.user?.role;
+
+            if (!userId) {
+                return next(new Error('Không tìm thấy thông tin người dùng.'));
+            }
 
             const options: Prisma.RoomTransferFindManyArgs = { where: {} };
 
-            // Xây dựng bộ lọc
-            if (studentProfileId) options.where!.studentProfileId = parseInt(studentProfileId as string);
-            if (fromRoomId) options.where!.fromRoomId = parseInt(fromRoomId as string);
-            if (toRoomId) options.where!.toRoomId = parseInt(toRoomId as string);
-
-            // Xử lý khi có tham số studentId (mã số sinh viên)
-            if (studentId) {
-                // Tìm studentProfile có studentId chứa studentId
-                const matchingStudents = await prisma.studentProfile.findMany({
-                    where: {
-                        studentId: {
-                            contains: studentId as string,
-                            mode: 'insensitive' // Case-insensitive search
-                        }
-                    },
+            // Nếu là sinh viên, chỉ cho xem yêu cầu của chính mình
+            if (userRole === Role.STUDENT) {
+                const studentProfile = await prisma.studentProfile.findUnique({
+                    where: { userId },
                     select: { id: true }
                 });
 
-                if (matchingStudents.length > 0) {
-                    const studentIds = matchingStudents.map(student => student.id);
-                    options.where!.studentProfileId = { in: studentIds };
-                } else {
-                    // Nếu không tìm thấy kết quả nào, trả về mảng rỗng
-                    options.where!.id = -1; // Không có ID nào là -1, đảm bảo không có kết quả trả về
-                }
-            }
-
-            // Xử lý tìm kiếm theo mã SV/phòng qua tham số identifier
-            if (identifier) {
-                const searchTerm = (identifier as string).trim();
-
-                // Tìm studentProfile có studentId chứa searchTerm
-                const matchingStudents = await prisma.studentProfile.findMany({
-                    where: {
-                        studentId: {
-                            contains: searchTerm,
-                            mode: 'insensitive' // Case-insensitive search
-                        }
-                    },
-                    select: { id: true }
-                });
-
-                // Tìm phòng có số phòng hoặc tên tòa nhà chứa searchTerm
-                const matchingRooms = await prisma.room.findMany({
-                    where: {
-                        OR: [
-                            { number: { contains: searchTerm, mode: 'insensitive' } },
-                            { building: { name: { contains: searchTerm, mode: 'insensitive' } } }
-                        ]
-                    },
-                    select: { id: true }
-                });
-
-                type OrConditionType =
-                    | { studentProfileId: number }
-                    | { fromRoomId: number }
-                    | { toRoomId: number };
-                const orConditions: OrConditionType[] = [];
-
-                if (matchingStudents.length > 0) {
-                    orConditions.push(...matchingStudents.map(student => ({ studentProfileId: student.id })));
-                }
-                // Add room conditions for both fromRoomId and toRoomId
-                if (matchingRooms.length > 0) {
-                    orConditions.push(...matchingRooms.map(room => ({ fromRoomId: room.id })));
-                    orConditions.push(...matchingRooms.map(room => ({ toRoomId: room.id })));
+                if (!studentProfile) {
+                    return next(new Error('Không tìm thấy hồ sơ sinh viên của bạn.'));
                 }
 
-                if (orConditions.length > 0) {
-                    if (options.where!.OR) {
-                        options.where!.AND = [
-                            { OR: options.where!.OR },
-                            { OR: orConditions }
-                        ];
-                        delete options.where!.OR;
+                options.where!.studentProfileId = studentProfile.id;
+            } else {
+                // Xây dựng bộ lọc
+                if (studentProfileId) options.where!.studentProfileId = parseInt(studentProfileId as string);
+                if (fromRoomId) options.where!.fromRoomId = parseInt(fromRoomId as string);
+                if (toRoomId) options.where!.toRoomId = parseInt(toRoomId as string);
+
+                // Xử lý khi có tham số studentId (mã số sinh viên)
+                if (studentId) {
+                    // Tìm studentProfile có studentId chứa studentId
+                    const matchingStudents = await prisma.studentProfile.findMany({
+                        where: {
+                            studentId: {
+                                contains: studentId as string,
+                                mode: 'insensitive' // Case-insensitive search
+                            }
+                        },
+                        select: { id: true }
+                    });
+
+                    if (matchingStudents.length > 0) {
+                        const studentIds = matchingStudents.map(student => student.id);
+                        options.where!.studentProfileId = { in: studentIds };
                     } else {
-                        options.where!.OR = orConditions;
+                        // Nếu không tìm thấy kết quả nào, trả về mảng rỗng
+                        options.where!.id = -1; // Không có ID nào là -1, đảm bảo không có kết quả trả về
                     }
-                } else {
-                    // Nếu không tìm thấy kết quả nào, trả về mảng rỗng
-                    options.where!.id = -1; // Không có ID nào là -1, đảm bảo không có kết quả trả về
                 }
             }
 
-            // Validate và xử lý trạng thái
+            // Validate và xử lý trạng thái (áp dụng cho cả admin và student)
             if (status) {
                 if (Object.values(TransferStatus).includes(status as TransferStatus)) {
                     options.where!.status = status as TransferStatus;
@@ -229,10 +192,39 @@ export class TransferController {
         }
     }
 
-    // Admin/Staff (hoặc sinh viên?) xóa yêu cầu (chỉ PENDING/REJECTED)
+    // Admin/Staff (hoặc sinh viên) xóa yêu cầu (chỉ PENDING/REJECTED)
     async deleteTransfer(req: Request, res: Response, next: NextFunction) {
         try {
             const id = parseInt(req.params.id);
+            const userId = req.user?.userId;
+            const userRole = req.user?.role;
+
+            if (!userId) {
+                return next(new Error('Không tìm thấy thông tin người dùng.'));
+            }
+
+            // Kiểm tra quyền: Chỉ Admin/Staff hoặc sinh viên sở hữu request đó mới được xóa
+            if (userRole === Role.STUDENT) {
+                // Nếu là sinh viên, kiểm tra xem request có phải của họ không
+                const transfer = await prisma.roomTransfer.findUnique({
+                    where: { id },
+                    include: { studentProfile: { select: { userId: true } } }
+                });
+
+                if (!transfer) {
+                    return next(new Error('Không tìm thấy yêu cầu chuyển phòng.'));
+                }
+
+                if (transfer.studentProfile?.userId !== userId) {
+                    return next(new Error('Bạn không có quyền xóa yêu cầu này.'));
+                }
+
+                // Sinh viên chỉ được xóa yêu cầu PENDING hoặc REJECTED
+                if (transfer.status !== TransferStatus.PENDING && transfer.status !== TransferStatus.REJECTED) {
+                    return next(new Error('Chỉ có thể xóa yêu cầu đang chờ duyệt hoặc đã bị từ chối.'));
+                }
+            }
+
             // Service kiểm tra trạng thái trước khi xóa
             await transferService.delete(id);
             res.status(200).json({

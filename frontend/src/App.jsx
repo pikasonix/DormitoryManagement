@@ -154,7 +154,13 @@ function App() {
 
         {/* --- TRANSFER ROUTES --- */}
         <Route path="/transfers">
-          <Route index element={<StaffRoute><TransferIndex /></StaffRoute>} />
+          <Route index element={
+            <ProfileRouter
+              studentComponent={<TransferIndex />}
+              staffComponent={<TransferIndex />}
+              adminComponent={<TransferIndex />}
+            />
+          } />
           <Route path="request" element={<TransferRequestForm />} />
           {/* <Route path=":id/review" element={<StaffRoute><TransferReviewForm /></StaffRoute>} /> */}
         </Route>

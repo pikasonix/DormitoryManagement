@@ -11,7 +11,6 @@ router.use(authMiddleware);
 // GET /api/transfers - Lấy danh sách yêu cầu (Admin/Staff xem tất cả)
 router.get(
     '/',
-    checkRole([Role.ADMIN, Role.STAFF]),
     transferController.getAllTransfers
 );
 
@@ -37,7 +36,6 @@ router.put(
 // DELETE /api/transfers/:id - Xóa yêu cầu
 router.delete(
     '/:id',
-    checkRole([Role.ADMIN, Role.STAFF]),
     transferController.deleteTransfer
 );
 
