@@ -8,10 +8,13 @@ CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE');
 CREATE TYPE "StudentStatus" AS ENUM ('PENDING_APPROVAL', 'RENTING', 'EVICTED', 'CHECKED_OUT');
 
 -- CreateEnum
-CREATE TYPE "RoomType" AS ENUM ('ROOM_12', 'ROOM_10', 'ROOM_8', 'ROOM_6', 'MANAGEMENT');
+CREATE TYPE "RoomType" AS ENUM ('MALE', 'FEMALE', 'MANAGEMENT');
 
 -- CreateEnum
 CREATE TYPE "RoomStatus" AS ENUM ('AVAILABLE', 'FULL', 'UNDER_MAINTENANCE');
+
+-- CreateEnum
+CREATE TYPE "FeeType" AS ENUM ('ROOM_FEE', 'ELECTRICITY', 'WATER', 'PARKING', 'OTHER_FEE');
 
 -- CreateEnum
 CREATE TYPE "PaymentType" AS ENUM ('ROOM_FEE', 'ELECTRICITY', 'WATER', 'PARKING', 'OTHER_FEE');
@@ -133,8 +136,8 @@ CREATE TABLE "rooms" (
     "actualOccupancy" INTEGER NOT NULL DEFAULT 0,
     "floor" INTEGER NOT NULL,
     "status" "RoomStatus" NOT NULL DEFAULT 'AVAILABLE',
-    "price" DECIMAL(12,2) NOT NULL,
     "description" TEXT,
+    "roomFee" DECIMAL(15,2) NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -159,9 +162,27 @@ CREATE TABLE "room_amenities" (
     "quantity" INTEGER NOT NULL DEFAULT 1,
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "room_amenities_pkey" PRIMARY KEY ("roomId","amenityId")
+);
+
+-- CreateTable
+CREATE TABLE "fee_rates" (
+    "id" SERIAL NOT NULL,
+    "name" TEXT NOT NULL,
+    "feeType" "FeeType" NOT NULL,
+    "vehicleType" "VehicleType",
+    "unitPrice" DECIMAL(12,2) NOT NULL,
+    "unit" TEXT,
+    "effectiveFrom" TIMESTAMP(3) NOT NULL,
+    "effectiveTo" TIMESTAMP(3),
+    "description" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "fee_rates_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -275,7 +296,6 @@ CREATE TABLE "vehicle_registrations" (
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "startDate" TIMESTAMP(3) NOT NULL,
     "endDate" TIMESTAMP(3),
-    "monthlyFee" DECIMAL(12,2),
     "notes" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -287,18 +307,28 @@ CREATE TABLE "vehicle_registrations" (
 CREATE TABLE "media" (
     "id" SERIAL NOT NULL,
     "filename" TEXT NOT NULL,
-    "originalFilename" TEXT NOT NULL,
     "path" TEXT NOT NULL,
     "mimeType" TEXT NOT NULL,
     "size" INTEGER NOT NULL,
-    "alt" TEXT,
     "mediaType" "MediaType" NOT NULL,
-    "isPublic" BOOLEAN NOT NULL DEFAULT true,
     "uploadedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "media_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "LoginLog" (
+    "id" SERIAL NOT NULL,
+    "userId" INTEGER NOT NULL,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "status" TEXT NOT NULL,
+    "location" TEXT,
+
+    CONSTRAINT "LoginLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -363,6 +393,9 @@ CREATE INDEX "utility_meter_readings_roomId_type_billingYear_billingMonth_idx" O
 
 -- CreateIndex
 CREATE UNIQUE INDEX "vehicle_registrations_parkingCardNo_key" ON "vehicle_registrations"("parkingCardNo");
+
+-- CreateIndex
+CREATE INDEX "LoginLog_userId_idx" ON "LoginLog"("userId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "_BuildingImages_AB_unique" ON "_BuildingImages"("A", "B");
@@ -453,6 +486,9 @@ ALTER TABLE "room_transfers" ADD CONSTRAINT "room_transfers_approvedById_fkey" F
 
 -- AddForeignKey
 ALTER TABLE "vehicle_registrations" ADD CONSTRAINT "vehicle_registrations_studentProfileId_fkey" FOREIGN KEY ("studentProfileId") REFERENCES "student_profiles"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "LoginLog" ADD CONSTRAINT "LoginLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_BuildingImages" ADD CONSTRAINT "_BuildingImages_A_fkey" FOREIGN KEY ("A") REFERENCES "buildings"("id") ON DELETE CASCADE ON UPDATE CASCADE;

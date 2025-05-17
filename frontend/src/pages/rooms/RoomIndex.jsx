@@ -19,10 +19,8 @@ const roomStatusOptions = [
 
 const roomTypeOptions = [
   { value: '', label: 'Tất cả loại phòng' },
-  { value: 'ROOM_12', label: 'Phòng 12 người' },
-  { value: 'ROOM_10', label: 'Phòng 10 người' },
-  { value: 'ROOM_8', label: 'Phòng 8 người' },
-  { value: 'ROOM_6', label: 'Phòng 6 người' },
+  { value: 'MALE', label: 'Phòng Nam' },
+  { value: 'FEMALE', label: 'Phòng Nữ' },
   { value: 'MANAGEMENT', label: 'Phòng quản lý' },
 ];
 
@@ -145,7 +143,19 @@ const RoomIndex = () => {
     },
     { Header: 'Tòa nhà', accessor: 'building.name' }, // Truy cập nested data
     { Header: 'Tầng', accessor: 'floor' },
-    { Header: 'Loại phòng', accessor: 'type' }, // Cần format lại nếu muốn hiển thị tiếng Việt
+    {
+      Header: 'Loại phòng',
+      accessor: 'type',
+      Cell: ({ value }) => {
+        // Format room type display
+        switch (value) {
+          case 'MALE': return 'Phòng Nam';
+          case 'FEMALE': return 'Phòng Nữ';
+          case 'MANAGEMENT': return 'Phòng quản lý';
+          default: return value;
+        }
+      }
+    },
     {
       Header: 'Sức chứa',
       accessor: 'capacity',
@@ -154,7 +164,7 @@ const RoomIndex = () => {
         return `${row.original.actualOccupancy || 0} / ${row.original.capacity}`;
       }
     },
-    { Header: 'Giá (VND)', accessor: 'price', Cell: ({ value }) => value ? parseFloat(value).toLocaleString('vi-VN') : '-' }, // Format tiền tệ
+    { Header: 'Giá phòng (VND)', accessor: 'roomFee', Cell: ({ value }) => value ? parseFloat(value).toLocaleString('vi-VN') : '-' }, // Using roomFee instead of price
     {
       Header: 'Trạng thái',
       accessor: 'status',

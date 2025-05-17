@@ -172,6 +172,7 @@ model Room {
   floor           Int          // Tầng số mấy
   status          RoomStatus   @default(AVAILABLE) // Trạng thái phòng
   description     String?      // Mô tả thêm về phòng
+  roomFee         Decimal      @default(0) @db.Decimal(15, 2) // Phí phòng mỗi tháng
   images          Media[]      @relation("RoomImages") // Ảnh của phòng
 
   residents       StudentProfile[] // Danh sách sinh viên đang ở phòng này
@@ -194,10 +195,8 @@ model Room {
 }
 
 enum RoomType {
-  ROOM_12 // Phòng 12 người
-  ROOM_10 // Phòng 10 người
-  ROOM_8  // Phòng 8 người
-  ROOM_6  // Phòng 6 người
+  MALE     // Phòng dành cho nam
+  FEMALE   // Phòng dành cho nữ
   MANAGEMENT // Phòng quản lý/nhân viên
 }
 
@@ -244,7 +243,6 @@ model FeeRate {
   id             Int          @id @default(autoincrement())
   name           String       // Tên loại phí (vd: "Tiền điện", "Tiền nước", "Phí gửi xe máy")
   feeType        FeeType      // Loại phí (ROOM_FEE, ELECTRICITY, WATER, PARKING, OTHER_FEE)
-  roomType       RoomType?    // Chỉ áp dụng cho loại phòng nào (nếu là ROOM_FEE)
   vehicleType    VehicleType? // Chỉ áp dụng cho loại phương tiện nào (nếu là PARKING)
   unitPrice      Decimal      @db.Decimal(12, 2) // Đơn giá (VNĐ/kWh, VNĐ/m3, VNĐ/tháng)
   unit           String?      // Đơn vị tính (kWh, m3, tháng, ...)
@@ -417,6 +415,7 @@ model RoomTransfer {
   toRoomId         Int
   transferDate     DateTime
   reason           String?
+  adminNotes       String?        // Admin notes when approving or rejecting requests
   approvedBy       StaffProfile?  @relation(fields: [approvedById], references: [id])
   approvedById     Int?
   status           TransferStatus @default(PENDING)

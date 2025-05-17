@@ -25,11 +25,9 @@ const RoomCard = ({ room, onDelete }) => {
     // Hàm lấy text cho loại phòng
     const getRoomTypeText = (type) => {
         switch (type) {
-            case 'ROOM_12': return 'Phòng 12';
-            case 'ROOM_10': return 'Phòng 10';
-            case 'ROOM_8': return 'Phòng 8';
-            case 'ROOM_6': return 'Phòng 6';
-            case 'MANAGEMENT': return 'Phòng QL';
+            case 'MALE': return 'Phòng Nam';
+            case 'FEMALE': return 'Phòng Nữ';
+            case 'MANAGEMENT': return 'Phòng Quản lý';
             default: return type;
         }
     };
@@ -64,7 +62,7 @@ const RoomCard = ({ room, onDelete }) => {
                         <span className="text-sm font-normal text-indigo-600 flex items-center">
                             <CurrencyDollarIcon className="h-4 w-4 mr-1" />
                             {/* Format tiền tệ */}
-                            {new Intl.NumberFormat('vi-VN').format(room.price || 0)}đ/tháng
+                            {new Intl.NumberFormat('vi-VN').format(room.roomFee || 0)}đ/tháng
                         </span>
                     </h3>
                     <p className="text-xs text-gray-500 mb-2 flex items-center">

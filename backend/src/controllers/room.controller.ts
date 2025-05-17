@@ -128,8 +128,7 @@ export class RoomController {
     try {
       const {
         buildingId, number, type, capacity, floor, status, description,
-        amenities,
-        imageIds
+        roomFee, amenities, imageIds
       } = req.body;
 
       if (!buildingId || !number || !type || !capacity || !floor) {
@@ -155,6 +154,7 @@ export class RoomController {
           floor: parseInt(floor),
           status: (status as RoomStatus) || RoomStatus.AVAILABLE,
           description: description || null,
+          roomFee: roomFee ? new Decimal(roomFee) : new Decimal(0),
           actualOccupancy: 0,
           amenities: amenities && Array.isArray(amenities) && amenities.length > 0 ? {
             create: amenities.map((am: any) => ({
@@ -196,8 +196,7 @@ export class RoomController {
 
       const {
         number, type, capacity, floor, status, description,
-        amenities,
-        imageIds
+        roomFee, amenities, imageIds
       } = req.body;
 
       if (type && !Object.values(RoomType).includes(type as RoomType)) {
@@ -259,6 +258,7 @@ export class RoomController {
           floor: floor ? parseInt(floor) : undefined,
           status: status as RoomStatus,
           description: description,
+          roomFee: roomFee !== undefined ? new Decimal(roomFee) : undefined,
           images: imagesUpdate,
           amenities: amenitiesUpdate
         };

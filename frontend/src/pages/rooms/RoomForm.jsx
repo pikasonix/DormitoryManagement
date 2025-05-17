@@ -15,10 +15,8 @@ const roomStatusOptions = [
     { value: 'UNDER_MAINTENANCE', label: 'Đang sửa chữa' },
 ];
 const roomTypeOptions = [
-    { value: 'ROOM_12', label: 'Phòng 12 người' },
-    { value: 'ROOM_10', label: 'Phòng 10 người' },
-    { value: 'ROOM_8', label: 'Phòng 8 người' },
-    { value: 'ROOM_6', label: 'Phòng 6 người' },
+    { value: 'MALE', label: 'Phòng Nam' },
+    { value: 'FEMALE', label: 'Phòng Nữ' },
     { value: 'MANAGEMENT', label: 'Phòng quản lý' },
 ];
 
@@ -30,11 +28,11 @@ const RoomForm = () => {
     const [formData, setFormData] = useState({
         buildingId: '',
         number: '',
-        type: 'ROOM_8', // Updated default room type
+        type: 'MALE', // Default room type changed to MALE
         capacity: 2, // Giá trị mặc định
         floor: 1,
         status: 'AVAILABLE',
-        price: 0,
+        roomFee: 0, // Changed from price to roomFee
         description: '',
         amenities: [], // Mảng các object { amenityId, quantity, notes }
         images: [],    // Mảng các object media { id, path, url,... }
@@ -84,11 +82,11 @@ const RoomForm = () => {
                         setFormData({
                             buildingId: roomData.buildingId?.toString() || '',
                             number: roomData.number || '',
-                            type: roomData.type || 'ROOM_8', // Default to a valid room type if missing
+                            type: roomData.type || 'MALE', // Updated default room type
                             capacity: roomData.capacity ?? 2,
                             floor: roomData.floor ?? 1,
                             status: roomData.status || 'AVAILABLE',
-                            price: parseFloat(roomData.price) || 0,
+                            roomFee: parseFloat(roomData.roomFee) || 0, // Changed from price to roomFee
                             description: roomData.description || '',
                             images: roomData.images || [], // Lưu ảnh hiện có
                             amenities: roomData.amenities || [], // Lưu tiện nghi hiện có
@@ -236,8 +234,8 @@ const RoomForm = () => {
             setErrors({ capacity: "Sức chứa phải lớn hơn 0." });
             setIsSaving(false); return;
         }
-        if (formData.price < 0) {
-            setErrors({ price: "Giá phòng không thể âm." });
+        if (formData.roomFee < 0) {
+            setErrors({ roomFee: "Giá phòng không thể âm." });
             setIsSaving(false); return;
         }
         // --- End Validation ---
@@ -277,7 +275,7 @@ const RoomForm = () => {
                 buildingId: parseInt(formData.buildingId), // Chuyển sang số
                 capacity: parseInt(formData.capacity),
                 floor: parseInt(formData.floor),
-                price: parseFloat(formData.price),
+                roomFee: parseFloat(formData.roomFee), // Changed from price to roomFee
                 amenities: finalAmenities, // Dữ liệu tiện nghi đã xử lý
                 imageIds: finalImageIds,   // Mảng ID ảnh cuối cùng
             };
@@ -357,7 +355,7 @@ const RoomForm = () => {
                                 <Input label="Tầng *" id="floor" name="floor" type="number" min="1" required value={formData.floor} onChange={handleChange} disabled={isSaving} error={errors.floor} />
                             </div>
                             <div className="sm:col-span-3">
-                                <Input label="Giá phòng (VND/tháng) *" id="price" name="price" type="number" min="0" step="1000" required value={formData.price} onChange={handleChange} disabled={isSaving} error={errors.price} />
+                                <Input label="Giá phòng (VND/tháng) *" id="roomFee" name="roomFee" type="number" min="0" step="1000" required value={formData.roomFee} onChange={handleChange} disabled={isSaving} error={errors.roomFee} /> {/* Changed from price to roomFee */}
                             </div>
                             <div className="sm:col-span-3">
                                 <Select label="Trạng thái *" id="status" name="status" required value={formData.status} onChange={handleChange} options={roomStatusOptions} disabled={isSaving} error={errors.status} />

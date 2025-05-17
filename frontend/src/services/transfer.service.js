@@ -88,12 +88,26 @@ const createTransferRequest = async (requestData) => {
  */
 const updateTransferRequest = async (id, updateData) => {
     try {
-        const response = await apiClient.put(`/api/transfers/${id}`, updateData);
-        // Backend trả về: { status: 'success', data: updated_transfer_request_object }
-        if (response.data?.status === 'success') {
-            return response.data.data;
+        // Nếu chỉ có status, sử dụng API status
+        if (updateData && Object.keys(updateData).length === 1 && updateData.status) {
+            const response = await apiClient.put(`/api/transfers/${id}/status`, {
+                status: updateData.status
+            });
+
+            if (response.data?.status === 'success') {
+                return response.data.data;
+            } else {
+                throw new Error(response.data?.message || 'Cập nhật trạng thái yêu cầu chuyển phòng thất bại.');
+            }
         } else {
-            throw new Error(response.data?.message || 'Cập nhật yêu cầu chuyển phòng thất bại.');
+            // Gọi API chỉnh sửa chung cho cập nhật các trường khác
+            const response = await apiClient.put(`/api/transfers/${id}`, updateData);
+
+            if (response.data?.status === 'success') {
+                return response.data.data;
+            } else {
+                throw new Error(response.data?.message || 'Cập nhật yêu cầu chuyển phòng thất bại.');
+            }
         }
     } catch (error) {
         console.error(`Lỗi service updateTransferRequest (${id}):`, error.response?.data || error.message);
@@ -124,6 +138,62 @@ const deleteTransferRequest = async (id) => {
     }
 };
 
+/**
+ * Phê duyệt yêu cầu chuyển phòng (Admin/Staff)
+ * @param {string|number} id - ID của yêu cầu cần phê duyệt
+ * @returns {Promise<object>} Dữ liệu yêu cầu sau khi cập nhật
+ */
+const approveTransferRequest = async (id) => {
+    try {
+        const response = await apiClient.put(`/api/transfers/${id}/status`, {
+            status: 'APPROVED'
+        });
+
+        if (response.data?.status === 'success') {
+            toast.success('Đã phê duyệt yêu cầu chuyển phòng thành công!');
+            return response.data.data;
+        } else {
+            throw new Error(response.data?.message || 'Phê duyệt yêu cầu thất bại.');
+        }
+    } catch (error) {
+        console.error(`Lỗi service approveTransferRequest (${id}):`, error.response?.data || error.message);
+        const errorMessage = error.response?.data?.message || error.message || 'Phê duyệt yêu cầu thất bại.';
+        toast.error(errorMessage);
+        if (error.response?.data?.errors) {
+            throw error.response.data;
+        }
+        throw error.response?.data || error;
+    }
+};
+
+/**
+ * Từ chối yêu cầu chuyển phòng (Admin/Staff)
+ * @param {string|number} id - ID của yêu cầu cần từ chối
+ * @returns {Promise<object>} Dữ liệu yêu cầu sau khi cập nhật
+ */
+const rejectTransferRequest = async (id) => {
+    try {
+        const response = await apiClient.put(`/api/transfers/${id}/status`, {
+            status: 'REJECTED'
+        });
+
+        if (response.data?.status === 'success') {
+            toast.success('Đã từ chối yêu cầu chuyển phòng thành công!');
+            return response.data.data;
+        } else {
+            throw new Error(response.data?.message || 'Từ chối yêu cầu thất bại.');
+        }
+    } catch (error) {
+        console.error(`Lỗi service rejectTransferRequest (${id}):`, error.response?.data || error.message);
+        const errorMessage = error.response?.data?.message || error.message || 'Từ chối yêu cầu thất bại.';
+        toast.error(errorMessage);
+        if (error.response?.data?.errors) {
+            throw error.response.data;
+        }
+        throw error.response?.data || error;
+    }
+};
+
 // Export service object
 export const transferService = {
     getAllTransferRequests,
@@ -131,4 +201,6 @@ export const transferService = {
     createTransferRequest,
     updateTransferRequest,
     deleteTransferRequest,
+    approveTransferRequest,
+    rejectTransferRequest,
 };

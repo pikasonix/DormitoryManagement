@@ -81,30 +81,6 @@ async function main() {
   // --- Create Fee Rates ---
   console.log('Creating fee rates...');
   const feeRates = {
-    room6: await prisma.feeRate.create({
-      data: {
-        name: 'Tiền phòng KTX (Phòng 6)',
-        feeType: FeeType.ROOM_FEE,
-        roomType: RoomType.ROOM_6,
-        unitPrice: new Decimal(800000),
-        unit: 'tháng',
-        effectiveFrom: new Date(2023, 0, 1), // Jan 1, 2023
-        isActive: true,
-        description: 'Đơn giá tiền phòng cho phòng 6 người',
-      },
-    }),
-    room8: await prisma.feeRate.create({
-      data: {
-        name: 'Tiền phòng KTX (Phòng 8)',
-        feeType: FeeType.ROOM_FEE,
-        roomType: RoomType.ROOM_8,
-        unitPrice: new Decimal(600000),
-        unit: 'tháng',
-        effectiveFrom: new Date(2023, 0, 1),
-        isActive: true,
-        description: 'Đơn giá tiền phòng cho phòng 8 người',
-      },
-    }),
     electricity: await prisma.feeRate.create({
       data: {
         name: 'Tiền điện sinh hoạt',
@@ -152,7 +128,6 @@ async function main() {
   };
   console.log(`Created ${Object.keys(feeRates).length} fee rates.`);
 
-
   // --- Create Buildings ---
   console.log('Creating buildings...');
   const buildingB3 = await prisma.building.create({
@@ -176,20 +151,26 @@ async function main() {
   // --- Create Rooms ---
   console.log('Creating rooms...');
   const rooms: Array<Awaited<ReturnType<typeof prisma.room.create>>> = [];
-  const roomTypes = [RoomType.ROOM_8, RoomType.ROOM_6, RoomType.ROOM_10, RoomType.ROOM_12, RoomType.MANAGEMENT]; // Added all types
-  const capacities = {
-    [RoomType.ROOM_12]: 12,
-    [RoomType.ROOM_10]: 10,
-    [RoomType.ROOM_8]: 8,
-    [RoomType.ROOM_6]: 6,
-    [RoomType.MANAGEMENT]: 2, // Example capacity for management room
+  const roomTypes = {
+    B3: RoomType.MALE,      // B3 for male students
+    B9: RoomType.FEMALE     // B9 for female students
+  };
+
+  // Room capacities (number of students per room)
+  const capacityOptions = [4, 6, 8];
+
+  // Room fee based on capacity
+  const roomFees = {
+    4: new Decimal(1200000),  // 4-student room: 1,200,000 VND
+    6: new Decimal(800000),   // 6-student room: 800,000 VND
+    8: new Decimal(600000)    // 8-student room: 600,000 VND
   };
 
   const amenityBed = amenities.find(a => a.name === 'Giường tầng');
   const amenityLocker = amenities.find(a => a.name === 'Tủ đồ cá nhân');
   const amenityAC = amenities.find(a => a.name === 'Điều hòa');
   const amenityHeater = amenities.find(a => a.name === 'Nóng lạnh');
-  const amenityWC = amenities.find(a => a.name === 'WC Trong Phòng'); // Use general amenity
+  const amenityWC = amenities.find(a => a.name === 'WC Trong Phòng');
   const amenityDesk = amenities.find(a => a.name === 'Bàn học');
 
   if (!amenityBed || !amenityLocker || !amenityAC || !amenityHeater || !amenityWC || !amenityDesk) {
@@ -197,28 +178,30 @@ async function main() {
   }
 
   for (const building of [buildingB3, buildingB9]) {
+    const buildingType = building.name === 'B3' ? roomTypes.B3 : roomTypes.B9;
+
     for (let floor = 1; floor <= 5; floor++) {
       for (let roomNum = 1; roomNum <= 10; roomNum++) {
-        const type = getRandomElement(roomTypes.filter(rt => rt !== RoomType.MANAGEMENT)); // Exclude management for general student rooms
+        const capacity = getRandomElement(capacityOptions);
         const roomNumberStr = `${floor}0${roomNum}`;
         const room = await prisma.room.create({
           data: {
             buildingId: building.id,
             number: roomNumberStr,
-            type: type,
-            capacity: capacities[type],
+            type: buildingType,
+            capacity: capacity,
             floor: floor,
             status: RoomStatus.AVAILABLE,
-            description: `Phòng ${capacities[type]} người, tầng ${floor}, tòa ${building.name}`,
-            // images: { create: [ ...media data... ] } // If seeding media
+            description: `Phòng ${capacity} người, tầng ${floor}, tòa ${building.name}`,
+            roomFee: roomFees[capacity],
             amenities: {
               create: [
                 { amenityId: amenityAC.id, quantity: 1 },
                 { amenityId: amenityHeater.id, quantity: 1 },
-                { amenityId: amenityWC.id, quantity: (type === RoomType.ROOM_6 || type === RoomType.ROOM_8) ? 1 : 2 }, // Example: More WCs for larger rooms
-                { amenityId: amenityLocker.id, quantity: capacities[type] },
-                { amenityId: amenityBed.id, quantity: capacities[type] },
-                { amenityId: amenityDesk.id, quantity: capacities[type] },
+                { amenityId: amenityWC.id, quantity: capacity <= 6 ? 1 : 2 },
+                { amenityId: amenityLocker.id, quantity: capacity },
+                { amenityId: amenityBed.id, quantity: capacity / 2 },
+                { amenityId: amenityDesk.id, quantity: capacity },
               ],
             },
           },
@@ -232,10 +215,11 @@ async function main() {
         buildingId: building.id,
         number: `VP${building.name}`,
         type: RoomType.MANAGEMENT,
-        capacity: capacities[RoomType.MANAGEMENT],
+        capacity: 2,
         floor: 1,
         status: RoomStatus.AVAILABLE,
         description: `Phòng quản lý tòa ${building.name}`,
+        roomFee: new Decimal(0), // Management rooms don't have a fee
         amenities: {
           create: [
             { amenityId: amenityAC.id, quantity: 1 },
@@ -441,21 +425,6 @@ async function main() {
     const room = await prisma.room.findUnique({ where: { id: studentProfile.roomId } });
     if (!room) continue;
 
-    // Determine room fee rate
-    let currentRoomFeeRate;
-    if (room.type === RoomType.ROOM_6) currentRoomFeeRate = feeRates.room6;
-    else if (room.type === RoomType.ROOM_8) currentRoomFeeRate = feeRates.room8;
-    // Add other room types if you have FeeRates for them
-    else {
-      console.warn(`No FeeRate defined for room type ${room.type} of room ${room.number}. Skipping room fee invoice.`);
-      continue;
-    }
-    if (!currentRoomFeeRate) {
-      console.warn(`FeeRate not found for room type ${room.type}. Skipping room fee invoice for student ${studentProfile.studentId}`);
-      continue;
-    }
-
-
     const billingMonth = 5; // May
     const billingYear = 2024;
 
@@ -468,13 +437,13 @@ async function main() {
         issueDate: new Date(billingYear, billingMonth - 1, 1), // May 1st
         dueDate: new Date(billingYear, billingMonth - 1, 15),  // May 15th
         paymentDeadline: new Date(billingYear, billingMonth - 1, 25), // May 25th
-        totalAmount: currentRoomFeeRate.unitPrice, // Get price from FeeRate
+        totalAmount: room.roomFee, // Using roomFee from Room model
         status: getRandomElement([InvoiceStatus.PAID, InvoiceStatus.UNPAID, InvoiceStatus.OVERDUE]),
         items: {
           create: {
             type: PaymentType.ROOM_FEE, // Matches InvoiceItem schema
-            description: `Tiền phòng T${billingMonth}/${billingYear} - Phòng ${room.number} (${room.type})`,
-            amount: currentRoomFeeRate.unitPrice,
+            description: `Tiền phòng T${billingMonth}/${billingYear} - Phòng ${room.number} (${room.capacity} người)`,
+            amount: room.roomFee,
           }
         }
       },

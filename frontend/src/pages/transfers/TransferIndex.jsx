@@ -100,15 +100,25 @@ const TransferIndex = () => {
                 toast.error(err?.message || `Xóa yêu cầu thất bại.`);
             }
         }
-    };
-
-    // Handler cập nhật trạng thái nhanh (Approve/Reject)
+    };    // Handler cập nhật trạng thái nhanh (Approve/Reject)
     const handleUpdateStatus = async (id, newStatus) => {
         const actionText = newStatus === 'APPROVED' ? 'phê duyệt' : 'từ chối';
-        if (window.confirm(`Bạn có chắc muốn ${actionText} yêu cầu chuyển phòng này?`)) {
+        const confirmMessage = newStatus === 'APPROVED'
+            ? `Bạn có chắc muốn phê duyệt yêu cầu chuyển phòng này? Sinh viên sẽ được phép chuyển phòng sau khi phê duyệt.`
+            : `Bạn có chắc muốn từ chối yêu cầu chuyển phòng này? Yêu cầu sẽ không thể hoàn tác sau khi từ chối.`;
+
+        if (window.confirm(confirmMessage)) {
             try {
-                await transferService.updateTransferRequest(id, { status: newStatus });
-                toast.success(`Đã ${actionText} yêu cầu!`);
+                const loadingId = toast.loading(`Đang ${actionText} yêu cầu...`);
+
+                if (newStatus === 'APPROVED') {
+                    await transferService.approveTransferRequest(id);
+                } else if (newStatus === 'REJECTED') {
+                    await transferService.rejectTransferRequest(id);
+                }
+
+                toast.dismiss(loadingId);
+                toast.success(`Đã ${actionText} yêu cầu thành công!`);
                 fetchRequests(currentPage, filters); // Refresh list
             } catch (err) {
                 toast.error(err?.message || `Thao tác thất bại.`);
@@ -154,24 +164,43 @@ const TransferIndex = () => {
             Header: 'Hành động',
             accessor: 'actions',
             Cell: ({ row }) => (
-                <div className="flex space-x-1 justify-center items-center">
+                <div className="flex space-x-2 justify-center items-center">
+                    {/* Chi tiết yêu cầu */}
+                    <Button
+                        variant="icon"
+                        onClick={() => navigate(`/transfers/${row.original.id}`)}
+                        tooltip="Xem chi tiết"
+                    >
+                        <EyeIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                    </Button>                    {/* Buttons for PENDING requests */}
                     {row.original.status === 'PENDING' && (
                         <>
                             <Button
-                                variant="primary"
-                                className="text-sm px-3 py-1"
+                                variant="success"
+                                size="sm"
                                 onClick={() => handleUpdateStatus(row.original.id, 'APPROVED')}
                             >
                                 Chấp nhận
                             </Button>
                             <Button
                                 variant="danger"
-                                className="text-sm px-3 py-1"
+                                size="sm"
                                 onClick={() => handleUpdateStatus(row.original.id, 'REJECTED')}
                             >
                                 Từ chối
                             </Button>
                         </>
+                    )}
+
+                    {/* Delete button for REJECTED only */}
+                    {row.original.status === 'REJECTED' && (
+                        <Button
+                            variant="icon"
+                            onClick={() => handleDelete(row.original.id)}
+                            tooltip="Xóa"
+                        >
+                            <TrashIcon className="h-5 w-5 text-gray-600 hover:text-gray-800" />
+                        </Button>
                     )}
                 </div>
             ),

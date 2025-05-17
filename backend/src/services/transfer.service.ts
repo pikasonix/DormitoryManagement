@@ -164,7 +164,11 @@ export class TransferService {
         }
         if (!data.status || !Object.values(TransferStatus).includes(data.status as TransferStatus)) {
             throw new Error(`Trạng thái chuyển phòng không hợp lệ: ${data.status}`);
-        }
+        }        // Không kiểm tra approvedById nữa vì admin có thể không có staffProfile
+        // Admin vẫn có thể phê duyệt/từ chối mà không cần profile
+        /* if ((data.status === TransferStatus.APPROVED || data.status === TransferStatus.COMPLETED) && !data.approvedById) {
+            throw new Error('Cần cung cấp ID người duyệt (approvedById) khi duyệt hoặc hoàn thành.');
+        } */
 
         try {
             const updatedTransfer = await prisma.$transaction(async (tx) => {
@@ -182,11 +186,9 @@ export class TransferService {
 
                 if (currentTransfer.status === TransferStatus.COMPLETED || currentTransfer.status === TransferStatus.REJECTED) {
                     throw new Error(`Không thể thay đổi trạng thái của yêu cầu đã ${currentTransfer.status}.`);
-                }
-
-                const transferUpdateData: Prisma.RoomTransferUpdateInput = {
+                } const transferUpdateData: Prisma.RoomTransferUpdateInput = {
                     status: data.status,
-                    approvedBy: data.approvedById ? { connect: { id: data.approvedById } } : (data.status === TransferStatus.REJECTED ? { disconnect: true } : undefined),
+                    approvedBy: data.approvedById ? { connect: { id: data.approvedById } } : (data.status === TransferStatus.REJECTED ? { disconnect: true } : undefined)
                 };
 
                 if (data.status === TransferStatus.COMPLETED) {

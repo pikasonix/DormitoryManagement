@@ -180,9 +180,7 @@ export class TransferController {
         } catch (error) {
             next(error); // Chuyển lỗi từ service hoặc validation
         }
-    }
-
-    // Admin/Staff cập nhật trạng thái yêu cầu
+    }    // Admin/Staff cập nhật trạng thái yêu cầu
     async updateTransferStatus(req: Request, res: Response, next: NextFunction) {
         try {
             const id = parseInt(req.params.id);
@@ -201,26 +199,33 @@ export class TransferController {
                 where: { userId: approverUserId },
                 select: { id: true }
             });
-            if (!staffProfile) {
-                // Nếu là Admin không có staff profile thì sao? Cần xử lý logic này
-                // Tạm thời báo lỗi nếu không phải staff có profile
-                return next(new Error('Không tìm thấy hồ sơ nhân viên của người duyệt.')); // Hoặc AppError 404/403
-            }
 
-
+            // Cho phép admin không có staff profile cũng có thể phê duyệt
             const updateData = {
                 status: status as TransferStatus,
-                // Chỉ gán approvedById nếu đang duyệt hoặc hoàn thành
-                approvedById: (status === TransferStatus.APPROVED || status === TransferStatus.COMPLETED) ? staffProfile.id : null
-            };
+                // Chỉ gán approvedById nếu có staffProfile và đang duyệt hoặc hoàn thành
+                approvedById: staffProfile && (status === TransferStatus.APPROVED || status === TransferStatus.COMPLETED)
+                    ? staffProfile.id
+                    : null
+            }; const updatedTransfer = await transferService.updateStatus(id, updateData);
 
-            const updatedTransfer = await transferService.updateStatus(id, updateData);
+            // Trả về thông báo tùy chỉnh dựa trên trạng thái
+            const successMessage = status === TransferStatus.APPROVED
+                ? 'Yêu cầu chuyển phòng đã được phê duyệt thành công'
+                : status === TransferStatus.REJECTED
+                    ? 'Yêu cầu chuyển phòng đã bị từ chối'
+                    : 'Trạng thái yêu cầu chuyển phòng đã được cập nhật';
+
             res.status(200).json({
                 status: 'success',
+                message: successMessage,
                 data: updatedTransfer
             });
         } catch (error) {
-            next(error); // Chuyển lỗi từ service hoặc validation
+            console.error(`[updateTransferStatus] Error:`, error);
+            // Xử lý thông báo lỗi cụ thể
+            const errorMessage = error instanceof Error ? error.message : 'Không thể cập nhật trạng thái yêu cầu';
+            next(new Error(errorMessage)); // Chuyển lỗi từ service hoặc validation
         }
     }
 
