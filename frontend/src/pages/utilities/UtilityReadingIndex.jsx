@@ -316,7 +316,7 @@ const UtilityReadingIndex = () => {
                 <div className="flex space-x-2 justify-center">
                     <Button
                         variant="icon"
-                        onClick={() => navigate(`/utilities/readings/edit/${row.original.id}`)}
+                        onClick={() => navigate(`/utilities/edit/${row.original.id}`)}
                         tooltip="Cập nhật"
                     >
                         <PencilSquareIcon className="h-5 w-5 text-indigo-600 hover:text-indigo-800" />
@@ -337,7 +337,7 @@ const UtilityReadingIndex = () => {
         <div className="space-y-4">
             <div className="flex flex-wrap justify-between items-center gap-4">
                 <h1 className="text-2xl font-semibold">Quản lý chỉ số tiện ích</h1>
-                <Button variant="primary" onClick={() => navigate('/utilities/readings/create')}>
+                <Button variant="primary" onClick={() => navigate('/utilities/create')}>
                     <PlusIcon className="h-5 w-5 mr-1 inline-block" />
                     <span className="inline-block">Thêm chỉ số mới</span>
                 </Button>

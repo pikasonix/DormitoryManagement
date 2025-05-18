@@ -31,6 +31,7 @@ import PaymentIndex from './pages/payments/PaymentIndex';
 import UtilityReadingIndex from './pages/utilities/UtilityReadingIndex';
 import UtilityReadingForm from './pages/utilities/UtilityReadingForm';
 import UtilityReadingCreate from './pages/utilities/UtilityReadingCreate';
+import UtilityReadingEdit from './pages/utilities/UtilityReadingEdit';
 import VehicleIndex from './pages/vehicles/VehicleIndex';
 import VehicleForm from './pages/vehicles/VehicleForm';
 import TransferIndex from './pages/transfers/TransferIndex';
@@ -141,8 +142,11 @@ function App() {
           <Route index element={<UtilityReadingIndex />} />
           <Route path="new" element={<UtilityReadingForm />} />
           <Route path=":id/edit" element={<UtilityReadingForm />} />
-          <Route path="readings/create" element={<UtilityReadingCreate />} />
-        </Route>        {/* --- VEHICLE ROUTES --- */}
+          <Route path="create" element={<UtilityReadingCreate />} />
+          <Route path="edit/:id" element={<UtilityReadingEdit />} />
+        </Route>
+
+        {/* --- VEHICLE ROUTES --- */}
         <Route path="/vehicles">
           <Route index element={<StaffRoute><VehicleIndex /></StaffRoute>} />
           <Route path="register" element={<VehicleForm mode="create" />} />
