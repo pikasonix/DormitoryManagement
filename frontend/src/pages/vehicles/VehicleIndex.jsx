@@ -16,8 +16,8 @@ const vehicleTypeOptions = [
     { value: '', label: 'Tất cả loại xe' },
     { value: 'MOTORBIKE', label: 'Xe máy' },
     { value: 'BICYCLE', label: 'Xe đạp' },
+    { value: 'ELECTRIC_BICYCLE', label: 'Xe đạp/máy điện' },
     { value: 'CAR', label: 'Ô tô' },
-    { value: 'ELECTRIC_SCOOTER', label: 'Xe máy điện' },
 ];
 
 // Options trạng thái
@@ -223,11 +223,7 @@ const VehicleIndex = () => {
                     id="type"
                     name="type"
                     value={filters.type}
-                    onChange={(value) => {
-                        console.log('Vehicle type changed:', value);
-                        setFilters(prev => ({ ...prev, type: value }));
-                        setCurrentPage(1);
-                    }}
+                    onChange={handleFilterChange}
                     options={vehicleTypeOptions}
                 />
                 <Select
@@ -235,11 +231,7 @@ const VehicleIndex = () => {
                     id="status"
                     name="status"
                     value={filters.status}
-                    onChange={(value) => {
-                        console.log('Status changed:', value);
-                        setFilters(prev => ({ ...prev, status: value }));
-                        setCurrentPage(1);
-                    }}
+                    onChange={handleFilterChange}
                     options={vehicleStatusOptions}
                 />
                 {/* Thêm filter theo chủ xe nếu cần */}

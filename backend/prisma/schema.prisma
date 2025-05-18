@@ -459,6 +459,7 @@ model VehicleRegistration {
 enum VehicleType {
   BICYCLE
   MOTORBIKE
+  ELECTRIC_BICYCLE // Xe đạp/máy điện
   CAR
   OTHER
 }

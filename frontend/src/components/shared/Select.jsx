@@ -51,9 +51,7 @@ const Select = ({
         `}
         {...props}
       >
-        {(!value || value === '') && (
-          <option value="" disabled hidden>{placeholder}</option>
-        )}
+        <option value="" disabled hidden>{placeholder}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
