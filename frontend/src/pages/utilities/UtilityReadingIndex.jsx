@@ -358,7 +358,7 @@ const UtilityReadingIndex = () => {
                     id="type"
                     name="type"
                     value={filters.type}
-                    onChange={(value) => handleFilterChange('type', value)}
+                    onChange={handleInputChange}
                     options={utilityTypeOptions}
                 />
                 <div>
@@ -393,25 +393,18 @@ const UtilityReadingIndex = () => {
             ) : error ? (
                 <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
             ) : (
-                <>
-                    {process.env.NODE_ENV === 'development' && readings.length === 0 && (
-                        <div className="text-amber-800 bg-amber-100 p-2 mb-2 rounded text-sm">
-                            API trả về dữ liệu nhưng không có kết quả phù hợp với bộ lọc
-                        </div>
-                    )}
-                    <PaginationTable
-                        columns={columns}
-                        data={readings || []}
-                        currentPage={currentPage}
-                        totalPages={meta.totalPages}
-                        onPageChange={handlePageChange}
-                        totalRecords={meta.total}
-                        recordsPerPage={meta.limit}
-                        showingText={`Hiển thị chỉ số ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
-                        recordsText="chỉ số"
-                        pageText="Trang"
-                    />
-                </>
+                <PaginationTable
+                    columns={columns}
+                    data={readings || []}
+                    currentPage={currentPage}
+                    totalPages={meta.totalPages}
+                    onPageChange={handlePageChange}
+                    totalRecords={meta.total}
+                    recordsPerPage={meta.limit}
+                    showingText={`Hiển thị chỉ số ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
+                    recordsText="chỉ số"
+                    pageText="Trang"
+                />
             )}
         </div>
     );
