@@ -142,14 +142,12 @@ function App() {
           <Route path="new" element={<UtilityReadingForm />} />
           <Route path=":id/edit" element={<UtilityReadingForm />} />
           <Route path="readings/create" element={<UtilityReadingCreate />} />
-        </Route>
-
-        {/* --- VEHICLE ROUTES --- */}
+        </Route>        {/* --- VEHICLE ROUTES --- */}
         <Route path="/vehicles">
           <Route index element={<StaffRoute><VehicleIndex /></StaffRoute>} />
           <Route path="register" element={<VehicleForm mode="create" />} />
           <Route path=":id/edit" element={<StaffRoute><VehicleForm mode="edit" /></StaffRoute>} />
-          {/* <Route path="new" element={<StaffRoute><VehicleForm mode="admin_create" /></StaffRoute>} /> */}
+          <Route path="new" element={<StaffRoute><VehicleForm mode="create" /></StaffRoute>} />
         </Route>
 
         {/* --- TRANSFER ROUTES --- */}

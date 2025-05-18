@@ -1,35 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { vehicleService } from '../../services/vehicle.service';
+import { studentService } from '../../services/student.service';
 import { useAuth } from '../../contexts/AuthContext'; // Lấy user hiện tại
 import { Input, Button, Select } from '../../components/shared';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
-// Options loại xe và trạng thái (giống như ở Index)
-const vehicleTypeOptions = [ /* ... */];
-const vehicleStatusOptions = [ /* ... */];
+// Options loại xe và trạng thái
+const vehicleTypeOptions = [
+    { value: 'MOTORBIKE', label: 'Xe máy' },
+    { value: 'BICYCLE', label: 'Xe đạp' },
+    { value: 'ELECTRIC_BICYCLE', label: 'Xe đạp/máy điện' },
+    { value: 'CAR', label: 'Ô tô' },
+    { value: 'OTHER', label: 'Khác' },
+];
+
+const vehicleStatusOptions = [
+    { value: 'active', label: 'Đang hoạt động' },
+    { value: 'inactive', label: 'Không hoạt động' },
+];
 
 // Mode: 'create' (Student đăng ký), 'edit' (Admin/Staff sửa)
 const VehicleForm = ({ mode = 'create' }) => {
     const { id } = useParams(); // ID của xe (chỉ có ở mode 'edit')
     const { user } = useAuth(); // Lấy user để biết ai đang thực hiện
     const navigate = useNavigate();
-    const isEditMode = mode === 'edit' && Boolean(id);
-
-    const [formData, setFormData] = useState({
+    const isEditMode = mode === 'edit' && Boolean(id); const [formData, setFormData] = useState({
         // ownerId sẽ được xử lý ở backend hoặc lấy từ user context khi tạo
-        type: 'motorcycle', // Mặc định
+        type: 'MOTORBIKE', // Mặc định
         licensePlate: '',
         model: '',
         color: '',
         status: 'active', // Mặc định khi tạo/sửa
+        studentId: '', // Thêm mã số sinh viên cho admin tạo xe cho sinh viên
     });
     const [isLoading, setIsLoading] = useState(isEditMode);
     const [isSaving, setIsSaving] = useState(false);
     const [errors, setErrors] = useState({});
     const [ownerInfo, setOwnerInfo] = useState(''); // Hiển thị thông tin chủ xe khi edit
+    const [isAdmin, setIsAdmin] = useState(false); // Kiểm tra nếu người dùng là admin hoặc staff
+    const [foundStudent, setFoundStudent] = useState(null); // Lưu thông tin sinh viên khi tìm thấy
+
+    // Xác định nếu người dùng là admin/staff
+    useEffect(() => {
+        const userRole = user?.role || '';
+        setIsAdmin(userRole === 'ADMIN' || userRole === 'STAFF');
+    }, [user]);
 
     // Fetch dữ liệu xe nếu là edit mode
     useEffect(() => {
@@ -38,7 +56,7 @@ const VehicleForm = ({ mode = 'create' }) => {
             vehicleService.getVehicleById(id)
                 .then(data => {
                     setFormData({
-                        type: data.type || 'motorcycle',
+                        type: data.type || 'MOTORBIKE',
                         licensePlate: data.licensePlate || '',
                         model: data.model || '',
                         color: data.color || '',
@@ -61,31 +79,79 @@ const VehicleForm = ({ mode = 'create' }) => {
         } else {
             setIsLoading(false); // Không cần load khi tạo
         }
-    }, [id, isEditMode, navigate]);
+    }, [id, isEditMode, navigate]);    // Biến để lưu timer debounce
+    const searchTimerRef = React.useRef(null);
+
+    // Cleanup timer khi component unmount
+    useEffect(() => {
+        return () => {
+            if (searchTimerRef.current) {
+                clearTimeout(searchTimerRef.current);
+            }
+        };
+    }, []);
 
     // Handler thay đổi input
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
         if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
+
+        // Nếu trường là studentId và có giá trị, thực hiện tìm kiếm sinh viên
+        if (name === 'studentId' && isAdmin) {
+            // Reset thông tin sinh viên đã tìm thấy trước đó
+            setFoundStudent(null);
+
+            // Xóa timer cũ nếu có
+            if (searchTimerRef.current) {
+                clearTimeout(searchTimerRef.current);
+            }
+
+            // Chỉ tìm kiếm nếu độ dài mã sinh viên >= 3 ký tự
+            if (value.trim().length >= 3) {
+                // Debounce: đợi 500ms sau khi người dùng ngừng gõ rồi mới tìm kiếm
+                searchTimerRef.current = setTimeout(() => {
+                    // Tìm thông tin sinh viên dựa trên mã sinh viên
+                    studentService.getAllStudents({ keyword: value.trim() })
+                        .then(response => {
+                            const student = response.students?.find(s => s.studentId === value.trim());
+                            if (student) {
+                                setFoundStudent(student);
+                                // Xóa lỗi nếu có
+                                if (errors.studentId) {
+                                    setErrors(prev => ({ ...prev, studentId: null }));
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Lỗi tìm kiếm sinh viên:", error);
+                            // Không hiển thị thông báo lỗi ngay, chỉ khi submit form
+                        });
+                }, 500);
+            }
+        }
     };
 
     // Handler Submit
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSaving(true);
-        setErrors({});
-
-        // --- Validation ---
+        setErrors({});        // --- Validation ---
         if (!formData.type) { /* ... */ }
         if (!formData.licensePlate.trim()) { setErrors({ licensePlate: "Vui lòng nhập biển số xe." }); setIsSaving(false); return; }
         if (!formData.model.trim()) { setErrors({ model: "Vui lòng nhập hãng/model xe." }); setIsSaving(false); return; }
         if (!formData.color.trim()) { setErrors({ color: "Vui lòng nhập màu xe." }); setIsSaving(false); return; }
+        // Validation cho mã sinh viên nếu là admin đăng ký xe cho sinh viên
+        if (!isEditMode && isAdmin && !formData.studentId.trim()) {
+            setErrors({ studentId: "Vui lòng nhập mã số sinh viên." });
+            setIsSaving(false);
+            return;
+        }
         // --- End Validation ---
 
         try {
             const payload = {
-                type: formData.type,
+                vehicleType: formData.type, // Đổi từ 'type' sang 'vehicleType' cho đúng backend
                 model: formData.model,
                 color: formData.color,
                 status: formData.status,
@@ -98,16 +164,46 @@ const VehicleForm = ({ mode = 'create' }) => {
                 toast.success('Cập nhật thông tin xe thành công!');
                 // Quay lại trang danh sách của Admin/Staff
                 navigate('/vehicles');
-            } else { // Chế độ tạo mới (Student đăng ký)
+            } else { // Chế độ tạo mới
                 payload.licensePlate = formData.licensePlate;
-                // **Backend cần tự lấy ownerId từ user đang login**
-                // Nếu backend yêu cầu ownerId:
-                // if (!user?.profile?.id && !user?.id) throw new Error("Không xác định được người dùng.");
-                // payload.ownerId = user.profile?.id || user.id; // Gửi studentId hoặc userId
+                payload.startDate = new Date().toISOString(); // Thêm ngày bắt đầu gửi xe
+
+                // Nếu là admin/staff thì gửi thêm mã sinh viên
+                if (isAdmin && formData.studentId.trim()) {
+                    // Sử dụng sinh viên đã tìm thấy trước đó nếu có
+                    if (foundStudent) {
+                        payload.studentProfileId = foundStudent.id;
+                    } else {
+                        // Nếu chưa tìm thấy, tìm lại
+                        try {
+                            const students = await studentService.getAllStudents({ keyword: formData.studentId });
+                            const student = students.students?.find(s => s.studentId === formData.studentId);
+
+                            if (!student) {
+                                throw new Error(`Không tìm thấy sinh viên với mã số ${formData.studentId}`);
+                            }
+
+                            payload.studentProfileId = student.id;
+                        } catch (studentError) {
+                            toast.error(studentError.message || `Không tìm thấy sinh viên với mã số ${formData.studentId}`);
+                            setErrors({ studentId: `Không tìm thấy sinh viên với mã số ${formData.studentId}` });
+                            setIsSaving(false);
+                            return;
+                        }
+                    }
+                } else {
+                    // Sinh viên tự đăng ký - backend sẽ tự lấy studentProfileId từ token
+                }
+
                 await vehicleService.createVehicle(payload);
                 toast.success('Đăng ký xe thành công!');
-                // Quay lại trang profile hoặc dashboard của student
-                navigate('/profile'); // Hoặc navigate(-1)
+
+                // Quay lại trang phù hợp theo vai trò
+                if (isAdmin) {
+                    navigate('/vehicles'); // Admin quay lại trang quản lý xe
+                } else {
+                    navigate('/profile'); // Sinh viên quay lại trang profile
+                }
             }
 
         } catch (err) {
@@ -129,15 +225,62 @@ const VehicleForm = ({ mode = 'create' }) => {
                 {/* Nút quay lại tùy theo ngữ cảnh */}
                 <Button variant="link" onClick={() => navigate(isEditMode ? '/vehicles' : -1)} icon={ArrowLeftIcon} className="text-sm mb-4">
                     Quay lại
-                </Button>
-                <h1 className="text-2xl font-semibold">
-                    {isEditMode ? `Chỉnh sửa Xe (${formData.licensePlate})` : 'Đăng ký Xe mới'}
+                </Button>                <h1 className="text-2xl font-semibold">
+                    {isEditMode ? `Chỉnh sửa Xe (${formData.licensePlate})` :
+                        isAdmin ? 'Đăng ký Xe cho Sinh viên' : 'Đăng ký Xe mới'}
                 </h1>
                 {isEditMode && ownerInfo && <p className="text-sm text-gray-600 mt-1">Chủ xe: {ownerInfo}</p>}
-                {!isEditMode && <p className="mt-1 text-sm text-gray-600">Điền thông tin xe bạn muốn đăng ký gửi trong ký túc xá.</p>}
-            </div>
+                {!isEditMode && !isAdmin && <p className="mt-1 text-sm text-gray-600">Điền thông tin xe bạn muốn đăng ký gửi trong ký túc xá.</p>}
+                {!isEditMode && isAdmin && <p className="mt-1 text-sm text-gray-600">Điền thông tin xe và mã số sinh viên để đăng ký gửi xe.</p>}
+            </div>            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">
+                {/* Trường nhập mã sinh viên chỉ hiển thị khi Admin/Staff tạo mới (đặt lên đầu) */}
+                {!isEditMode && isAdmin && (
+                    <div>
+                        <Input
+                            label="Mã số sinh viên *"
+                            id="studentId"
+                            name="studentId"
+                            required
+                            value={formData.studentId}
+                            onChange={handleChange}
+                            disabled={isSaving}
+                            error={errors.studentId}
+                            placeholder="Nhập mã số sinh viên để đăng ký xe"
+                        />
+                        {formData.studentId.trim().length >= 3 && !foundStudent && !errors.studentId && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                                <p className="text-sm text-blue-800 flex items-center">
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Đang tìm kiếm sinh viên...
+                                </p>
+                            </div>
+                        )}
+                        {foundStudent && (
+                            <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                                <p className="text-sm text-green-800">
+                                    <span className="font-medium text-green-600">✓ Đã tìm thấy sinh viên:</span> {foundStudent.fullName}
+                                </p>
+                                <p className="text-xs text-green-700 mt-1">
+                                    {foundStudent.className && <span className="mr-2">Lớp: {foundStudent.className}</span>}
+                                    {foundStudent.roomNumber && <span className="mr-2">Phòng: {foundStudent.roomNumber}</span>}
+                                    {foundStudent.id && <span>ID: {foundStudent.id}</span>}
+                                </p>
+                            </div>
+                        )}
+                        {formData.studentId.trim().length >= 3 && !foundStudent && errors.studentId && (
+                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                                <p className="text-sm text-red-800 flex items-center">
+                                    <span className="mr-2">⚠️</span>
+                                    Không tìm thấy sinh viên với mã số này
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                )}
 
-            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">
                 {/* Trường Biển số chỉ hiển thị/nhập khi tạo mới */}
                 {!isEditMode && (
                     <Input
@@ -205,9 +348,8 @@ const VehicleForm = ({ mode = 'create' }) => {
                 <div className="flex justify-end gap-3 pt-5 border-t border-gray-200">
                     <Button variant="secondary" onClick={() => navigate(isEditMode ? '/vehicles' : -1)} disabled={isSaving}>
                         Hủy
-                    </Button>
-                    <Button type="submit" isLoading={isSaving} disabled={isSaving}>
-                        {isEditMode ? 'Lưu thay đổi' : 'Đăng ký xe'}
+                    </Button>                    <Button type="submit" isLoading={isSaving} disabled={isSaving}>
+                        {isEditMode ? 'Lưu thay đổi' : isAdmin ? 'Đăng ký xe cho sinh viên' : 'Đăng ký xe'}
                     </Button>
                 </div>
             </form>

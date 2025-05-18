@@ -18,6 +18,7 @@ const vehicleTypeOptions = [
     { value: 'BICYCLE', label: 'Xe đạp' },
     { value: 'ELECTRIC_BICYCLE', label: 'Xe đạp/máy điện' },
     { value: 'CAR', label: 'Ô tô' },
+    { value: 'OTHER', label: 'Khác' },
 ];
 
 // Options trạng thái
@@ -208,12 +209,11 @@ const VehicleIndex = () => {
     ], [navigate]);
 
     return (
-        <div className="space-y-4">
-            <div className="flex flex-wrap justify-between items-center gap-4">
-                <h1 className="text-2xl font-semibold">Quản lý Xe đăng ký</h1>
-                {/* Nút Thêm xe (Admin/Staff tạo hộ?) */}
-                {/* <Button onClick={() => navigate('/vehicles/new')} icon={PlusIcon}>Thêm Xe</Button> */}
-            </div>
+        <div className="space-y-4">            <div className="flex flex-wrap justify-between items-center gap-4">
+            <h1 className="text-2xl font-semibold">Quản lý Xe đăng ký</h1>
+            {/* Nút đăng ký xe cho sinh viên (dành cho Admin/Staff) */}
+            <Button onClick={() => navigate('/vehicles/new')} icon={PlusIcon}>Đăng ký xe cho sinh viên</Button>
+        </div>
 
             {/* Bộ lọc */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
