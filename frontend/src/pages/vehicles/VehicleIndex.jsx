@@ -48,7 +48,8 @@ const VehicleIndex = () => {
     const [filters, setFilters] = useState({
         type: '',
         status: '',
-        search: '', // Tìm theo biển số, model?
+        search: '', // Tìm theo biển số
+        parkingCardNo: '',
     });
     const debouncedSearch = useDebounce(filters.search, 500);
     const navigate = useNavigate();
@@ -67,6 +68,7 @@ const VehicleIndex = () => {
                 isActive: currentFilters.status === 'active' ? true :
                     currentFilters.status === 'inactive' ? false : undefined,
                 licensePlate: search || undefined, // Chuyển search thành licensePlate param
+                parkingCardNo: currentFilters.parkingCardNo || undefined,
             };
 
             console.log('API params:', params);
@@ -80,7 +82,7 @@ const VehicleIndex = () => {
             // Fetch thông tin chủ xe nếu chưa có trong cache
             const ownerIdsToFetch = [...new Set(vehicleList.map(v => v.ownerId).filter(id => id && !owners[id]))];
             if (ownerIdsToFetch.length > 0) {
-                // **Xác định ownerId là userId hay studentId để gọi service đúng**
+                // Xác định ownerId là userId hay studentId để gọi service đúng
                 // Giả sử ownerId là studentId (StudentProfile ID)
                 const ownerPromises = ownerIdsToFetch.map(id => studentService.getStudentById(id).catch(() => null));
                 const ownerResults = await Promise.all(ownerPromises);
@@ -217,7 +219,8 @@ const VehicleIndex = () => {
 
             {/* Bộ lọc */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
-                <Input label="Tìm biển số" id="search" name="search" placeholder="30-B2-97369" value={filters.search} onChange={handleFilterChange} />
+                <Input label="NO." id="parkingCardNo" name="parkingCardNo" placeholder="Nhập mã thẻ gửi xe" value={filters.parkingCardNo} onChange={handleFilterChange} />
+                <Input label="Biển số" id="search" name="search" placeholder="30-B2-97369" value={filters.search} onChange={handleFilterChange} />
                 <Select
                     label="Loại xe"
                     id="type"
