@@ -24,6 +24,7 @@ const allowedOrigins = [
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     // For development, allow all origins
+
     if (isDev) {
       callback(null, true);
       return;
