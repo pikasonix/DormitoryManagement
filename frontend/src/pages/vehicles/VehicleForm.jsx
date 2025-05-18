@@ -22,6 +22,31 @@ const vehicleStatusOptions = [
     { value: 'inactive', label: 'Không hoạt động' },
 ];
 
+// Hàm sinh mã thẻ gửi xe
+function generateParkingCardNo(studentId, vehicleType, studentProfileId) {
+    // 7 số cuối mã số sinh viên
+    const studentIdStr = String(studentId);
+    const last7 = studentIdStr.slice(-7);
+    // Ký tự loại xe
+    let typeChar = 'O';
+    switch (vehicleType) {
+        case 'BICYCLE': typeChar = 'B'; break;
+        case 'MOTORBIKE': typeChar = 'M'; break;
+        case 'CAR': typeChar = 'C'; break;
+        case 'ELECTRIC_BICYCLE': typeChar = 'E'; break;
+        case 'OTHER': typeChar = 'O'; break;
+        default: typeChar = 'O';
+    }
+    // 4 ký tự cuối id (studentProfileId)
+    const idStr = String(studentProfileId).padStart(4, '0');
+    const last4 = idStr.slice(-4);
+    // Checksum: tổng các số mod 10
+    const sum = (last7 + last4).split('').reduce((acc, c) => acc + (parseInt(c) || 0), 0);
+    const checksum = String(sum % 10);
+    // Ghép lại
+    return (last7 + typeChar + last4 + checksum).padStart(13, '0');
+}
+
 // Mode: 'create' (Student đăng ký), 'edit' (Admin/Staff sửa)
 const VehicleForm = ({ mode = 'create' }) => {
     const { id } = useParams(); // ID của xe (chỉ có ở mode 'edit')
@@ -195,7 +220,21 @@ const VehicleForm = ({ mode = 'create' }) => {
                     // Sinh viên tự đăng ký - backend sẽ tự lấy studentProfileId từ token
                 }
 
-                await vehicleService.createVehicle(payload);
+                // Tạo xe trước, sau đó update parkingCardNo với id vừa tạo
+                const createdVehicle = await vehicleService.createVehicle(payload);
+                // Sinh mã thẻ gửi xe dựa trên id vehicle_registrations
+                let parkingCardNo = null;
+                try {
+                    // Ưu tiên lấy studentId từ foundStudent hoặc từ payload
+                    let studentIdForCard = foundStudent?.studentId || formData.studentId;
+                    let studentProfileIdForCard = createdVehicle.studentProfileId || payload.studentProfileId;
+                    parkingCardNo = generateParkingCardNo(studentIdForCard, formData.type, createdVehicle.id);
+                    // Gọi update để set parkingCardNo
+                    await vehicleService.updateVehicle(createdVehicle.id, { parkingCardNo });
+                } catch (err) {
+                    // Nếu lỗi vẫn tiếp tục, chỉ cảnh báo
+                    toast.error('Không thể sinh mã thẻ gửi xe tự động.');
+                }
                 toast.success('Đăng ký xe thành công!');
 
                 // Quay lại trang phù hợp theo vai trò
