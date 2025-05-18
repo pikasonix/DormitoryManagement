@@ -81,12 +81,12 @@ const VehicleForm = ({ mode = 'create' }) => {
             vehicleService.getVehicleById(id)
                 .then(data => {
                     setFormData({
-                        type: data.type || 'MOTORBIKE',
+                        type: data.vehicleType || 'MOTORBIKE', // Đúng trường backend trả về
                         licensePlate: data.licensePlate || '',
                         model: data.model || '',
                         color: data.color || '',
-                        status: data.status || 'active',
-                        // Không load ownerId vào form để sửa
+                        status: data.isActive === false ? 'inactive' : 'active', // Chuyển đổi từ isActive
+                        studentId: data.studentProfile?.studentId || '', // Nếu cần hiển thị mã SV
                     });
                     // **Cần lấy tên chủ xe để hiển thị** (Giả sử ownerId là studentId)
                     if (data.ownerId) {
@@ -185,6 +185,12 @@ const VehicleForm = ({ mode = 'create' }) => {
             if (isEditMode) {
                 // Khi sửa, không gửi biển số và ownerId
                 payload.status = formData.status; // Cho phép sửa status
+                // Đảm bảo gửi đúng trường trạng thái cho backend
+                if (formData.status === 'active') {
+                    payload.isActive = true;
+                } else if (formData.status === 'inactive') {
+                    payload.isActive = false;
+                }
                 await vehicleService.updateVehicle(id, payload);
                 toast.success('Cập nhật thông tin xe thành công!');
                 // Quay lại trang danh sách của Admin/Staff
