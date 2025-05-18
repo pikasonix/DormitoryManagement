@@ -260,9 +260,7 @@ const RoomForm = () => {
                 });
                 toast.dismiss('uploading-images'); // Ẩn toast loading
                 toast.success('Tải ảnh thành công!');
-            }
-
-            // 2. Chuẩn bị payload
+            }            // 2. Chuẩn bị payload
             const finalImageIds = [...existingImageIds, ...uploadedImageIds]; // Kết hợp ID ảnh cũ và mới
             const finalAmenities = Object.entries(selectedAmenities).map(([id, details]) => ({
                 amenityId: parseInt(id),
@@ -281,7 +279,8 @@ const RoomForm = () => {
             };
             // Xóa trường images và amenities gốc khỏi payload (vì đã có imageIds và amenities đã xử lý)
             delete payload.images;
-            delete payload.amenities;
+            // Không xóa amenities khỏi payload khi đã xử lý dữ liệu vào finalAmenities
+            // delete payload.amenities;
 
 
             // 3. Gọi API tạo/cập nhật

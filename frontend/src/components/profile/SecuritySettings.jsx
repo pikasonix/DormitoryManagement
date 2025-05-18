@@ -22,9 +22,7 @@ const SecuritySettings = () => {
         if (name === 'newPassword' && errors.newPassword) {
             setErrors(prev => ({ ...prev, newPassword: null }));
         }
-    };
-
-    const validateForm = () => {
+    }; const validateForm = () => {
         const newErrors = {};
         if (!passwords.currentPassword) {
             newErrors.currentPassword = 'Vui lòng nhập mật khẩu hiện tại.';
@@ -41,7 +39,7 @@ const SecuritySettings = () => {
         }
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0; // Trả về true nếu không có lỗi
-    }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -65,6 +63,14 @@ const SecuritySettings = () => {
         } catch (error) {
             console.error("Lỗi đổi mật khẩu:", error);
             const errorMsg = error?.message || 'Đổi mật khẩu thất bại.';
+
+            // Xử lý lỗi khi endpoint không tồn tại
+            if (error.response?.status === 404) {
+                toast.error('API endpoint không tồn tại. Vui lòng kiểm tra cấu hình backend.');
+                setErrors({ general: 'Endpoint không tồn tại. Vui lòng liên hệ quản trị viên.' });
+                return;
+            }
+
             // **Hiển thị lỗi cụ thể từ server nếu có**
             if (error?.errors && Array.isArray(error.errors)) {
                 const serverErrors = {};
@@ -76,6 +82,19 @@ const SecuritySettings = () => {
                 });
                 setErrors(serverErrors);
                 if (serverErrors.general) toast.error(serverErrors.general); // Hiển thị lỗi chung bằng toast
+            } else if (error.response?.data?.message) {
+                // Hiển thị thông báo lỗi từ server
+                const serverMessage = error.response.data.message;
+
+                // Map thông báo lỗi vào trường phù hợp
+                if (serverMessage.includes('cũ không chính xác')) {
+                    setErrors({ currentPassword: serverMessage });
+                } else if (serverMessage.includes('mật khẩu mới')) {
+                    setErrors({ newPassword: serverMessage });
+                } else {
+                    setErrors({ general: serverMessage });
+                }
+                toast.error(serverMessage);
             } else {
                 // Nếu không có lỗi cụ thể từ server, hiển thị lỗi chung
                 setErrors({ general: errorMsg });
