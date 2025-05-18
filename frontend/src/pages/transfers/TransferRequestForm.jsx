@@ -37,6 +37,9 @@ const TransferRequestForm = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState({});
 
+    const [hasActiveRequest, setHasActiveRequest] = useState(false);
+    const [isCheckingActiveRequest, setIsCheckingActiveRequest] = useState(true);
+
     // Giới tính của sinh viên hiện tại
     const studentGender = user?.studentProfile?.gender || user?.profile?.gender;
 
@@ -78,6 +81,37 @@ const TransferRequestForm = () => {
             setIsLoadingBuildings(false);
         }
     }, [user, currentBuildingId]);
+
+    // Kiểm tra xem sinh viên đã có yêu cầu chuyển phòng PENDING/APPROVED chưa
+    useEffect(() => {
+        const checkActiveRequest = async () => {
+            setIsCheckingActiveRequest(true);
+            try {
+                // Ưu tiên lấy studentId từ user context
+                const studentId = user?.studentId || user?.profile?.studentId || user?.studentProfile?.studentId;
+                if (!studentId) {
+                    setHasActiveRequest(false);
+                    setIsCheckingActiveRequest(false);
+                    return;
+                }
+                // Lấy tất cả request của sinh viên, lọc trạng thái PENDING/APPROVED
+                const { transfers } = await transferService.getAllTransferRequests({ studentId, status: '' });
+                const active = transfers.some(
+                    (tr) => tr.status === 'PENDING' || tr.status === 'APPROVED'
+                );
+                setHasActiveRequest(active);
+            } catch (err) {
+                setHasActiveRequest(false); // Nếu lỗi, cho phép tạo (hoặc có thể chặn tuỳ ý)
+            } finally {
+                setIsCheckingActiveRequest(false);
+            }
+        };
+        if (user?.role === 'STUDENT') {
+            checkActiveRequest();
+        } else {
+            setIsCheckingActiveRequest(false);
+        }
+    }, [user]);
 
     // Handler thay đổi input
     const handleChange = (e) => {
@@ -329,6 +363,22 @@ const TransferRequestForm = () => {
 
     if (!hasRoom) {
         return <p className="text-center text-gray-600 p-6">Bạn cần đang ở trong một phòng để thực hiện yêu cầu chuyển phòng.</p>;
+    }
+
+    // Nếu đang kiểm tra hoặc chưa xác định xong quyền tạo request
+    if (isCheckingActiveRequest) {
+        return <div className="flex justify-center items-center h-40"><LoadingSpinner /></div>;
+    }
+
+    // Nếu đã có request đang chờ hoặc đã duyệt
+    if (hasActiveRequest) {
+        return (
+            <div className="text-center text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-6 max-w-xl mx-auto mt-8">
+                <h2 className="text-lg font-semibold mb-2">Bạn đã có yêu cầu chuyển phòng đang chờ xử lý hoặc đã được duyệt.</h2>
+                <p>Vui lòng chờ quản lý xử lý yêu cầu hiện tại hoặc hủy yêu cầu đó trước khi tạo yêu cầu mới.</p>
+                <Button className="mt-4" onClick={() => navigate('/transfers')}>Xem các yêu cầu chuyển phòng của bạn</Button>
+            </div>
+        );
     }
 
     return (
