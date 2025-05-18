@@ -76,9 +76,12 @@ const MaintenanceForm = () => {
         try {
             const requestData = await maintenanceService.getMaintenanceRequestById(id);
             setRequest(requestData);
+            // Ensure status is always a valid value from maintenanceStatusOptions (case-insensitive)
+            const statusFromApi = (requestData.status || '').toLowerCase();
+            const validStatus = maintenanceStatusOptions.find(opt => opt.value.toLowerCase() === statusFromApi)?.value || maintenanceStatusOptions[0].value;
             setUpdateData({
-                status: requestData.status || '',
-                staffNotes: requestData.staffNotes || '', // Lấy ghi chú cũ (nếu có)
+                status: validStatus,
+                staffNotes: requestData.staffNotes || requestData.notes || '',
                 // assignedStaffId: requestData.assignedStaffId || '',
             });
 
@@ -130,21 +133,19 @@ const MaintenanceForm = () => {
     const handleUpdateSubmit = async (e) => {
         e.preventDefault();
         if (!request || isUpdating) return;
-        setIsUpdating(true);
-
-        try {
+        setIsUpdating(true); try {
             const payload = {
                 status: updateData.status,
-                staffNotes: updateData.notes || null, // Gửi null nếu rỗng
+                notes: updateData.staffNotes || null, // Gửi null nếu rỗng (backend mong đợi trường notes)
+                staffNotes: updateData.staffNotes || null, // Giữ để tương thích ngược
                 // assignedStaffId: updateData.assignedStaffId || null,
             };
             const updatedRequest = await maintenanceService.updateMaintenanceRequest(id, payload);
             // Cập nhật lại state request với dữ liệu mới nhất từ server
-            setRequest(updatedRequest);
-            // Cập nhật lại updateData nếu cần (ví dụ: status đã thay đổi)
+            setRequest(updatedRequest);            // Cập nhật lại updateData nếu cần (ví dụ: status đã thay đổi)
             setUpdateData({
                 status: updatedRequest.status || '',
-                staffNotes: updatedRequest.staffNotes || '',
+                staffNotes: updatedRequest.staffNotes || updatedRequest.notes || '',
                 // assignedStaffId: updatedRequest.assignedStaffId || '',
             });
             toast.success('Cập nhật yêu cầu thành công!');
@@ -258,6 +259,7 @@ const MaintenanceForm = () => {
                         options={maintenanceStatusOptions}
                         disabled={isUpdating}
                         required
+                        placeholder={updateData.status ? undefined : '-- Chọn --'} // Nếu đã có trạng thái thì không hiển thị placeholder
                     />
                     {/* (Tùy chọn) Select gán việc */}
                     {/* <Select
@@ -272,8 +274,8 @@ const MaintenanceForm = () => {
                        /> */}
                     <Textarea
                         label="Ghi chú xử lý"
-                        id="notes"
-                        name="notes" // Đổi tên thành staffNotes nếu cần khớp state
+                        id="staffNotes"
+                        name="staffNotes" // Tên giống với state để đảm bảo cập nhật đúng
                         rows={4}
                         value={updateData.staffNotes} // Lấy từ state updateData
                         onChange={handleUpdateChange}
