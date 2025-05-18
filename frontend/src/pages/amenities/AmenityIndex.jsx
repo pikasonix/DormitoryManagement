@@ -65,9 +65,9 @@ const AmenityIndex = () => {
   // --- Cấu hình bảng ---
   const columns = useMemo(() => [
     {
-      Header: 'Icon',
-      accessor: 'icon',
-      Cell: ({ value }) => value ? <img src={value} alt="Icon" className="h-8 w-8 object-contain mx-auto" onError={(e) => e.target.style.display = 'none'} /> : <span className="text-gray-400 text-xs">Không có</span>
+      Header: 'Hình ảnh',
+      accessor: 'url',
+      Cell: ({ value }) => value ? <img src={value} alt="Hình ảnh" className="h-14 w-20 object-cover rounded mx-auto" onError={(e) => e.target.style.display = 'none'} /> : <span className="text-gray-400 text-xs">Không có</span>
     },
     { Header: 'Tên Tiện nghi', accessor: 'name', Cell: ({ value }) => <span className='font-medium'>{value}</span> },
     { Header: 'Mô tả', accessor: 'description', Cell: ({ value }) => <p className='text-sm text-gray-600 line-clamp-2'>{value || '-'}</p> }, // Giới hạn 2 dòng

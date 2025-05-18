@@ -211,6 +211,7 @@ model Amenity {
   id          Int      @id @default(autoincrement())
   name        String   @unique // Tên tiện nghi (vd: Điều hòa, Nóng lạnh, WC riêng)
   description String?
+  url         String?  // URL hình ảnh tiện nghi
 
   rooms       RoomAmenity[] // Liên kết đến các phòng có tiện nghi này
 

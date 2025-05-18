@@ -14,7 +14,7 @@ const AmenityForm = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    icon: '', // URL của icon
+    url: '', // URL của hình ảnh tiện nghi
   });
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [isSaving, setIsSaving] = useState(false);
@@ -29,7 +29,7 @@ const AmenityForm = () => {
           setFormData({
             name: data.name || '',
             description: data.description || '',
-            icon: data.icon || '',
+            url: data.url || '',
           });
         })
         .catch(err => {
@@ -67,7 +67,7 @@ const AmenityForm = () => {
       const payload = {
         name: formData.name,
         description: formData.description || null, // Gửi null nếu rỗng
-        icon: formData.icon || null,
+        url: formData.url || null,
       };
 
       if (isEditMode) {
@@ -129,26 +129,28 @@ const AmenityForm = () => {
           disabled={isSaving}
           error={errors.description}
         />
+
+
         <Input
-          label="URL Icon (Tùy chọn)"
-          id="icon"
-          name="icon"
+          label="URL Hình ảnh (Tùy chọn)"
+          id="url"
+          name="url"
           type="url" // Kiểu url để có validation cơ bản
-          value={formData.icon}
+          value={formData.url}
           onChange={handleChange}
           disabled={isSaving}
-          error={errors.icon}
-          placeholder="https://example.com/icon.png"
-          hint="Dán đường dẫn URL đến hình ảnh icon."
+          error={errors.url}
+          placeholder="https://example.com/image.jpg"
+          hint="Dán đường dẫn URL đến hình ảnh minh họa tiện nghi."
         />
-        {/* Preview Icon nếu có */}
-        {formData.icon && (
+
+        {/* Preview hình ảnh nếu có */}
+        {formData.url && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Xem trước Icon</label>
-            <img src={formData.icon} alt="Icon Preview" className="h-16 w-16 object-contain border rounded" onError={(e) => e.target.style.display = 'none'} />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Xem trước Hình ảnh</label>
+            <img src={formData.url} alt="Image Preview" className="max-h-48 rounded border shadow-sm object-contain" onError={(e) => e.target.style.display = 'none'} />
           </div>
         )}
-
 
         {/* Nút Submit */}
         <div className="flex justify-end gap-3 pt-5 border-t border-gray-200">
