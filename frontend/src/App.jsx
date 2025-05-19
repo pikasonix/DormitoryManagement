@@ -27,7 +27,7 @@ import MaintenanceRequestForm from './pages/maintenance/MaintenanceRequestForm';
 import InvoiceIndex from './pages/invoices/InvoiceIndex';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import PaymentIndex from './pages/payments/PaymentIndex';
-// import PaymentForm from './pages/payments/PaymentForm'; 
+import PaymentForm from './pages/payments/PaymentForm';
 import UtilityReadingIndex from './pages/utilities/UtilityReadingIndex';
 import UtilityReadingForm from './pages/utilities/UtilityReadingForm';
 import UtilityReadingCreate from './pages/utilities/UtilityReadingCreate';
@@ -135,6 +135,7 @@ function App() {
           <Route index element={<PaymentIndex />} />
           {/* Bỏ comment nếu dùng PaymentForm */}
           {/* <Route path="new" element={<PaymentForm />} /> */}
+          <Route path=":id/edit" element={<PaymentForm />} />
         </Route>
 
         {/* --- UTILITY ROUTES --- */}

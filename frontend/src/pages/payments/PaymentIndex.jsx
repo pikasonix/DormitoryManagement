@@ -5,7 +5,7 @@ import { Button, Select, Input, Badge } from '../../components/shared';
 import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import { TrashIcon, CreditCardIcon, BanknotesIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, CreditCardIcon, BanknotesIcon, ArrowPathIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -165,6 +165,13 @@ const PaymentIndex = () => {
       accessor: 'actions',
       Cell: ({ row }) => (
         <div className="flex space-x-2 justify-center">
+          <Button
+            variant="icon"
+            onClick={() => navigate(`/payments/${row.original.id}/edit`)}
+            tooltip="Chỉnh sửa"
+          >
+            <PencilSquareIcon className="h-5 w-5 text-indigo-600 hover:text-indigo-800" />
+          </Button>
           <Button
             variant="icon"
             onClick={() => handleDelete(row.original.id)}

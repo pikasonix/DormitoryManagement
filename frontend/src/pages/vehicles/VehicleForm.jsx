@@ -277,7 +277,8 @@ const VehicleForm = ({ mode = 'create' }) => {
                 {isEditMode && ownerInfo && <p className="text-sm text-gray-600 mt-1">Chủ xe: {ownerInfo}</p>}
                 {!isEditMode && !isAdmin && <p className="mt-1 text-sm text-gray-600">Điền thông tin xe bạn muốn đăng ký gửi trong ký túc xá.</p>}
                 {!isEditMode && isAdmin && <p className="mt-1 text-sm text-gray-600">Điền thông tin xe và mã số sinh viên để đăng ký gửi xe.</p>}
-            </div>            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">
+            </div>
+            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">
                 {/* Trường nhập mã sinh viên chỉ hiển thị khi Admin/Staff tạo mới (đặt lên đầu) */}
                 {!isEditMode && isAdmin && (
                     <div>
