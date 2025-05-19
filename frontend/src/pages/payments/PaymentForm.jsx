@@ -108,23 +108,35 @@ const InvoiceModal = ({ invoice, isOpen, onClose }) => {
 };
 
 const manualMethodOptions = [
-    { value: 'cash', label: 'Tiền mặt' },
-    { value: 'CASH', label: 'Tiền mặt' },
-    { value: 'bank_transfer', label: 'Chuyển khoản NH (Đã nhận)' },
-    { value: 'BANK_TRANSFER', label: 'Chuyển khoản NH (Đã nhận)' },
-    { value: 'other', label: 'Khác' },
-    { value: 'OTHER', label: 'Khác' },
+    { value: 'Tiền mặt', label: 'Tiền mặt' },
+    { value: 'Chuyển khoản', label: 'Chuyển khoản Ngân Hàng (Đã nhận)' },
+    { value: 'Khác', label: 'Khác' },
 ];
+
+// Function to map API payment method values to dropdown option values
+const mapApiMethodToFormMethod = (apiMethod) => {
+    if (!apiMethod) return 'Tiền mặt'; // Default value
+
+    // Convert to lowercase for case-insensitive matching
+    const method = apiMethod.toLowerCase();
+
+    if (method.includes('bank') || method.includes('chuyển') || method.includes('khoản')) {
+        return 'Chuyển khoản';
+    } else if (method.includes('cash') || method.includes('tiền mặt')) {
+        return 'Tiền mặt';
+    } else {
+        return 'Khác';
+    }
+};
 
 const PaymentForm = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const isEditMode = Boolean(id);
-    const [formData, setFormData] = useState({
+    const isEditMode = Boolean(id); const [formData, setFormData] = useState({
         studentId: '',
         invoiceId: '',
         amount: '',
-        method: 'cash',
+        method: 'Tiền mặt', // Default to cash payment
         transactionDate: format(new Date(), 'yyyy-MM-dd'),
         details: '',
         status: 'success',
@@ -178,13 +190,11 @@ const PaymentForm = () => {
                         studentIdFromPayment = paymentData.student.studentId;
                     } else if (paymentData.studentId) {
                         studentIdFromPayment = paymentData.studentId;
-                    }
-
-                    const formattedData = {
+                    } const formattedData = {
                         studentId: studentIdFromPayment,
                         invoiceId: paymentData.invoiceId?.toString() || '',
                         amount: paymentData.amount?.toString() || '',
-                        method: paymentData.paymentMethod || 'cash',
+                        method: mapApiMethodToFormMethod(paymentData.paymentMethod),
                         transactionDate: paymentData.paymentDate ? format(new Date(paymentData.paymentDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
                         details: paymentData.notes || '',
                         status: paymentData.status || 'success'
@@ -445,7 +455,8 @@ const PaymentForm = () => {
                                     </svg>
                                 </Button>
                             )}
-                        </div>                        <Select
+                        </div>
+                        <Select
                             label="Danh sách hóa đơn"
                             id="selectInvoice"
                             name="selectInvoice"

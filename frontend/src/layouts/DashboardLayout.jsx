@@ -222,6 +222,7 @@ const DashboardLayout = () => {
                               e.target.src = DEFAULT_AVATAR;
                             }}
                           />
+
                         );
                       } else {
                         // Không có avatar, hiển thị mặc định

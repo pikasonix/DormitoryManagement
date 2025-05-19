@@ -14,7 +14,7 @@ const AmenityForm = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    url: '', // URL của hình ảnh tiện nghi
+    url: '',
   });
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [isSaving, setIsSaving] = useState(false);
