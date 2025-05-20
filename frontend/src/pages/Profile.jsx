@@ -6,6 +6,7 @@ import ProfileEditForm from '../components/profile/ProfileEditForm'; // Đảm b
 import SecuritySettings from '../components/profile/SecuritySettings'; // Đảm bảo import đúng đường dẫn
 import LoadingSpinner from '../components/shared/LoadingSpinner'; // Import Spinner
 import { toast } from 'react-hot-toast';
+import StudentProfilePage from './profile/StudentProfilePage';
 
 const Profile = () => {
   const { user, isLoading: isAuthLoading, checkAuthStatus } = useAuth(); // Lấy thêm isLoading và hàm refresh
@@ -19,7 +20,6 @@ const Profile = () => {
     // { id: 'billing', name: 'Hóa đơn & Thanh toán', icon: CreditCardIcon }, // Ví dụ thêm tab Billing cho Student
     // { id: 'my_requests', name: 'Yêu cầu của tôi', icon: ClipboardDocumentListIcon }, // Ví dụ Tab yêu cầu của Student
   ], []);
-
   // --- Xử lý Loading ---
   if (isAuthLoading || !user) {
     // Hiển thị spinner nếu context đang load hoặc chưa có user (dù PrivateRoute đã check)
@@ -28,6 +28,11 @@ const Profile = () => {
         <LoadingSpinner size="lg" />
       </div>
     );
+  }
+
+  // --- Student-specific view ---
+  if (user.role === 'STUDENT') {
+    return <StudentProfilePage />;
   }
 
   // --- Hàm xử lý sau khi lưu form ---

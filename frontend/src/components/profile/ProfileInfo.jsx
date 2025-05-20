@@ -49,7 +49,7 @@ const ProfileInfo = ({ user, onEdit }) => {
     if (!user) return <p className="p-6 text-center text-gray-500">Không có thông tin người dùng.</p>;
     // Không cần kiểm tra profile ở đây nữa vì sẽ kiểm tra từng trường
 
-    const profile = user.profile || {}; // Dùng object rỗng nếu profile null/undefined
+    const profile = user.role === 'STUDENT' ? (user.studentProfile || {}) : (user.profile || {});
     const isStudent = user.role === 'STUDENT';
     const isStaff = user.role === 'STAFF';
 
@@ -76,70 +76,66 @@ const ProfileInfo = ({ user, onEdit }) => {
             </div>
 
             {/* Body */}
-            <div className="border-t border-gray-200">
-                <dl className="divide-y divide-gray-100"> {/* Màu divider nhạt hơn */}
-                    {/* --- Thông tin chung --- */}
-                    {renderDetailRow('Họ và tên', profile.fullName || user.name, false)}
-                    {renderDetailRow('Email', user.email, true, "text-gray-700 font-mono")}
-                    {renderDetailRow('Số điện thoại', profile.phoneNumber, false)}
-                    {renderDetailRow('Giới tính', profile.gender === 'MALE' ? 'Nam' : (profile.gender === 'FEMALE' ? 'Nữ' : profile.gender), true)}
-                    {renderDetailRow('Ngày sinh', formatDate(profile.birthDate), false)}
-                    {renderDetailRow('Số CCCD/CMND', profile.identityCardNumber, true)}
+            <div className="border-t border-gray-200">                <dl className="divide-y divide-gray-100"> {/* Màu divider nhạt hơn */}                    {/* --- Thông tin chung --- */}
+                {renderDetailRow('Họ và tên', profile.fullName || user.name, false)}                    {/* Hiển thị email từ user hoặc từ user bên trong profile nếu có cấu trúc lồng nhau */}
+                {renderDetailRow('Email', user.email, true, "text-gray-700 font-mono")}
+                {renderDetailRow('Số điện thoại', profile.phoneNumber, false)}
+                {renderDetailRow('Giới tính', profile.gender === 'MALE' ? 'Nam' : (profile.gender === 'FEMALE' ? 'Nữ' : profile.gender), true)}
+                {renderDetailRow('Ngày sinh', formatDate(profile.birthDate), false)}
+                {renderDetailRow('Số CCCD/CMND', profile.identityCardNumber, true)}                    {/* --- Thông tin riêng STUDENT --- */}
+                {isStudent && (
+                    <>
+                        {renderDetailRow('Mã sinh viên', profile.studentId, false, "font-semibold")}
+                        {renderDetailRow('Khoa/Viện', profile.faculty, true)}
+                        {renderDetailRow('Khóa', profile.courseYear, false)}
+                        {renderDetailRow('Lớp', profile.className, true)}
+                        {renderDetailRow('Email cá nhân', profile.personalEmail, false)}
+                        {renderDetailRow('Dân tộc', profile.ethnicity, true)}
+                        {renderDetailRow('Tôn giáo', profile.religion, false)}
+                        {renderDetailRow('Đối tượng ưu tiên', profile.priorityObject, true)}
+                        {renderDetailRow('Địa chỉ thường trú', formatAddress(profile.permanentAddress, profile.permanentDistrict, profile.permanentProvince), false)}
+                        {/* Thông tin gia đình */}
+                        <div className="px-4 pt-4 pb-1 sm:px-6 bg-gray-50"> {/* Nhóm thông tin cha */}
+                            <dt className="text-sm font-medium text-gray-600">Thông tin Cha</dt>
+                        </div>
+                        {renderDetailRow('Họ tên', profile.fatherName, true)}
+                        {renderDetailRow('Năm sinh', profile.fatherDobYear, false)}
+                        {renderDetailRow('Số điện thoại', profile.fatherPhone, true)}
+                        {renderDetailRow('Địa chỉ', profile.fatherAddress, false)}
+                        <div className="px-4 pt-4 pb-1 sm:px-6 bg-gray-50"> {/* Nhóm thông tin mẹ */}
+                            <dt className="text-sm font-medium text-gray-600">Thông tin Mẹ</dt>
+                        </div>
+                        {renderDetailRow('Họ tên', profile.motherName, true)}
+                        {renderDetailRow('Năm sinh', profile.motherDobYear, false)}
+                        {renderDetailRow('Số điện thoại', profile.motherPhone, true)}
+                        {renderDetailRow('Địa chỉ', profile.motherAddress, false)}
+                        <div className="px-4 pt-4 pb-1 sm:px-6 bg-gray-50"> {/* Nhóm liên hệ khẩn cấp */}
+                            <dt className="text-sm font-medium text-gray-600">Liên hệ khẩn cấp</dt>
+                        </div>
+                        {renderDetailRow('Người liên hệ', profile.emergencyContactRelation, true)}
+                        {renderDetailRow('Số điện thoại', profile.emergencyContactPhone, false)}
+                        {renderDetailRow('Địa chỉ', profile.emergencyContactAddress, true)}
+                    </>
+                )}
 
-                    {/* --- Thông tin riêng STUDENT --- */}
-                    {isStudent && (
-                        <>
-                            {renderDetailRow('Mã sinh viên', profile.studentId, false, "font-semibold")}
-                            {renderDetailRow('Khoa/Viện', profile.faculty, true)}
-                            {renderDetailRow('Khóa', profile.courseYear, false)}
-                            {renderDetailRow('Lớp', profile.className, true)}
-                            {renderDetailRow('Email cá nhân', profile.personalEmail, false)}
-                            {renderDetailRow('Dân tộc', profile.ethnicity, true)}
-                            {renderDetailRow('Tôn giáo', profile.religion, false)}
-                            {renderDetailRow('Đối tượng ưu tiên', profile.priorityObject, true)}
-                            {renderDetailRow('Địa chỉ thường trú', formatAddress(profile.permanentAddress, profile.permanentDistrict, profile.permanentProvince), false)}
-                            {/* Thông tin gia đình */}
-                            <div className="px-4 pt-4 pb-1 sm:px-6 bg-gray-50"> {/* Nhóm thông tin cha */}
-                                <dt className="text-sm font-medium text-gray-600">Thông tin Cha</dt>
-                            </div>
-                            {renderDetailRow('Họ tên', profile.fatherName, true)}
-                            {renderDetailRow('Năm sinh', profile.fatherDobYear, false)}
-                            {renderDetailRow('Số điện thoại', profile.fatherPhone, true)}
-                            {renderDetailRow('Địa chỉ', profile.fatherAddress, false)}
-                            <div className="px-4 pt-4 pb-1 sm:px-6 bg-gray-50"> {/* Nhóm thông tin mẹ */}
-                                <dt className="text-sm font-medium text-gray-600">Thông tin Mẹ</dt>
-                            </div>
-                            {renderDetailRow('Họ tên', profile.motherName, true)}
-                            {renderDetailRow('Năm sinh', profile.motherDobYear, false)}
-                            {renderDetailRow('Số điện thoại', profile.motherPhone, true)}
-                            {renderDetailRow('Địa chỉ', profile.motherAddress, false)}
-                            <div className="px-4 pt-4 pb-1 sm:px-6 bg-gray-50"> {/* Nhóm liên hệ khẩn cấp */}
-                                <dt className="text-sm font-medium text-gray-600">Liên hệ khẩn cấp</dt>
-                            </div>
-                            {renderDetailRow('Người liên hệ', profile.emergencyContactRelation, true)}
-                            {renderDetailRow('Số điện thoại', profile.emergencyContactPhone, false)}
-                            {renderDetailRow('Địa chỉ', profile.emergencyContactAddress, true)}
-                        </>
-                    )}
+                {/* --- Thông tin riêng STAFF --- */}
+                {isStaff && (
+                    <>
+                        {renderDetailRow('Chức vụ', profile.position, false, "font-semibold")}
+                        {renderDetailRow('Địa chỉ liên hệ', profile.address, true)}
+                        {/* Kiểm tra kỹ trước khi truy cập nested property */}
+                        {profile.managedBuilding && renderDetailRow('Tòa nhà quản lý', profile.managedBuilding.name, false)}
+                    </>
+                )}
 
-                    {/* --- Thông tin riêng STAFF --- */}
-                    {isStaff && (
-                        <>
-                            {renderDetailRow('Chức vụ', profile.position, false, "font-semibold")}
-                            {renderDetailRow('Địa chỉ liên hệ', profile.address, true)}
-                            {/* Kiểm tra kỹ trước khi truy cập nested property */}
-                            {profile.managedBuilding && renderDetailRow('Tòa nhà quản lý', profile.managedBuilding.name, false)}
-                        </>
-                    )}
+                {/* --- Thông tin Hệ thống --- */}
+                <div className="px-4 pt-4 pb-1 sm:px-6 bg-gray-50">
+                    <dt className="text-sm font-medium text-gray-600">Thông tin Hệ thống</dt>
+                </div>
+                {renderDetailRow('Ngày tạo tài khoản', formatDateTime(user.createdAt), true)}
+                {renderDetailRow('Hồ sơ cập nhật lần cuối', formatDateTime(profile.updatedAt), false)}
 
-                    {/* --- Thông tin Hệ thống --- */}
-                    <div className="px-4 pt-4 pb-1 sm:px-6 bg-gray-50">
-                        <dt className="text-sm font-medium text-gray-600">Thông tin Hệ thống</dt>
-                    </div>
-                    {renderDetailRow('Ngày tạo tài khoản', formatDateTime(user.createdAt), true)}
-                    {renderDetailRow('Hồ sơ cập nhật lần cuối', formatDateTime(profile.updatedAt), false)}
-
-                </dl>
+            </dl>
             </div>
         </div>
     );
