@@ -12,8 +12,10 @@ import {
     AcademicCapIcon,
     HomeIcon,
     IdentificationIcon,
-    PhoneIcon
+    PhoneIcon,
+    KeyIcon
 } from '@heroicons/react/24/outline';
+import SecuritySettings from '../../components/profile/SecuritySettings';
 
 // Helper format date
 const formatDate = (dateString) => {
@@ -56,15 +58,22 @@ const StudentProfilePage = () => {
     const [profile, setProfile] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [activeTab, setActiveTab] = useState('basic');
-
-    useEffect(() => {
+    const [activeTab, setActiveTab] = useState('basic'); useEffect(() => {
         const fetchProfile = async () => {
             setIsLoading(true);
             try {
                 const response = await authService.getMe();
                 if (response?.user?.studentProfile) {
-                    setProfile(response.user.studentProfile);
+                    // Đảm bảo profile có thông tin user (trong đó có email)
+                    const profileWithUser = {
+                        ...response.user.studentProfile,
+                        // Đảm bảo profile.user chứa thông tin email từ response.user
+                        user: {
+                            ...(response.user.studentProfile.user || {}),
+                            email: response.user.email || response.user.studentProfile.user?.email
+                        }
+                    };
+                    setProfile(profileWithUser);
                 } else {
                     setError('Không tìm thấy thông tin hồ sơ sinh viên');
                 }
@@ -98,9 +107,7 @@ const StudentProfilePage = () => {
             return path.startsWith('http') ? path : `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
         }
         return '/src/assets/default-avatar.png';
-    };
-
-    // Render basic information tab
+    };    // Render basic information tab
     const renderBasicInfo = (profile) => (
         <dl className="divide-y divide-gray-100">
             <div className="px-4 pt-4 pb-2 sm:px-6">
@@ -108,7 +115,7 @@ const StudentProfilePage = () => {
             </div>
             {renderDetailRow('Họ và tên', profile.fullName, false)}
             {renderDetailRow('Mã sinh viên', profile.studentId, true, "font-semibold font-mono")}
-            {renderDetailRow('Email', profile.user?.email, false, "text-gray-700")}
+            {renderDetailRow('Email', profile.user?.email || profile.user?.studentProfile?.user?.email || profile.email, false, "text-gray-700 font-mono")}
             {renderDetailRow('Số điện thoại', profile.phoneNumber, true)}
             {renderDetailRow('Giới tính', profile.gender === 'MALE' ? 'Nam' : (profile.gender === 'FEMALE' ? 'Nữ' : profile.gender), false)}
             {renderDetailRow('Ngày sinh', formatDate(profile.birthDate), true)}
@@ -296,8 +303,7 @@ const StudentProfilePage = () => {
                     </div>
                 </div>
 
-                {/* Tabs for different sections */}
-                <Tabs activeTab={activeTab} onChange={setActiveTab}>
+                {/* Tabs for different sections */}                <Tabs activeTab={activeTab} onChange={setActiveTab}>
                     <Tab id="basic" label="Thông tin cơ bản" icon={UserIcon}>
                         {renderBasicInfo(profile)}
                     </Tab>
@@ -309,6 +315,11 @@ const StudentProfilePage = () => {
                     </Tab>
                     <Tab id="family" label="Gia đình" icon={IdentificationIcon}>
                         {renderFamilyInfo(profile)}
+                    </Tab>
+                    <Tab id="security" label="Bảo mật" icon={KeyIcon}>
+                        <div className="px-4 py-5 sm:p-6">
+                            <SecuritySettings />
+                        </div>
                     </Tab>
                 </Tabs>
             </div>
