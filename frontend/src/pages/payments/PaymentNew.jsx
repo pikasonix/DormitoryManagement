@@ -136,7 +136,29 @@ const PaymentNew = () => {
         method: 'Tiền mặt', // Mặc định là tiền mặt
         transactionDate: format(new Date(), 'yyyy-MM-dd'),
         details: '',
-    });    // Tải thông tin hóa đơn và sinh viên
+    });
+
+    // Thêm hàm tính số tiền còn lại
+    const getRemainingAmount = () => {
+        if (!invoice) return null;
+        // Ép kiểu về number nếu là string
+        const total = typeof invoice.totalAmount === 'number' ? invoice.totalAmount : Number(invoice.totalAmount);
+        const paid = typeof invoice.paidAmount === 'number' ? invoice.paidAmount : Number(invoice.paidAmount);
+        const remain = typeof invoice.remainingAmount === 'number' ? invoice.remainingAmount : Number(invoice.remainingAmount);
+
+        if (!isNaN(remain) && remain !== 0) {
+            return remain;
+        }
+        if (!isNaN(total)) {
+            if (!isNaN(paid)) {
+                return total - paid;
+            }
+            return total;
+        }
+        return null;
+    };
+
+    // Tải thông tin hóa đơn và sinh viên
     useEffect(() => {
         const fetchInvoiceData = async () => {
             if (!invoiceId) {
@@ -146,15 +168,36 @@ const PaymentNew = () => {
             }
 
             try {
-                setIsLoading(true); const invoiceData = await invoiceService.getInvoiceById(invoiceId);
+                setIsLoading(true);
+                const invoiceData = await invoiceService.getInvoiceById(invoiceId);
                 setInvoice(invoiceData);
                 console.log('Loaded invoice data:', invoiceData);
 
-                // Cập nhật số tiền theo hóa đơn
+                // Tính số tiền còn lại
+                let remainingAmount;
+                // Ưu tiên dùng remainingAmount từ API nếu có (cả khi là chuỗi)
+                if (invoiceData.remainingAmount != null && !isNaN(Number(invoiceData.remainingAmount))) {
+                    remainingAmount = Number(invoiceData.remainingAmount);
+                }
+                // Nếu không, tính bằng totalAmount - paidAmount
+                else if (invoiceData.totalAmount != null && !isNaN(Number(invoiceData.totalAmount))) {
+                    const totalNum = Number(invoiceData.totalAmount);
+                    const paidNum = invoiceData.paidAmount != null && !isNaN(Number(invoiceData.paidAmount))
+                        ? Number(invoiceData.paidAmount)
+                        : 0;
+                    remainingAmount = totalNum - paidNum;
+                }
+                // Mặc định là 0 nếu không có thông tin
+                else {
+                    remainingAmount = 0;
+                }
+
+                // Cập nhật form với số tiền còn lại (đảm bảo là số)
                 setFormData(prev => ({
                     ...prev,
-                    amount: invoiceData.remainingAmount || invoiceData.totalAmount || ''
-                }));                // Nếu hóa đơn có studentProfileId, lấy thông tin sinh viên
+                    amount: remainingAmount
+                }));
+
                 if (invoiceData.studentProfileId) {
                     try {
                         console.log('Fetching studentProfile with ID:', invoiceData.studentProfileId);
@@ -326,11 +369,30 @@ const PaymentNew = () => {
                             </p>
                         </div>
                         <div>
-                            <p className="text-sm text-blue-800">Số tiền</p>
+                            <p className="text-sm text-blue-800">Tổng tiền hóa đơn</p>
                             <p className="font-medium">
                                 {typeof invoice.totalAmount === 'number'
                                     ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount)
-                                    : invoice.totalAmount || 'N/A'}
+                                    : invoice.totalAmount}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-blue-800">Đã thanh toán</p>
+                            <p className="font-medium">
+                                {typeof invoice.totalAmount === 'number' && typeof invoice.remainingAmount === 'number'
+                                    ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(invoice.totalAmount - invoice.remainingAmount)
+                                    : invoice.paidAmount || 'N/A'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-blue-800">Số tiền còn lại</p>
+                            <p className="font-medium text-red-600">
+                                {(() => {
+                                    const remain = getRemainingAmount();
+                                    return remain !== null
+                                        ? new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(remain)
+                                        : 'N/A';
+                                })()}
                             </p>
                         </div>
                         <div>
@@ -373,6 +435,14 @@ const PaymentNew = () => {
                     onChange={handleChange}
                     disabled={isLoading || isSaving}
                     error={errors.amount}
+                    hint={
+                        (() => {
+                            const remain = getRemainingAmount();
+                            return remain !== null
+                                ? `Thanh toán số tiền còn lại: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(remain)}`
+                                : undefined;
+                        })()
+                    }
                 />
 
                 <Select
