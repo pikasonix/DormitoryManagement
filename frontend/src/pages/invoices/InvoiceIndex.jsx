@@ -7,7 +7,7 @@ import { Button, Select, Input, Badge } from '../../components/shared';
 import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import { EyeIcon, PencilSquareIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, PencilSquareIcon, TrashIcon, PlusIcon, CreditCardIcon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -135,9 +135,7 @@ const InvoiceIndex = () => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
         setCurrentPage(1); // Reset về trang 1 khi đổi filter
-    };
-
-    // Hàm xử lý xóa (ít khi dùng cho hóa đơn, có thể chỉ hủy?)
+    };    // Hàm xử lý xóa (ít khi dùng cho hóa đơn, có thể chỉ hủy?)
     const handleDelete = async (id, invoiceNumber) => {
         if (window.confirm(`Bạn có chắc chắn muốn xóa hóa đơn "${invoiceNumber}" không?`)) {
             try {
@@ -148,6 +146,9 @@ const InvoiceIndex = () => {
                 toast.error(err?.message || `Xóa hóa đơn "${invoiceNumber}" thất bại.`);
             }
         }
+    };    // Xử lý chuyển đến trang tạo thanh toán cho hóa đơn
+    const handleCreatePayment = (invoiceId) => {
+        navigate(`/payments/new?invoiceId=${invoiceId}`);
     };
 
     // Xử lý chuyển trang
@@ -193,30 +194,43 @@ const InvoiceIndex = () => {
             Header: 'Trạng thái', accessor: 'status', Cell: ({ value }) => (
                 <Badge color={getStatusBadgeColor(value)}>{value?.toUpperCase() || 'N/A'}</Badge>
             )
-        },
-        {
+        }, {
             Header: 'Hành động',
             accessor: 'actions',
-            Cell: ({ row }) => (
-                <div className="flex space-x-2 justify-center">
-                    <Button
-                        variant="icon"
-                        onClick={() => navigate(`/invoices/${row.original.id}`)} // Link đến trang chi tiết
-                        tooltip="Xem chi tiết"
-                    >
-                        <EyeIcon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
-                    </Button>
-                    <Button
-                        variant="icon"
-                        onClick={() => handleDelete(row.original.id, row.original.invoiceNumber)}
-                        tooltip="Xóa/Hủy hóa đơn" // Làm rõ hành động
-                    >
-                        <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
-                    </Button>
-                </div>
-            ),
+            Cell: ({ row }) => {
+                const invoice = row.original;
+                const canPay = ['UNPAID', 'PARTIALLY_PAID', 'OVERDUE'].includes(invoice.status?.toUpperCase());
+
+                return (
+                    <div className="flex space-x-2 justify-center">
+                        <Button
+                            variant="icon"
+                            onClick={() => navigate(`/invoices/${invoice.id}`)} // Link đến trang chi tiết
+                            tooltip="Xem chi tiết"
+                        >
+                            <EyeIcon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
+                        </Button>
+                        {canPay && (
+                            <Button
+                                variant="icon"
+                                onClick={() => handleCreatePayment(invoice.id)}
+                                tooltip="Tạo thanh toán"
+                            >
+                                <CreditCardIcon className="h-5 w-5 text-green-600 hover:text-green-800" />
+                            </Button>
+                        )}
+                        <Button
+                            variant="icon"
+                            onClick={() => handleDelete(invoice.id, invoice.invoiceNumber)}
+                            tooltip="Xóa/Hủy hóa đơn" // Làm rõ hành động
+                        >
+                            <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
+                        </Button>
+                    </div>
+                );
+            },
         },
-    ], [navigate, students, rooms, currentPage, filters]); // Thêm rooms vào dependencies
+    ], [navigate, students, rooms, currentPage, filters, handleCreatePayment]); // Thêm dependencies cần thiết
 
     // Options cho Select sinh viên
     const studentOptions = [

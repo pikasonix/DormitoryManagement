@@ -28,6 +28,7 @@ import InvoiceIndex from './pages/invoices/InvoiceIndex';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import PaymentIndex from './pages/payments/PaymentIndex';
 import PaymentForm from './pages/payments/PaymentForm';
+import PaymentNew from './pages/payments/PaymentNew';
 import UtilityReadingIndex from './pages/utilities/UtilityReadingIndex';
 import UtilityReadingForm from './pages/utilities/UtilityReadingForm';
 import UtilityReadingCreate from './pages/utilities/UtilityReadingCreate';
@@ -130,11 +131,9 @@ function App() {
           <Route index element={<InvoiceIndex />} />
           <Route path=":id" element={<InvoiceDetail />} />
           {/* <Route path="new" element={<InvoiceForm />} /> */}
-        </Route>
-        <Route path="/payments" element={<StaffRoute />}>
+        </Route>        <Route path="/payments" element={<StaffRoute />}>
           <Route index element={<PaymentIndex />} />
-          {/* Bỏ comment nếu dùng PaymentForm */}
-          {/* <Route path="new" element={<PaymentForm />} /> */}
+          <Route path="new" element={<PaymentNew />} />
           <Route path=":id/edit" element={<PaymentForm />} />
         </Route>
 

@@ -58,11 +58,29 @@ const getPaymentById = async (id) => {
  */
 const createPayment = async (paymentData) => {
   try {
-    // Chuyển đổi amount sang số
+    // Chuyển đổi dữ liệu sang số đúng định dạng
+    // Đảm bảo tất cả các trường dữ liệu có giá trị số đều được chuyển đổi chính xác
     const payload = {
       ...paymentData,
-      amount: parseFloat(paymentData.amount) || 0,
+      studentProfileId: parseInt(paymentData.studentProfileId, 10), // Đảm bảo là số nguyên
+      invoiceId: parseInt(paymentData.invoiceId, 10), // Đảm bảo là số nguyên
+      amount: parseFloat(paymentData.amount) || 0, // Đảm bảo là số thực
     };
+
+    // Kiểm tra dữ liệu trước khi gửi
+    if (isNaN(payload.studentProfileId)) {
+      throw new Error('Lỗi: studentProfileId không hợp lệ');
+    }
+
+    if (isNaN(payload.invoiceId)) {
+      throw new Error('Lỗi: invoiceId không hợp lệ');
+    }
+
+    if (isNaN(payload.amount) || payload.amount <= 0) {
+      throw new Error('Lỗi: amount không hợp lệ');
+    }
+
+    console.log('Final POST request payload to API:', JSON.stringify(payload));
     const response = await apiClient.post('/api/payments', payload);
     // Backend trả về: { status: 'success', data: new_payment_object }
     if (response.data?.status === 'success') {
@@ -72,6 +90,15 @@ const createPayment = async (paymentData) => {
     }
   } catch (error) {
     console.error('Lỗi service createPayment:', error.response?.data || error.message);
+    // Log thông tin chi tiết về lỗi
+    if (error.response) {
+      console.error('Response error details:', {
+        status: error.response.status,
+        statusText: error.response.statusText,
+        data: error.response.data,
+        headers: error.response.headers
+      });
+    }
     if (error.response?.data?.errors) {
       throw error.response.data;
     }
