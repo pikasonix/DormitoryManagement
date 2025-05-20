@@ -29,6 +29,9 @@ import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import PaymentIndex from './pages/payments/PaymentIndex';
 import PaymentForm from './pages/payments/PaymentForm';
 import PaymentNew from './pages/payments/PaymentNew';
+import FeeRateIndex from './pages/fees/FeeRateIndex';
+import FeeRateDetail from './pages/fees/FeeRateDetail';
+import FeeRateForm from './pages/fees/FeeRateForm';
 import UtilityReadingIndex from './pages/utilities/UtilityReadingIndex';
 import UtilityReadingForm from './pages/utilities/UtilityReadingForm';
 import UtilityReadingCreate from './pages/utilities/UtilityReadingCreate';
@@ -144,14 +147,20 @@ function App() {
           <Route path=":id/edit" element={<UtilityReadingForm />} />
           <Route path="create" element={<UtilityReadingCreate />} />
           <Route path="edit/:id" element={<UtilityReadingEdit />} />
-        </Route>
-
-        {/* --- VEHICLE ROUTES --- */}
+        </Route>        {/* --- VEHICLE ROUTES --- */}
         <Route path="/vehicles">
           <Route index element={<StaffRoute><VehicleIndex /></StaffRoute>} />
           <Route path="register" element={<VehicleForm mode="create" />} />
           <Route path=":id/edit" element={<StaffRoute><VehicleForm mode="edit" /></StaffRoute>} />
           <Route path="new" element={<StaffRoute><VehicleForm mode="create" /></StaffRoute>} />
+        </Route>
+
+        {/* --- FEE RATE ROUTES --- */}
+        <Route path="/fees" element={<StaffRoute />}>
+          <Route index element={<FeeRateIndex />} />
+          <Route path=":id" element={<FeeRateDetail />} />
+          <Route path=":id/edit" element={<FeeRateForm />} />
+          <Route path="new" element={<FeeRateForm />} />
         </Route>
 
         {/* --- TRANSFER ROUTES --- */}

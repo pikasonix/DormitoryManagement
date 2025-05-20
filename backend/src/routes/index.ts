@@ -13,6 +13,7 @@ import utilityRoutes from './utility.routes';
 import transferRoutes from './transfer.routes';
 import vehicleRoutes from './vehicle.routes';
 import dashboardRoutes from './dashboard.routes';
+import feeRoutes from './fee.routes';
 
 const router = express.Router();
 
@@ -37,5 +38,6 @@ router.use('/utilities', utilityRoutes);
 router.use('/transfers', transferRoutes);
 router.use('/vehicles', vehicleRoutes);
 router.use('/dashboard', dashboardRoutes);
+router.use('/fees', feeRoutes);
 
 export default router;

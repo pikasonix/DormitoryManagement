@@ -13,6 +13,7 @@ import Card from './Card';
 import Alert from './Alert';
 import Tabs from './Tabs';
 import Tab from './Tab';
+import Checkbox from './Checkbox';
 
 
 // Export tất cả dưới dạng named exports
@@ -32,5 +33,6 @@ export {
     Alert,
     Tabs,
     Tab,
+    Checkbox,
     // Export các component khác ở đây
 };
