@@ -248,11 +248,12 @@ const DashboardLayout = () => {
                     aria-orientation="vertical"
                     aria-labelledby="user-menu-button"
                     tabIndex="-1"
-                  >
-                    {/* Nội dung dropdown giữ nguyên */}
+                  >                    {/* Nội dung dropdown với logic hiển thị tên người dùng đã được sửa */}
                     <div className="px-4 py-3 border-b border-gray-100">
                       <p className="text-sm font-semibold text-gray-900 truncate">
-                        {user?.profile?.fullName || user?.staffProfile?.fullName || user?.studentProfile?.fullName || user?.name || user?.email?.split('@')[0] || 'Người dùng'}
+                        {user?.role === 'ADMIN'
+                          ? 'Admin'
+                          : (user?.profile?.fullName || user?.staffProfile?.fullName || user?.studentProfile?.fullName || user?.name || user?.email?.split('@')[0] || 'Người dùng')}
                       </p>
                       <p className="text-xs text-gray-500 truncate mt-0.5">{user?.email}</p>
                       <span className={`mt-2 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${user?.role === 'ADMIN' ? 'bg-purple-100 text-purple-800 ring-purple-600/20' :
