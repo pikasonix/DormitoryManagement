@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { paymentService } from '../../services/payment.service';
 import { invoiceService } from '../../services/invoice.service';
 import { studentService } from '../../services/student.service';
+import { roomService } from '../../services/room.service';
 import { Input, Button, Select, Textarea } from '../../components/shared';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
@@ -126,6 +127,7 @@ const PaymentNew = () => {
     const [isSaving, setIsSaving] = useState(false);
     const [invoice, setInvoice] = useState(null);
     const [student, setStudent] = useState(null);
+    const [room, setRoom] = useState(null);
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
     const [errors, setErrors] = useState({});
 
@@ -162,6 +164,16 @@ const PaymentNew = () => {
                     } catch (error) {
                         console.error('Error loading student:', error);
                         toast.error('Không thể tải thông tin sinh viên');
+                    }
+                } else if (invoiceData.roomId) {
+                    try {
+                        console.log('Fetching room with ID:', invoiceData.roomId);
+                        const roomData = await roomService.getRoomById(invoiceData.roomId);
+                        setRoom(roomData);
+                        console.log('Loaded room data:', roomData);
+                    } catch (err) {
+                        console.error('Error loading room:', err);
+                        toast.error('Không thể tải thông tin phòng');
                     }
                 }
             } catch (error) {
@@ -220,12 +232,17 @@ const PaymentNew = () => {
                 status: 'success',
             };
 
-            // Nếu là hóa đơn của sinh viên
-            if (student && student.id) {
+            // Nếu là thanh toán cá nhân
+            if (student?.id) {
                 paymentData.studentProfileId = parseInt(student.id, 10);
                 console.log('Adding studentProfileId to payment:', student.id);
+            } else if (room?.residents && room.residents.length > 0) {
+                // Thanh toán theo phòng: dùng resident đầu tiên làm payer
+                const payerId = room.residents[0].id;
+                paymentData.studentProfileId = parseInt(payerId, 10);
+                console.log('Using room resident as payer:', payerId);
             } else if (invoice.studentProfileId) {
-                // Fallback to invoice's studentProfileId if student object is not available
+                // Fallback cá nhân
                 paymentData.studentProfileId = parseInt(invoice.studentProfileId, 10);
                 console.log('Using invoice.studentProfileId:', invoice.studentProfileId);
             }
