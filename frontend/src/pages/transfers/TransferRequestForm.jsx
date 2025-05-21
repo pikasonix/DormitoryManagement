@@ -98,9 +98,7 @@ const TransferRequestForm = () => {
         } else {
             setIsLoadingBuildings(false);
         }
-    }, [user, currentBuildingId]);
-
-    // Kiểm tra xem sinh viên đã có yêu cầu chuyển phòng PENDING/APPROVED chưa
+    }, [user, currentBuildingId]);    // Kiểm tra xem sinh viên đã có yêu cầu chuyển phòng PENDING chưa (chỉ kiểm tra PENDING, không kiểm tra APPROVED)
     useEffect(() => {
         const checkActiveRequest = async () => {
             setIsCheckingActiveRequest(true);
@@ -112,12 +110,10 @@ const TransferRequestForm = () => {
                     setIsCheckingActiveRequest(false);
                     return;
                 }
-                // Lấy tất cả request của sinh viên, lọc trạng thái PENDING/APPROVED
-                const { transfers } = await transferService.getAllTransferRequests({ studentId, status: '' });
-                const active = transfers.some(
-                    (tr) => tr.status === 'PENDING' || tr.status === 'APPROVED'
-                );
-                setHasActiveRequest(active);
+                // Lấy tất cả request của sinh viên với trạng thái PENDING
+                const { transfers } = await transferService.getAllTransferRequests({ studentId, status: 'PENDING' });
+                const hasPendingRequest = transfers.length > 0;
+                setHasActiveRequest(hasPendingRequest);
             } catch (err) {
                 setHasActiveRequest(false); // Nếu lỗi, cho phép tạo (hoặc có thể chặn tuỳ ý)
             } finally {
@@ -379,20 +375,29 @@ const TransferRequestForm = () => {
         user?.studentProfile?.roomId ||
         user?.studentProfile?.room?.id;
 
-    if (!hasRoom) {
-        return <p className="text-center text-gray-600 p-6">Bạn cần đang ở trong một phòng để thực hiện yêu cầu chuyển phòng.</p>;
+    // Nếu không có phòng nhưng đã chọn phòng đích (từ danh sách phòng) -> cho phép đăng ký phòng mới
+    const isNewRegistration = !hasRoom && targetRoom;
+
+    // Chỉ hiển thị thông báo lỗi nếu không có phòng VÀ không phải đăng ký mới
+    if (!hasRoom && !isNewRegistration) {
+        return (
+            <div className="text-center p-6 bg-yellow-50 border border-yellow-200 rounded-md">
+                <p className="text-yellow-700 mb-3">Bạn chưa được xếp phòng. Vui lòng chọn phòng từ danh sách phòng để đăng ký.</p>
+                <Button onClick={() => navigate('/rooms')} variant="primary">
+                    Xem danh sách phòng
+                </Button>
+            </div>
+        );
     }
 
     // Nếu đang kiểm tra hoặc chưa xác định xong quyền tạo request
     if (isCheckingActiveRequest) {
         return <div className="flex justify-center items-center h-40"><LoadingSpinner /></div>;
-    }
-
-    // Nếu đã có request đang chờ hoặc đã duyệt
+    }    // Nếu đã có request đang chờ xử lý (PENDING)
     if (hasActiveRequest) {
         return (
             <div className="text-center text-yellow-700 bg-yellow-50 border border-yellow-200 rounded p-6 max-w-xl mx-auto mt-8">
-                <h2 className="text-lg font-semibold mb-2">Bạn đã có yêu cầu chuyển phòng đang chờ xử lý hoặc đã được duyệt.</h2>
+                <h2 className="text-lg font-semibold mb-2">Bạn đã có yêu cầu chuyển phòng đang chờ xử lý.</h2>
                 <p>Vui lòng chờ quản lý xử lý yêu cầu hiện tại hoặc hủy yêu cầu đó trước khi tạo yêu cầu mới.</p>
                 <Button className="mt-4" onClick={() => navigate('/transfers')}>Xem các yêu cầu chuyển phòng của bạn</Button>
             </div>
@@ -400,25 +405,41 @@ const TransferRequestForm = () => {
     }
 
     return (
-        <div className="space-y-6 max-w-2xl mx-auto">
-            <div>
-                <Button variant="link" onClick={() => navigate(-1)} className="text-sm mb-4">
-                    <ArrowLeftIcon className="h-4 w-4 mr-1" /> Quay lại
-                </Button>
-                <h1 className="text-2xl font-semibold">Yêu cầu Chuyển phòng</h1>
-                <p className="mt-1 text-sm text-gray-600">Điền thông tin dưới đây để gửi yêu cầu chuyển sang phòng khác.</p>
-            </div>
+        <div className="space-y-6 max-w-2xl mx-auto">            <div>
+            <Button variant="link" onClick={() => navigate(-1)} className="text-sm mb-4">
+                <ArrowLeftIcon className="h-4 w-4 mr-1" /> Quay lại
+            </Button>
+            <h1 className="text-2xl font-semibold">
+                {isNewRegistration ? 'Đăng ký phòng ở' : 'Yêu cầu Chuyển phòng'}
+            </h1>
+            <p className="mt-1 text-sm text-gray-600">
+                {isNewRegistration
+                    ? 'Điền thông tin dưới đây để đăng ký phòng ở mới.'
+                    : 'Điền thông tin dưới đây để gửi yêu cầu chuyển sang phòng khác.'
+                }
+            </p>
+        </div>
 
-            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">
-                {/* Thông tin phòng hiện tại */}
+            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">                {/* Thông tin phòng hiện tại hoặc đăng ký mới */}
                 <div className='p-4 bg-gray-50 rounded-md border'>
-                    <p className='text-sm font-medium text-gray-700'>Phòng hiện tại của bạn:</p>
-                    <p className='text-lg font-semibold text-gray-900'>
-                        {currentRoom
-                            ? `Phòng ${currentRoom.number} (${currentRoom.building?.name || 'N/A'})`
-                            : 'Đang tải thông tin...'}
-                    </p>
-                </div>                {/* Lỗi chung */}
+                    {isNewRegistration ? (
+                        <>
+                            <p className='text-sm font-medium text-gray-700'>Tình trạng hiện tại:</p>
+                            <p className='text-lg font-semibold text-gray-900'>
+                                Bạn chưa được xếp phòng ở
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <p className='text-sm font-medium text-gray-700'>Phòng hiện tại của bạn:</p>
+                            <p className='text-lg font-semibold text-gray-900'>
+                                {currentRoom
+                                    ? `Phòng ${currentRoom.number} (${currentRoom.building?.name || 'N/A'})`
+                                    : 'Đang tải thông tin...'}
+                            </p>
+                        </>
+                    )}
+                </div>{/* Lỗi chung */}
                 {errors.general && (
                     <div className="rounded-md bg-red-50 p-4 mb-4">
                         <div className="flex">
@@ -537,11 +558,9 @@ const TransferRequestForm = () => {
                     disabled={isSubmitting}
                     error={errors.transferDate}
                     min={new Date().toISOString().split('T')[0]} // Không cho chọn ngày trong quá khứ
-                />
-
-                {/* Lý do chuyển phòng */}
+                />                {/* Lý do chuyển phòng hoặc đăng ký mới */}
                 <Textarea
-                    label="Lý do chuyển phòng *"
+                    label={isNewRegistration ? "Lý do đăng ký phòng này *" : "Lý do chuyển phòng *"}
                     id="reason"
                     name="reason"
                     rows={4}
@@ -550,7 +569,10 @@ const TransferRequestForm = () => {
                     onChange={handleChange}
                     disabled={isSubmitting}
                     error={errors.reason}
-                    placeholder="Nêu rõ lý do bạn muốn chuyển phòng..."
+                    placeholder={isNewRegistration
+                        ? "Nêu lý do bạn muốn đăng ký phòng này..."
+                        : "Nêu rõ lý do bạn muốn chuyển phòng..."
+                    }
                 />
 
                 {/* Nút Submit */}

@@ -143,6 +143,7 @@ const deleteTransferRequest = async (id) => {
  * @param {string|number} id - ID của yêu cầu cần phê duyệt
  * @returns {Promise<object>} Dữ liệu yêu cầu sau khi cập nhật
  */
+// #
 const approveTransferRequest = async (id) => {
     try {
         const response = await apiClient.put(`/api/transfers/${id}/status`, {
@@ -150,15 +151,12 @@ const approveTransferRequest = async (id) => {
         });
 
         if (response.data?.status === 'success') {
-            toast.success('Đã phê duyệt yêu cầu chuyển phòng thành công!');
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Phê duyệt yêu cầu thất bại.');
         }
     } catch (error) {
         console.error(`Lỗi service approveTransferRequest (${id}):`, error.response?.data || error.message);
-        const errorMessage = error.response?.data?.message || error.message || 'Phê duyệt yêu cầu thất bại.';
-        toast.error(errorMessage);
         if (error.response?.data?.errors) {
             throw error.response.data;
         }
@@ -178,15 +176,12 @@ const rejectTransferRequest = async (id) => {
         });
 
         if (response.data?.status === 'success') {
-            toast.success('Đã từ chối yêu cầu chuyển phòng thành công!');
             return response.data.data;
         } else {
             throw new Error(response.data?.message || 'Từ chối yêu cầu thất bại.');
         }
     } catch (error) {
         console.error(`Lỗi service rejectTransferRequest (${id}):`, error.response?.data || error.message);
-        const errorMessage = error.response?.data?.message || error.message || 'Từ chối yêu cầu thất bại.';
-        toast.error(errorMessage);
         if (error.response?.data?.errors) {
             throw error.response.data;
         }
