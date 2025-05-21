@@ -19,6 +19,7 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.2",
     "lodash-es": "^4.17.21",
+    "lucide-react": "^0.511.0",
     "react": "^18.2.0",
     "react-big-calendar": "^1.8.5",
     "react-chartjs-2": "^5.2.0",

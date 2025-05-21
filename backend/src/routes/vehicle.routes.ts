@@ -8,10 +8,9 @@ const vehicleController = new VehicleController();
 
 router.use(authMiddleware);
 
-// GET /api/vehicles - Lấy danh sách đăng ký xe (Admin/Staff xem tất cả)
+// GET /api/vehicles - Lấy danh sách đăng ký xe (Tất cả người dùng đều có thể truy cập, nhưng sẽ lọc dựa trên quyền)
 router.get(
     '/',
-    checkRole([Role.ADMIN, Role.STAFF]),
     vehicleController.getAllRegistrations
 );
 
@@ -34,10 +33,9 @@ router.put(
     vehicleController.updateRegistration
 );
 
-// DELETE /api/vehicles/:id - Xóa đăng ký xe (Chỉ Admin/Staff)
+// DELETE /api/vehicles/:id - Xóa đăng ký xe (Admin/Staff và sinh viên xóa xe của chính mình)
 router.delete(
     '/:id',
-    checkRole([Role.ADMIN, Role.STAFF]),
     vehicleController.deleteRegistration
 );
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { vehicleService } from '../../services/vehicle.service';
 import { studentService } from '../../services/student.service'; // Lấy tên chủ xe (nếu ownerId là studentId)
-// import { userService } from '../../services/user.service'; // Hoặc lấy user nếu ownerId là userId
+import { useAuth } from '../../contexts/AuthContext'; // Lấy thông tin user hiện tại
 import { Button, Input, Badge, Select, Tabs } from '../../components/shared';
 import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast';
 import { PlusIcon, PencilSquareIcon, TrashIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { useDebounce } from '../../hooks/useDebounce';
+import StudentVehicleInfo from '../../components/vehicles/StudentVehicleInfo';
 
 // Options loại xe
 const vehicleTypeOptions = [
@@ -63,6 +64,14 @@ const VehicleIndex = () => {
 
     // Notification effect when pending count changes
     const [notifyPending, setNotifyPending] = useState(false);
+
+    const { user } = useAuth(); // Lấy thông tin user hiện tại
+
+    // Xác định vai trò người dùng
+    const isAdmin = user?.role === 'ADMIN';
+    const isStaff = user?.role === 'STAFF';
+    const isStudent = user?.role === 'STUDENT';
+    const isAdminOrStaff = isAdmin || isStaff;
 
     // Watch for pending count changes
     useEffect(() => {
@@ -369,9 +378,11 @@ const VehicleIndex = () => {
             accessor: 'actions',
             Cell: ({ row }) => (
                 <div className="flex space-x-2 justify-center">
-                    <Button variant="icon" onClick={() => navigate(`/vehicles/${row.original.id}/edit`)} tooltip="Chỉnh sửa">
-                        <PencilSquareIcon className="h-5 w-5 text-yellow-600 hover:text-yellow-800" />
-                    </Button>
+                    {activeTab !== 'pending' && (
+                        <Button variant="icon" onClick={() => navigate(`/vehicles/${row.original.id}/edit`)} tooltip="Chỉnh sửa">
+                            <PencilSquareIcon className="h-5 w-5 text-yellow-600 hover:text-yellow-800" />
+                        </Button>
+                    )}
                     <Button variant="icon" onClick={() => handleDelete(row.original.id, row.original.licensePlate)} tooltip="Xóa">
                         <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
                     </Button>
@@ -467,125 +478,147 @@ const VehicleIndex = () => {
                 );
             },
         },
-    ], [recentlyApproved]);
+    ], [recentlyApproved]);    // Function để render giao diện cho sinh viên
+    const renderStudentView = () => {
+        const studentProfileId = user?.studentProfile?.id;
+
+        if (!studentProfileId) {
+            return (
+                <div className="text-red-600 bg-red-100 p-4 rounded text-center">
+                    Không tìm thấy thông tin sinh viên. Vui lòng cập nhật hồ sơ.
+                </div>
+            );
+        }
+
+        return <StudentVehicleInfo studentProfileId={studentProfileId} showActions={true} />;
+    };
+
+    // Function để render giao diện quản lý xe cho admin/staff
+    const renderAdminView = () => {
+        return (
+            <div className="space-y-4">
+                <div className="flex flex-wrap justify-between items-center gap-4">
+                    <h1 className="text-2xl font-semibold">Quản lý Xe đăng ký</h1>
+                    {/* Nút đăng ký xe cho sinh viên (dành cho Admin/Staff) */}
+                    <Button onClick={() => navigate('/vehicles/new')} icon={PlusIcon}>Đăng ký xe cho sinh viên</Button>
+                </div>
+
+                {/* Tab switcher */}
+                <div className="border-b border-gray-200">
+                    <nav className="-mb-px flex" aria-label="Tabs">
+                        <button
+                            onClick={() => handleTabChange('active')}
+                            className={`mr-2 py-2 px-4 font-medium text-sm border-b-2 ${activeTab === 'active'
+                                ? 'border-blue-500 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                        >
+                            Xe đã duyệt
+                        </button>
+                        <button
+                            onClick={() => handleTabChange('pending')}
+                            className={`py-2 px-4 font-medium text-sm border-b-2 ${activeTab === 'pending'
+                                ? 'border-blue-500 text-blue-600'
+                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                        >
+                            Chờ duyệt {pendingMeta.total > 0 && (
+                                <span className={`ml-1 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs ${notifyPending ? 'animate-pulse' : ''}`}>
+                                    {pendingMeta.total}
+                                </span>
+                            )}
+                        </button>
+                    </nav>
+                </div>
+
+                {activeTab === 'active' ? (
+                    <>
+                        {/* Bộ lọc - chỉ hiển thị cho tab xe đã duyệt */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
+                            <Input label="NO." id="parkingCardNo" name="parkingCardNo" placeholder="Nhập mã thẻ gửi xe" value={filters.parkingCardNo} onChange={handleFilterChange} />
+                            <Input label="Biển số" id="search" name="search" placeholder="30-B2-97369" value={filters.search} onChange={handleFilterChange} />
+                            <Select
+                                label="Loại xe"
+                                id="type"
+                                name="type"
+                                value={filters.type}
+                                onChange={handleFilterChange}
+                                options={vehicleTypeOptions}
+                            />
+                            <Select
+                                label="Trạng thái"
+                                id="status"
+                                name="status"
+                                value={filters.status}
+                                onChange={handleFilterChange}
+                                options={vehicleStatusOptions}
+                            />
+                        </div>
+
+                        {/* Bảng dữ liệu xe đã duyệt */}
+                        {isLoading ? (
+                            <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
+                        ) : error ? (
+                            <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
+                        ) : vehicles.length === 0 ? (
+                            <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
+                                Không tìm thấy xe nào đăng ký.
+                            </div>
+                        ) : (
+                            <PaginationTable
+                                columns={columns}
+                                data={vehicles}
+                                currentPage={currentPage}
+                                totalPages={meta.totalPages}
+                                onPageChange={handlePageChange}
+                                totalRecords={meta.total}
+                                recordsPerPage={meta.limit}
+                                showingText={`Hiển thị xe ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
+                                recordsText="xe"
+                                pageText="Trang"
+                            />
+                        )}
+                    </>
+                ) : (
+                    <>
+                        {/* Bảng dữ liệu các đăng ký chờ duyệt */}
+                        <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded p-4">
+                            <p className="text-yellow-800">
+                                <span className="font-medium">Đơn đăng ký chờ duyệt:</span> Danh sách này hiển thị các xe được sinh viên đăng ký và đang chờ duyệt. Nhấn "Chấp nhận" để duyệt đơn và tạo mã thẻ gửi xe.
+                            </p>
+                        </div>
+
+                        {isPendingLoading ? (
+                            <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
+                        ) : pendingError ? (
+                            <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {pendingError}</div>
+                        ) : pendingVehicles.length === 0 ? (
+                            <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
+                                Không có đơn đăng ký xe nào chờ duyệt.
+                            </div>
+                        ) : (
+                            <PaginationTable
+                                columns={pendingColumns}
+                                data={pendingVehicles}
+                                currentPage={pendingCurrentPage}
+                                totalPages={pendingMeta.totalPages}
+                                onPageChange={handlePendingPageChange}
+                                totalRecords={pendingMeta.total}
+                                recordsPerPage={pendingMeta.limit}
+                                showingText={`Hiển thị ${(pendingCurrentPage - 1) * pendingMeta.limit + 1} - ${Math.min(pendingCurrentPage * pendingMeta.limit, pendingMeta.total)} trên ${pendingMeta.total} đơn đăng ký chờ duyệt`}
+                                recordsText="đơn"
+                                pageText="Trang"
+                            />
+                        )}
+                    </>
+                )}
+            </div>
+        );
+    };
 
     return (
-        <div className="space-y-4">
-            <div className="flex flex-wrap justify-between items-center gap-4">
-                <h1 className="text-2xl font-semibold">Quản lý Xe đăng ký</h1>
-                {/* Nút đăng ký xe cho sinh viên (dành cho Admin/Staff) */}
-                <Button onClick={() => navigate('/vehicles/new')} icon={PlusIcon}>Đăng ký xe cho sinh viên</Button>
-            </div>
-
-            {/* Tab switcher */}
-            <div className="border-b border-gray-200">
-                <nav className="-mb-px flex" aria-label="Tabs">
-                    <button
-                        onClick={() => handleTabChange('active')}
-                        className={`mr-2 py-2 px-4 font-medium text-sm border-b-2 ${activeTab === 'active'
-                            ? 'border-blue-500 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                            }`}
-                    >
-                        Xe đã duyệt
-                    </button>
-                    <button
-                        onClick={() => handleTabChange('pending')}
-                        className={`py-2 px-4 font-medium text-sm border-b-2 ${activeTab === 'pending'
-                            ? 'border-blue-500 text-blue-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                            }`}
-                    >
-                        Chờ duyệt {pendingMeta.total > 0 && (
-                            <span className={`ml-1 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs ${notifyPending ? 'animate-pulse' : ''}`}>
-                                {pendingMeta.total}
-                            </span>
-                        )}
-                    </button>
-                </nav>
-            </div>
-
-            {activeTab === 'active' ? (
-                <>
-                    {/* Bộ lọc - chỉ hiển thị cho tab xe đã duyệt */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
-                        <Input label="NO." id="parkingCardNo" name="parkingCardNo" placeholder="Nhập mã thẻ gửi xe" value={filters.parkingCardNo} onChange={handleFilterChange} />
-                        <Input label="Biển số" id="search" name="search" placeholder="30-B2-97369" value={filters.search} onChange={handleFilterChange} />
-                        <Select
-                            label="Loại xe"
-                            id="type"
-                            name="type"
-                            value={filters.type}
-                            onChange={handleFilterChange}
-                            options={vehicleTypeOptions}
-                        />
-                        <Select
-                            label="Trạng thái"
-                            id="status"
-                            name="status"
-                            value={filters.status}
-                            onChange={handleFilterChange}
-                            options={vehicleStatusOptions}
-                        />
-                    </div>
-
-                    {/* Bảng dữ liệu xe đã duyệt */}
-                    {isLoading ? (
-                        <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
-                    ) : error ? (
-                        <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
-                    ) : vehicles.length === 0 ? (
-                        <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
-                            Không tìm thấy xe nào đăng ký.
-                        </div>
-                    ) : (
-                        <PaginationTable
-                            columns={columns}
-                            data={vehicles}
-                            currentPage={currentPage}
-                            totalPages={meta.totalPages}
-                            onPageChange={handlePageChange}
-                            totalRecords={meta.total}
-                            recordsPerPage={meta.limit}
-                            showingText={`Hiển thị xe ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
-                            recordsText="xe"
-                            pageText="Trang"
-                        />
-                    )}
-                </>
-            ) : (
-                <>
-                    {/* Bảng dữ liệu các đăng ký chờ duyệt */}
-                    <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded p-4">
-                        <p className="text-yellow-800">
-                            <span className="font-medium">Đơn đăng ký chờ duyệt:</span> Danh sách này hiển thị các xe được sinh viên đăng ký và đang chờ duyệt. Nhấn "Chấp nhận" để duyệt đơn và tạo mã thẻ gửi xe.
-                        </p>
-                    </div>
-
-                    {isPendingLoading ? (
-                        <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
-                    ) : pendingError ? (
-                        <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {pendingError}</div>
-                    ) : pendingVehicles.length === 0 ? (
-                        <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
-                            Không có đơn đăng ký xe nào chờ duyệt.
-                        </div>
-                    ) : (
-                        <PaginationTable
-                            columns={pendingColumns}
-                            data={pendingVehicles}
-                            currentPage={pendingCurrentPage}
-                            totalPages={pendingMeta.totalPages}
-                            onPageChange={handlePendingPageChange}
-                            totalRecords={pendingMeta.total}
-                            recordsPerPage={pendingMeta.limit}
-                            showingText={`Hiển thị ${(pendingCurrentPage - 1) * pendingMeta.limit + 1} - ${Math.min(pendingCurrentPage * pendingMeta.limit, pendingMeta.total)} trên ${pendingMeta.total} đơn đăng ký chờ duyệt`}
-                            recordsText="đơn"
-                            pageText="Trang"
-                        />
-                    )}
-                </>
-            )}
+        <div>
+            {isStudent ? renderStudentView() : renderAdminView()}
         </div>
     );
 };

@@ -29,6 +29,11 @@ const Tabs = ({ children, activeTab, onChange }) => {
       <div className="border-b border-gray-200" ref={tabsRef}>
         <nav className="flex -mb-px space-x-8 overflow-x-auto px-4" aria-label="Tabs">
           {childrenArray.map((child) => {
+            // Kiểm tra xem child.props có tồn tại và có id không
+            if (!child || !child.props || !child.props.id) {
+              return null; // Bỏ qua tab không hợp lệ
+            }
+
             const { id, label, icon: Icon } = child.props;
             const isActive = currentTab === id;
 
@@ -60,13 +65,18 @@ const Tabs = ({ children, activeTab, onChange }) => {
 
       {/* Tab panels */}
       <div className="mt-2">
-        {childrenArray.map((child) =>
-          cloneElement(child, {
+        {childrenArray.map((child) => {
+          // Kiểm tra xem child và child.props có tồn tại không
+          if (!child || !child.props || !child.props.id) {
+            return null; // Bỏ qua tab không hợp lệ
+          }
+
+          return cloneElement(child, {
             key: child.props.id,
             isActive: currentTab === child.props.id,
             onClick: () => handleTabClick(child.props.id)
-          })
-        )}
+          });
+        })}
       </div>
     </div>
   );

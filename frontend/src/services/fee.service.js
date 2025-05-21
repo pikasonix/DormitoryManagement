@@ -8,6 +8,26 @@ export const feeService = {  // Get all fee rates with pagination and filters
         } catch (error) {
             throw error.response?.data || { message: 'Failed to fetch fee rates' };
         }
+    },    // Get current active parking fee for a specific vehicle type
+    getParkingFee: async (vehicleType) => {
+        try {
+            const response = await apiClient.get('/fees', {
+                params: {
+                    feeType: 'PARKING',
+                    vehicleType: vehicleType,
+                    isActive: true,
+                    limit: 1
+                }
+            });
+            const data = response.data?.data;
+            if (data?.feeRates && data.feeRates.length > 0) {
+                return data.feeRates[0]; // Return the first matching active fee
+            }
+            return null;
+        } catch (error) {
+            console.error('Error fetching parking fee:', error);
+            return null;
+        }
     },
     // Get specific fee rate by ID
     getFeeRateById: async (id) => {

@@ -13,11 +13,31 @@ export class VehicleController {
     async getAllRegistrations(req: Request, res: Response, next: NextFunction) {
         try {
             const { studentProfileId, vehicleType, isActive, licensePlate, parkingCardNo, hasParkingCardNo, page, limit } = req.query;
+            const requesterUserId = req.user?.userId;
+            const requesterRole = req.user?.role;
 
             const options: Prisma.VehicleRegistrationFindManyArgs = { where: {} };
 
-            // Xây dựng bộ lọc
-            if (studentProfileId) options.where!.studentProfileId = parseInt(studentProfileId as string);
+            // Nếu là sinh viên, chỉ cho xem xe của chính mình
+            if (requesterRole === 'STUDENT') {
+                const studentProfile = await prisma.studentProfile.findUnique({
+                    where: { userId: requesterUserId },
+                    select: { id: true }
+                });
+
+                if (!studentProfile) {
+                    return next(new Error('Không tìm thấy hồ sơ sinh viên của bạn.'));
+                }
+
+                // Luôn filter theo studentProfileId của chính sinh viên đó
+                options.where!.studentProfileId = studentProfile.id;
+            }
+            // Admin/Staff có thể xem tất cả hoặc lọc theo studentProfileId
+            else if (requesterRole === 'ADMIN' || requesterRole === 'STAFF') {
+                if (studentProfileId) options.where!.studentProfileId = parseInt(studentProfileId as string);
+            }
+
+            // Các bộ lọc khác
             if (vehicleType && Object.values(VehicleType).includes(vehicleType as VehicleType)) {
                 options.where!.vehicleType = vehicleType as VehicleType;
             } else if (vehicleType) {
@@ -56,13 +76,38 @@ export class VehicleController {
         } catch (error) {
             next(error);
         }
-    }
-
-    async getRegistrationById(req: Request, res: Response, next: NextFunction) {
+    } async getRegistrationById(req: Request, res: Response, next: NextFunction) {
         try {
             const id = parseInt(req.params.id);
-            // Cần kiểm tra quyền xem ở đây (Admin/Staff hoặc chính sinh viên đó)
+            const requesterUserId = req.user?.userId;
+            const requesterRole = req.user?.role;
+
+            // Lấy thông tin xe trước
             const registration = await vehicleService.findById(id); // Service xử lý not found
+
+            // Kiểm tra xem có tìm thấy xe không
+            if (!registration) {
+                return next(new Error('Không tìm thấy thông tin xe.'));
+            }
+
+            // Kiểm tra quyền xem chi tiết
+            if (requesterRole === 'STUDENT') {
+                // Nếu là sinh viên, chỉ xem được xe của chính mình
+                const studentProfile = await prisma.studentProfile.findUnique({
+                    where: { userId: requesterUserId },
+                    select: { id: true }
+                });
+
+                if (!studentProfile) {
+                    return next(new Error('Không tìm thấy hồ sơ sinh viên của bạn.'));
+                }
+
+                // Nếu không phải xe của họ, từ chối truy cập
+                if (registration.studentProfileId !== studentProfile.id) {
+                    return next(new Error('Bạn không có quyền xem thông tin xe này.'));
+                }
+            }
+
             res.status(200).json({
                 status: 'success',
                 data: registration
@@ -170,12 +215,46 @@ export class VehicleController {
         } catch (error) {
             next(error); // Chuyển lỗi từ service hoặc validation
         }
-    }
-
-    // Admin/Staff xóa đăng ký xe
+    }    // Admin/Staff xóa đăng ký xe hoặc sinh viên hủy đăng ký xe chờ duyệt của chính mình
     async deleteRegistration(req: Request, res: Response, next: NextFunction) {
         try {
             const id = parseInt(req.params.id);
+            const requesterUserId = req.user?.userId;
+            const requesterRole = req.user?.role;
+
+            // Kiểm tra quyền xóa
+            if (requesterRole === 'STUDENT') {
+                // Nếu là sinh viên, kiểm tra xem xe có phải của họ không
+                const studentProfile = await prisma.studentProfile.findUnique({
+                    where: { userId: requesterUserId },
+                    select: { id: true }
+                });
+
+                if (!studentProfile) {
+                    return next(new Error('Không tìm thấy hồ sơ sinh viên của bạn.'));
+                }
+
+                // Kiểm tra xe có thuộc sở hữu của sinh viên này không
+                const vehicle = await prisma.vehicleRegistration.findUnique({
+                    where: { id },
+                    select: { studentProfileId: true, isActive: true, parkingCardNo: true }
+                });
+
+                if (!vehicle) {
+                    return next(new Error('Không tìm thấy thông tin xe.'));
+                }
+
+                if (vehicle.studentProfileId !== studentProfile.id) {
+                    return next(new Error('Bạn không có quyền xóa thông tin xe này.'));
+                }
+
+                // Sinh viên chỉ được xóa xe đang chờ duyệt (isActive = false và chưa có parkingCardNo)
+                if (vehicle.isActive || vehicle.parkingCardNo) {
+                    return next(new Error('Bạn chỉ có thể hủy đăng ký xe đang chờ duyệt.'));
+                }
+            }
+
+            // Thực hiện xóa
             const { oldImagePaths } = await vehicleService.delete(id); // Service xử lý not found và transaction xóa
 
             // Xóa file ảnh vật lý cũ

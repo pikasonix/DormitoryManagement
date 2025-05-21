@@ -38,6 +38,7 @@ import UtilityReadingCreate from './pages/utilities/UtilityReadingCreate';
 import UtilityReadingEdit from './pages/utilities/UtilityReadingEdit';
 import VehicleIndex from './pages/vehicles/VehicleIndex';
 import VehicleForm from './pages/vehicles/VehicleForm';
+import StudentVehicleView from './pages/vehicles/StudentVehicleView';
 import TransferIndex from './pages/transfers/TransferIndex';
 import TransferRequestForm from './pages/transfers/TransferRequestForm';
 import NotFound from './pages/NotFound';
@@ -60,9 +61,7 @@ function App() {
       {/* <Route path="/reset-password/:token" element={<ResetPassword />} /> */}
 
       {/* Protected Routes - Yêu cầu đăng nhập */}
-      <Route element={<PrivateRoute />}> {/* Wrapper Layout và kiểm tra đăng nhập */}
-
-        {/* Route mặc định sau khi đăng nhập */}
+      <Route element={<PrivateRoute />}> {/* Wrapper Layout và kiểm tra đăng nhập */}        {/* Route mặc định sau khi đăng nhập */}
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
 
@@ -147,12 +146,17 @@ function App() {
           <Route path=":id/edit" element={<UtilityReadingForm />} />
           <Route path="create" element={<UtilityReadingCreate />} />
           <Route path="edit/:id" element={<UtilityReadingEdit />} />
-        </Route>        {/* --- VEHICLE ROUTES --- */}
-        <Route path="/vehicles">
-          <Route index element={<StaffRoute><VehicleIndex /></StaffRoute>} />
+        </Route>        {/* --- VEHICLE ROUTES --- */}        <Route path="/vehicles">
+          <Route index element={
+            <ProfileRouter
+              studentComponent={<VehicleIndex />}
+              staffComponent={<VehicleIndex />}
+            />
+          } />
           <Route path="register" element={<VehicleForm mode="create" />} />
           <Route path=":id/edit" element={<StaffRoute><VehicleForm mode="edit" /></StaffRoute>} />
           <Route path="new" element={<StaffRoute><VehicleForm mode="create" /></StaffRoute>} />
+          <Route path="student/:id?" element={<VehicleIndex />} />
         </Route>
 
         {/* --- FEE RATE ROUTES --- */}

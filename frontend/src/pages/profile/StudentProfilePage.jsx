@@ -13,7 +13,8 @@ import {
     HomeIcon,
     IdentificationIcon,
     PhoneIcon,
-    KeyIcon
+    KeyIcon,
+    TruckIcon
 } from '@heroicons/react/24/outline';
 import SecuritySettings from '../../components/profile/SecuritySettings';
 
@@ -97,17 +98,16 @@ const StudentProfilePage = () => {
                 {(value !== null && value !== undefined && value !== '') ? value : <span className="text-gray-400">-</span>}
             </dd>
         </div>
-    );
-
-    // Get avatar URL
+    );    // Get avatar URL
     const getAvatarUrl = (user) => {
         const baseUrl = import.meta.env.VITE_UPLOADS_URL || '';
         if (user?.avatar?.path) {
             const path = user.avatar.path;
             return path.startsWith('http') ? path : `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
         }
-        return '/src/assets/default-avatar.png';
-    };    // Render basic information tab
+        // Sử dụng đường dẫn tương đối hoặc import trực tiếp
+        return new URL('/src/assets/default-avatar.png', import.meta.url).href;
+    };// Render basic information tab
     const renderBasicInfo = (profile) => (
         <dl className="divide-y divide-gray-100">
             <div className="px-4 pt-4 pb-2 sm:px-6">
@@ -272,13 +272,15 @@ const StudentProfilePage = () => {
             <div className="bg-white shadow rounded-lg overflow-hidden">
                 {/* Header with avatar and basic info */}
                 <div className="px-4 py-5 sm:px-6 flex flex-wrap justify-between items-center gap-4 border-b border-gray-200 bg-gray-50">
-                    <div className="flex items-center gap-4">
-                        <img
-                            src={avatarUrl}
-                            alt={`Avatar của ${profile.fullName}`}
-                            className="h-20 w-20 rounded-full object-cover ring-2 ring-offset-2 ring-indigo-500"
-                            onError={(e) => { e.target.onerror = null; e.target.src = '/src/assets/default-avatar.png' }}
-                        />
+                    <div className="flex items-center gap-4">                        <img
+                        src={avatarUrl}
+                        alt={`Avatar của ${profile.fullName}`}
+                        className="h-20 w-20 rounded-full object-cover ring-2 ring-offset-2 ring-indigo-500"
+                        onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = new URL('/src/assets/default-avatar.png', import.meta.url).href;
+                        }}
+                    />
                         <div>
                             <h2 className="text-xl font-semibold text-gray-900">{profile.fullName}</h2>
                             <p className="text-sm text-gray-500 flex items-center mt-1">
@@ -312,9 +314,28 @@ const StudentProfilePage = () => {
                     </Tab>
                     <Tab id="dormitory" label="Ký túc xá" icon={HomeIcon}>
                         {renderDormitoryInfo(profile)}
-                    </Tab>
-                    <Tab id="family" label="Gia đình" icon={IdentificationIcon}>
+                    </Tab>                    <Tab id="family" label="Gia đình" icon={IdentificationIcon}>
                         {renderFamilyInfo(profile)}
+                    </Tab>                    <Tab id="vehicles" label="Phương tiện" icon={TruckIcon}>
+                        <div className="px-4 py-5 sm:p-6">
+                            <div className="bg-white shadow rounded-lg overflow-hidden">
+                                <div className="px-4 py-5 border-b border-gray-200">
+                                    <div className="flex justify-between items-center">
+                                        <h3 className="text-lg font-medium text-gray-900">Thông tin phương tiện</h3>
+                                        <Button
+                                            variant="primary"
+                                            size="sm"
+                                            onClick={() => navigate('/vehicles')}
+                                        >
+                                            Xem chi tiết
+                                        </Button>
+                                    </div>
+                                    <p className="mt-2 text-sm text-gray-500">
+                                        Quản lý thông tin phương tiện của bạn đã đăng ký trong ký túc xá.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </Tab>
                     <Tab id="security" label="Bảo mật" icon={KeyIcon}>
                         <div className="px-4 py-5 sm:p-6">

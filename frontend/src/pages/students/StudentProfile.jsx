@@ -13,7 +13,8 @@ import {
     AcademicCapIcon,
     HomeIcon,
     IdentificationIcon,
-    PhoneIcon
+    PhoneIcon,
+    TruckIcon
 } from '@heroicons/react/24/outline';
 
 // Helper format date
@@ -362,6 +363,19 @@ const StudentProfile = ({ overrideStudent = null, hideNavigation = false }) => {
                     </Tab>
                     <Tab id="family" label="Gia đình" icon={IdentificationIcon}>
                         {renderFamilyInfo(profile)}
+                    </Tab>
+                    <Tab id="vehicles" label="Phương tiện" icon={TruckIcon}>
+                        <div className="mt-4 p-4 bg-white shadow rounded-lg">
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-medium text-gray-900">Thông tin phương tiện</h3>
+                                <Link to={`/vehicles/student/${profile.id}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-800">
+                                    Xem chi tiết
+                                </Link>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                                Xem chi tiết thông tin các phương tiện đã đăng ký của sinh viên.
+                            </p>
+                        </div>
                     </Tab>
                 </Tabs>
             </div>

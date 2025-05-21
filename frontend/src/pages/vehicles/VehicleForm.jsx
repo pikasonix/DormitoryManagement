@@ -289,14 +289,8 @@ const VehicleForm = ({ mode = 'create' }) => {
                 } else {
                     // Sinh viên tự đăng ký - hiển thị thông báo khác
                     toast.success('Đăng ký xe thành công! Vui lòng đợi quản trị viên duyệt đăng ký của bạn.');
-                }
-
-                // Quay lại trang phù hợp theo vai trò
-                if (isAdmin) {
-                    navigate('/vehicles'); // Admin quay lại trang quản lý xe
-                } else {
-                    navigate('/profile'); // Sinh viên quay lại trang profile
-                }
+                }                // Luôn điều hướng về trang quản lý xe sau khi đăng ký
+                navigate('/vehicles');
             }
 
         } catch (err) {

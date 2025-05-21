@@ -12,11 +12,8 @@ const MaintenanceRequestForm = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    title: '',
     description: '',
-    // studentId và roomId có thể lấy từ context user hoặc để backend tự xử lý
-    // studentId: user?.profile?.id || '', // Lấy từ context nếu cần
-    // roomId: user?.profile?.roomId || '', // Lấy từ context nếu cần
+    roomId: user?.studentProfile?.roomId || '', // Lấy roomId từ thông tin student profile
   });
   const [images, setImages] = useState([]); // Mảng các file ảnh
   const [imagePreviews, setImagePreviews] = useState([]); // Mảng URL preview
@@ -80,8 +77,12 @@ const MaintenanceRequestForm = () => {
     setErrors({});
 
     // --- Validation ---
-    if (!formData.title.trim()) { setErrors({ title: "Vui lòng nhập tiêu đề." }); setIsSubmitting(false); return; }
     if (!formData.description.trim()) { setErrors({ description: "Vui lòng mô tả sự cố." }); setIsSubmitting(false); return; }
+    if (!formData.roomId && !user?.studentProfile?.roomId) {
+      toast.error("Không tìm thấy thông tin phòng. Vui lòng liên hệ quản lý.");
+      setIsSubmitting(false);
+      return;
+    }
     // --- End Validation ---
 
     try {
@@ -107,17 +108,24 @@ const MaintenanceRequestForm = () => {
 
       // 2. Chuẩn bị payload cho API tạo request
       const payload = {
-        ...formData,
-        // Backend có thể tự lấy studentId/roomId từ user đang login
-        // studentId: user?.profile?.id, // Chỉ gửi nếu backend yêu cầu
-        // roomId: user?.profile?.roomId, // Chỉ gửi nếu backend yêu cầu
+        title: formData.description.substring(0, 100), // Tự động lấy 100 ký tự đầu từ mô tả làm tiêu đề
+        issue: formData.description, // Đổi từ description sang issue theo yêu cầu của API
+        studentId: user?.studentProfile?.id, // Gửi studentId đến server
+        roomId: formData.roomId || user?.studentProfile?.roomId, // Đảm bảo gửi roomId
         images: uploadedImageIds, // Mảng các ID ảnh đã upload
       };
+
+      // Kiểm tra nếu không có roomId
+      if (!payload.roomId) {
+        throw new Error('Không tìm thấy thông tin phòng. Vui lòng liên hệ quản lý.');
+      }
+
+      console.log("Payload gửi đi:", payload); // Log để debug
 
       // 3. Gọi API tạo request
       await maintenanceService.createMaintenanceRequest(payload);
       toast.success('Đã gửi yêu cầu sửa chữa thành công!');
-      navigate('/profile'); // Hoặc trang "Yêu cầu của tôi"
+      navigate('/maintenance'); // Quay lại trang danh sách yêu cầu bảo trì
 
     } catch (err) {
       toast.dismiss('upload-maintenance'); // Đảm bảo tắt loading toast
@@ -152,22 +160,12 @@ const MaintenanceRequestForm = () => {
         <div className='p-4 bg-indigo-50 rounded-md border border-indigo-200'>
           <p className='text-sm font-medium text-indigo-800'>Yêu cầu cho phòng:</p>
           <p className='text-lg font-semibold text-indigo-900'>
-            Phòng {user?.profile?.roomId ? `XXX (Tòa YYY)` : 'Chưa xác định'} {/* TODO: Lấy tên phòng/tòa */}
+            {user?.studentProfile?.room ?
+              `Phòng ${user.studentProfile.room.number} (${user.studentProfile.room.building?.name || 'Chưa xác định tòa nhà'})` :
+              'Chưa xác định phòng'}
           </p>
-          <p className='text-xs text-indigo-700'>Nếu thông tin phòng không đúng, vui lòng liên hệ quản lý.</p>
         </div>
 
-        <Input
-          label="Tiêu đề sự cố *"
-          id="title"
-          name="title"
-          value={formData.title}
-          onChange={handleChange}
-          required
-          disabled={isSubmitting}
-          error={errors.title}
-          placeholder="Ví dụ: Vòi nước bị rò rỉ, Bóng đèn cháy, Điều hòa không lạnh,..."
-        />
         <Textarea
           label="Mô tả chi tiết *"
           id="description"
