@@ -429,15 +429,6 @@ const RoomIndex = () => {
           ) : (
             <p className="px-6 py-4 text-sm text-gray-500">Không có sinh viên khác trong phòng.</p>
           )}
-
-          {/* Add debug information during development */}
-          {import.meta.env.DEV && studentRoommates.length === 0 && (
-            <div className="px-6 py-2 text-xs text-orange-700 bg-orange-50">
-              <strong>Debug:</strong> Không tìm thấy sinh viên cùng phòng.
-              Kiểm tra lại API hoặc xác nhận phòng này có sinh viên khác.
-              {studentProfile?.roomId ? ` (Room ID: ${studentProfile.roomId})` : ' (No room ID found)'}
-            </div>
-          )}
         </div>
 
         <div className="px-4 py-3 bg-gray-50 text-right sm:px-6">
