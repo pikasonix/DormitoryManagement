@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import StaffRoute from './components/StaffRoute';
+import StudentOrStaffRoute from './components/StudentOrStaffRoute';
 
 // Import Layouts
 import DashboardLayout from './layouts/DashboardLayout'; // Chỉ cần import 1 lần
@@ -119,12 +120,10 @@ function App() {
              <Route path="new" element={<AmenityForm />} />
              <Route path=":id/edit" element={<AmenityForm />} />
              */}
-        </Route>
-
-        {/* --- MAINTENANCE ROUTES --- */}
+        </Route>        {/* --- MAINTENANCE ROUTES --- */}
         <Route path="/maintenance">
-          <Route index element={<StaffRoute><MaintenanceIndex /></StaffRoute>} />
-          <Route path="request" element={<MaintenanceRequestForm />} />
+          <Route index element={<StudentOrStaffRoute><MaintenanceIndex /></StudentOrStaffRoute>} />
+          <Route path="request" element={<StudentOrStaffRoute><MaintenanceRequestForm /></StudentOrStaffRoute>} />
           <Route path=":id/edit" element={<StaffRoute><MaintenanceForm /></StaffRoute>} />
         </Route>
 

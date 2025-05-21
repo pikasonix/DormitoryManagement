@@ -8,10 +8,9 @@ const maintenanceController = new MaintenanceController();
 
 router.use(authMiddleware);
 
-// GET /api/maintenances - Lấy danh sách yêu cầu (Admin/Staff xem tất cả)
+// GET /api/maintenances - Lấy danh sách yêu cầu (Admin/Staff xem tất cả, Student xem của mình)
 router.get(
     '/',
-    checkRole([Role.ADMIN, Role.STAFF]),
     maintenanceController.getAllMaintenances
 );
 
@@ -34,10 +33,10 @@ router.put(
     maintenanceController.updateMaintenance
 );
 
-// DELETE /api/maintenances/:id - Xóa yêu cầu (Chỉ Admin/Staff)
+// DELETE /api/maintenances/:id - Xóa yêu cầu (Tất cả các vai trò, controller sẽ kiểm tra quyền)
 router.delete(
     '/:id',
-    checkRole([Role.ADMIN, Role.STAFF]),
+    checkRole([Role.ADMIN, Role.STAFF, Role.STUDENT]),
     maintenanceController.deleteMaintenance
 );
 

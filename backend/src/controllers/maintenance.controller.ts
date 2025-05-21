@@ -1,26 +1,53 @@
 import { Request, Response, NextFunction } from 'express';
 import { MaintenanceService } from '../services/maintenance.service';
 import { deleteFile } from '../services/file.service'; // Import hàm xóa file
-import { PrismaClient, Prisma, MaintenanceStatus } from '@prisma/client'; // Import PrismaClient, Prisma và Enum
+import { PrismaClient, Prisma, MaintenanceStatus, Role } from '@prisma/client'; // Import PrismaClient, Prisma và Enum
 
 const prisma = new PrismaClient(); // Initialize PrismaClient
 
 const maintenanceService = new MaintenanceService();
 
 export class MaintenanceController {
-
     async getAllMaintenances(req: Request, res: Response, next: NextFunction) {
         try {
             // Lấy các tham số lọc từ query string
             const { roomId, roomNumber, buildingName, status, assignedToId, buildingId, page, limit, id } = req.query;
 
-            console.log('[API] Maintenance filter params:', { roomId, roomNumber, buildingName, status, assignedToId, page, limit, id });
+            // Get user info and role from request object
+            const userId = req.user?.userId;
+            const userRole = req.user?.role;
+
+            console.log('[API] Maintenance filter params:', { roomId, roomNumber, buildingName, status, assignedToId, page, limit, id, userRole });
 
             // Phân trang
             const pageNum = parseInt(page as string) || 1;
             const limitNum = parseInt(limit as string) || 10;
 
             const options: Prisma.MaintenanceFindManyArgs = { where: {} };
+
+            // If user is a STUDENT, only show their maintenance requests
+            if (userRole === 'STUDENT' && userId) {
+                // Find student's roomId if not provided in query
+                if (!roomId) {
+                    const studentProfile = await prisma.studentProfile.findUnique({
+                        where: { userId },
+                        select: { roomId: true }
+                    });
+
+                    if (studentProfile?.roomId) {
+                        // Filter by student's room
+                        options.where!.roomId = studentProfile.roomId;
+                    } else {
+                        // Student has no room, return empty results
+                        return res.status(200).json({
+                            status: 'success',
+                            results: 0,
+                            total: 0,
+                            data: []
+                        });
+                    }
+                }
+            }
 
             // Xây dựng điều kiện lọc
             if (id) options.where!.id = parseInt(id as string);
@@ -299,11 +326,55 @@ export class MaintenanceController {
         } catch (error) {
             next(error);
         }
-    }
-
-    async deleteMaintenance(req: Request, res: Response, next: NextFunction) {
+    } async deleteMaintenance(req: Request, res: Response, next: NextFunction) {
         try {
             const id = parseInt(req.params.id);
+            const user = req.user;
+            if (!user) {
+                return res.status(401).json({ status: 'error', message: 'Người dùng chưa đăng nhập.' });
+            }
+
+            // Check if the maintenance request exists first
+            const existingRequest = await prisma.maintenance.findUnique({
+                where: { id },
+                include: {
+                    reportedBy: true
+                }
+            });
+
+            if (!existingRequest) {
+                return res.status(404).json({
+                    status: 'error',
+                    message: 'Yêu cầu bảo trì không tồn tại.'
+                });
+            }
+
+            // Permission check: 
+            // 1. Admin/Staff can delete any request
+            // 2. Students can only delete their own requests in PENDING status
+            if (user.role === Role.STUDENT) {                // If student is trying to delete
+                const studentProfile = await prisma.studentProfile.findUnique({
+                    where: { userId: user.userId }
+                });
+
+                // Check if it's their own request - reportedById is already the userId
+                if (!studentProfile || existingRequest.reportedById !== user.userId) {
+                    return res.status(403).json({
+                        status: 'error',
+                        message: 'Bạn không có quyền xóa yêu cầu bảo trì này.'
+                    });
+                }
+
+                // Check if request is in PENDING status
+                if (existingRequest.status !== MaintenanceStatus.PENDING) {
+                    return res.status(403).json({
+                        status: 'error',
+                        message: 'Bạn chỉ có thể xóa yêu cầu bảo trì ở trạng thái Chờ Xử Lý.'
+                    });
+                }
+            }
+
+            // If we get here, user has permission to delete
             const { oldImagePaths } = await maintenanceService.delete(id);
 
             // Xóa file ảnh vật lý cũ sau khi xóa DB thành công
@@ -312,7 +383,6 @@ export class MaintenanceController {
             } else if (oldImagePaths.length > 0) {
                 console.warn(`[MaintenanceController] deleteFile function not available, cannot delete maintenance images.`);
             }
-
 
             res.status(200).json({
                 status: 'success',

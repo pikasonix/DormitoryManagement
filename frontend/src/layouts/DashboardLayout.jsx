@@ -85,7 +85,7 @@ const DashboardLayout = () => {
       { name: 'Quản lý phòng ở', href: '/rooms', icon: RectangleGroupIcon, roles: ['ADMIN', 'STAFF', 'STUDENT'] },
       { name: 'Tiện nghi KTX', href: '/amenities', icon: Cog6ToothIcon, roles: ['ADMIN', 'STAFF'] },
       { name: 'Quản lý bảo trì', href: '/maintenance', icon: WrenchScrewdriverIcon, roles: ['ADMIN', 'STAFF'] },
-      { name: 'Yêu cầu sửa chữa', href: '/maintenance/request', icon: WrenchScrewdriverIcon, roles: ['STUDENT'] }, { name: 'Quản lý hóa đơn', href: '/invoices', icon: DocumentTextIcon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Yêu cầu sửa chữa', href: '/maintenance', icon: WrenchScrewdriverIcon, roles: ['STUDENT'] }, { name: 'Quản lý hóa đơn', href: '/invoices', icon: DocumentTextIcon, roles: ['ADMIN', 'STAFF'] },
       { name: 'Quản lý thanh toán', href: '/payments', icon: CurrencyDollarIcon, roles: ['ADMIN', 'STAFF'] },
       { name: 'Quản lý đơn giá', href: '/fees', icon: CurrencyDollarIcon, roles: ['ADMIN', 'STAFF'] },
       { name: 'Điện nước', href: '/utilities', icon: CalculatorIcon, roles: ['ADMIN', 'STAFF'] },
@@ -96,15 +96,15 @@ const DashboardLayout = () => {
 
     if (!user || !user.role) return [];
     return allNavItems.filter(item => item.roles.includes(user.role));
-  }, [user]); // Phụ thuộc vào user
+  }, [user]);
 
-  // --- Hàm xử lý Logout (Giữ nguyên, đã tốt) ---
+  // --- Hàm xử lý Logout ---
   const handleLogout = () => {
     setIsProfileOpen(false);
     logout();
   };
 
-  // --- Cập nhật lại hàm getAvatarUrl để xử lý đúng yêu cầu ---
+  // --- Cập nhật lại hàm getAvatarUrl ---
   const getAvatarUrl = () => {
     // Nếu user có avatarUrl là một đường link hoàn chỉnh (bắt đầu với http/https), sử dụng trực tiếp
     if (user?.avatarUrl && typeof user.avatarUrl === 'string' && user.avatarUrl.trim() !== '') {
@@ -140,12 +140,6 @@ const DashboardLayout = () => {
   // --- Render Layout ---
   return (
     <div className="min-h-screen bg-gray-100"> {/* Đổi nền sang gray-100 cho dịu mắt hơn */}
-      {/* Background pattern có thể giữ hoặc bỏ tùy ý */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none opacity-5"
-        style={{ /* style của bạn */ }}
-      />
-
       <div className="relative z-10 flex flex-col lg:flex-row min-h-screen"> {/* Thêm min-h-screen */}
 
         {/* --- Sidebar Desktop (fixed) --- */}
