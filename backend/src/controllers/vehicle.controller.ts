@@ -10,10 +10,9 @@ const prisma = new PrismaClient();
 const vehicleService = new VehicleService();
 
 export class VehicleController {
-
     async getAllRegistrations(req: Request, res: Response, next: NextFunction) {
         try {
-            const { studentProfileId, vehicleType, isActive, licensePlate, parkingCardNo, page, limit } = req.query;
+            const { studentProfileId, vehicleType, isActive, licensePlate, parkingCardNo, hasParkingCardNo, page, limit } = req.query;
 
             const options: Prisma.VehicleRegistrationFindManyArgs = { where: {} };
 
@@ -27,6 +26,15 @@ export class VehicleController {
             if (isActive !== undefined) options.where!.isActive = isActive === 'true';
             if (licensePlate) options.where!.licensePlate = { contains: licensePlate as string, mode: 'insensitive' }; // Tìm kiếm biển số
             if (parkingCardNo) options.where!.parkingCardNo = parkingCardNo as string;
+
+            // Lọc xe có hoặc không có parkingCardNo
+            if (hasParkingCardNo !== undefined) {
+                if (hasParkingCardNo === 'true') {
+                    options.where!.parkingCardNo = { not: null };
+                } else {
+                    options.where!.parkingCardNo = null;
+                }
+            }
 
             // Phân trang
             const pageNum = parseInt(page as string) || 1;
@@ -109,10 +117,9 @@ export class VehicleController {
                 vehicleType: vehicleType as VehicleType,
                 licensePlate,
                 startDate, // Service sẽ chuyển thành Date
-                brand, model, color, notes,
-                // Chỉ Admin/Staff mới được set các trường này khi tạo?
+                brand, model, color, notes,                // Chỉ Admin/Staff mới được set các trường này khi tạo
                 parkingCardNo: (requesterRole !== 'STUDENT' ? parkingCardNo : undefined),
-                isActive: (requesterRole !== 'STUDENT' ? isActive : true), // Sinh viên tự đăng ký thì mặc định active
+                isActive: (requesterRole !== 'STUDENT' ? (isActive !== undefined ? isActive : true) : false), // Sinh viên tự đăng ký thì mặc định inactive (false) để đợi duyệt
                 endDate: (requesterRole !== 'STUDENT' ? endDate : undefined),
                 imageIds: imageIds ? (Array.isArray(imageIds) ? imageIds.map(Number) : [Number(imageIds)]) : undefined
             };

@@ -56,7 +56,8 @@ const VehicleForm = ({ mode = 'create' }) => {
         // ownerId sẽ được xử lý ở backend hoặc lấy từ user context khi tạo
         type: 'MOTORBIKE', // Mặc định
         licensePlate: '',
-        model: '',
+        brand: '', // Thêm trường hãng xe
+        model: '', // Đổi thành chỉ lưu model
         color: '',
         status: 'active', // Mặc định khi tạo/sửa
         studentId: '', // Thêm mã số sinh viên cho admin tạo xe cho sinh viên
@@ -80,10 +81,28 @@ const VehicleForm = ({ mode = 'create' }) => {
             setIsLoading(true);
             vehicleService.getVehicleById(id)
                 .then(data => {
+                    // Nếu backend trả về model có thể chứa cả hãng xe và model
+                    // Ta cần tách ra thành brand và model nếu có thể
+                    let brandValue = '';
+                    let modelValue = '';
+
+                    if (data.model) {
+                        // Nếu model có định dạng "Brand Model", cố gắng tách ra
+                        const modelParts = data.model.split(' ');
+                        if (modelParts.length > 1) {
+                            brandValue = modelParts[0]; // Lấy từ đầu tiên làm brand
+                            modelValue = modelParts.slice(1).join(' '); // Phần còn lại làm model
+                        } else {
+                            // Nếu không tách được, gán toàn bộ vào một trong hai trường
+                            modelValue = data.model;
+                        }
+                    }
+
                     setFormData({
                         type: data.vehicleType || 'MOTORBIKE', // Đúng trường backend trả về
                         licensePlate: data.licensePlate || '',
-                        model: data.model || '',
+                        brand: data.brand || brandValue, // Ưu tiên lấy từ backend nếu có
+                        model: data.model || modelValue,
                         color: data.color || '',
                         status: data.isActive === false ? 'inactive' : 'active', // Chuyển đổi từ isActive
                         studentId: data.studentProfile?.studentId || '', // Nếu cần hiển thị mã SV
@@ -161,11 +180,29 @@ const VehicleForm = ({ mode = 'create' }) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSaving(true);
-        setErrors({});        // --- Validation ---
+        setErrors({});
+        // --- Validation ---
         if (!formData.type) { /* ... */ }
-        if (!formData.licensePlate.trim()) { setErrors({ licensePlate: "Vui lòng nhập biển số xe." }); setIsSaving(false); return; }
-        if (!formData.model.trim()) { setErrors({ model: "Vui lòng nhập hãng/model xe." }); setIsSaving(false); return; }
-        if (!formData.color.trim()) { setErrors({ color: "Vui lòng nhập màu xe." }); setIsSaving(false); return; }
+        if (!formData.licensePlate.trim() && !isEditMode) {
+            setErrors({ licensePlate: "Vui lòng nhập biển số xe." });
+            setIsSaving(false);
+            return;
+        }
+        if (!formData.brand.trim()) {
+            setErrors({ brand: "Vui lòng nhập hãng xe." });
+            setIsSaving(false);
+            return;
+        }
+        if (!formData.model.trim()) {
+            setErrors({ model: "Vui lòng nhập model xe." });
+            setIsSaving(false);
+            return;
+        }
+        if (!formData.color.trim()) {
+            setErrors({ color: "Vui lòng nhập màu xe." });
+            setIsSaving(false);
+            return;
+        }
         // Validation cho mã sinh viên nếu là admin đăng ký xe cho sinh viên
         if (!isEditMode && isAdmin && !formData.studentId.trim()) {
             setErrors({ studentId: "Vui lòng nhập mã số sinh viên." });
@@ -177,7 +214,8 @@ const VehicleForm = ({ mode = 'create' }) => {
         try {
             const payload = {
                 vehicleType: formData.type, // Đổi từ 'type' sang 'vehicleType' cho đúng backend
-                model: formData.model,
+                brand: formData.brand, // Thêm trường brand
+                model: formData.model, // Giữ nguyên model
                 color: formData.color,
                 status: formData.status,
             };
@@ -197,13 +235,16 @@ const VehicleForm = ({ mode = 'create' }) => {
                 navigate('/vehicles');
             } else { // Chế độ tạo mới
                 payload.licensePlate = formData.licensePlate;
-                payload.startDate = new Date().toISOString(); // Thêm ngày bắt đầu gửi xe
+                payload.startDate = new Date().toISOString(); // Thêm ngày bắt đầu gửi xe                // Mặc định, đặt isActive = false (cho sinh viên tự đăng ký)
+                payload.isActive = false;
 
-                // Nếu là admin/staff thì gửi thêm mã sinh viên
+                // Nếu là admin/staff thì gửi thêm mã sinh viên và đặt isActive = true
                 if (isAdmin && formData.studentId.trim()) {
                     // Sử dụng sinh viên đã tìm thấy trước đó nếu có
                     if (foundStudent) {
                         payload.studentProfileId = foundStudent.id;
+                        // Admin tạo đang có mặt sinh viên, nên active ngay
+                        payload.isActive = true;
                     } else {
                         // Nếu chưa tìm thấy, tìm lại
                         try {
@@ -215,6 +256,8 @@ const VehicleForm = ({ mode = 'create' }) => {
                             }
 
                             payload.studentProfileId = student.id;
+                            // Admin tạo đang có mặt sinh viên, nên active ngay
+                            payload.isActive = true;
                         } catch (studentError) {
                             toast.error(studentError.message || `Không tìm thấy sinh viên với mã số ${formData.studentId}`);
                             setErrors({ studentId: `Không tìm thấy sinh viên với mã số ${formData.studentId}` });
@@ -222,26 +265,31 @@ const VehicleForm = ({ mode = 'create' }) => {
                             return;
                         }
                     }
-                } else {
-                    // Sinh viên tự đăng ký - backend sẽ tự lấy studentProfileId từ token
                 }
+                // Nếu không phải admin, backend sẽ tự lấy studentProfileId từ token
 
                 // Tạo xe trước, sau đó update parkingCardNo với id vừa tạo
                 const createdVehicle = await vehicleService.createVehicle(payload);
-                // Sinh mã thẻ gửi xe dựa trên id vehicle_registrations
-                let parkingCardNo = null;
-                try {
-                    // Ưu tiên lấy studentId từ foundStudent hoặc từ payload
-                    let studentIdForCard = foundStudent?.studentId || formData.studentId;
-                    let studentProfileIdForCard = createdVehicle.studentProfileId || payload.studentProfileId;
-                    parkingCardNo = generateParkingCardNo(studentIdForCard, formData.type, createdVehicle.id);
-                    // Gọi update để set parkingCardNo
-                    await vehicleService.updateVehicle(createdVehicle.id, { parkingCardNo });
-                } catch (err) {
-                    // Nếu lỗi vẫn tiếp tục, chỉ cảnh báo
-                    toast.error('Không thể sinh mã thẻ gửi xe tự động.');
+
+                // Sinh mã thẻ gửi xe dựa trên id vehicle_registrations CHỈ khi là admin tạo (isActive = true)
+                if (isAdmin) {
+                    let parkingCardNo = null;
+                    try {
+                        // Ưu tiên lấy studentId từ foundStudent hoặc từ payload
+                        let studentIdForCard = foundStudent?.studentId || formData.studentId;
+                        let studentProfileIdForCard = createdVehicle.studentProfileId || payload.studentProfileId;
+                        parkingCardNo = generateParkingCardNo(studentIdForCard, formData.type, createdVehicle.id);
+                        // Gọi update để set parkingCardNo
+                        await vehicleService.updateVehicle(createdVehicle.id, { parkingCardNo });
+                    } catch (err) {
+                        // Nếu lỗi vẫn tiếp tục, chỉ cảnh báo
+                        toast.error('Không thể sinh mã thẻ gửi xe tự động.');
+                    }
+                    toast.success('Đăng ký xe cho sinh viên thành công!');
+                } else {
+                    // Sinh viên tự đăng ký - hiển thị thông báo khác
+                    toast.success('Đăng ký xe thành công! Vui lòng đợi quản trị viên duyệt đăng ký của bạn.');
                 }
-                toast.success('Đăng ký xe thành công!');
 
                 // Quay lại trang phù hợp theo vai trò
                 if (isAdmin) {
@@ -354,7 +402,18 @@ const VehicleForm = ({ mode = 'create' }) => {
                     error={errors.type}
                 />
                 <Input
-                    label="Hãng xe / Model *"
+                    label="Hãng xe *"
+                    id="brand"
+                    name="brand"
+                    required
+                    value={formData.brand}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    error={errors.brand}
+                    placeholder="Ví dụ: Honda, Yamaha, Toyota, Vinfast..."
+                />
+                <Input
+                    label="Model xe *"
                     id="model"
                     name="model"
                     required
@@ -362,7 +421,7 @@ const VehicleForm = ({ mode = 'create' }) => {
                     onChange={handleChange}
                     disabled={isSaving}
                     error={errors.model}
-                    placeholder="Ví dụ: Honda Wave Alpha, Vinfast Fadil..."
+                    placeholder="Ví dụ: Wave Alpha, Fadil, Vios..."
                 />
                 <Input
                     label="Màu sắc *"
