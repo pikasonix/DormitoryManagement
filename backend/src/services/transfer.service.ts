@@ -185,7 +185,7 @@ export class TransferService {
 
                 if (currentTransfer.status === TransferStatus.COMPLETED || currentTransfer.status === TransferStatus.REJECTED) {
                     throw new Error(`Không thể thay đổi trạng thái của yêu cầu đã ${currentTransfer.status}.`);
-                }                const transferUpdateData: Prisma.RoomTransferUpdateInput = {
+                } const transferUpdateData: Prisma.RoomTransferUpdateInput = {
                     status: data.status,
                     approvedBy: data.approvedById ? { connect: { id: data.approvedById } } : (data.status === TransferStatus.REJECTED ? { disconnect: true } : undefined)
                 };
