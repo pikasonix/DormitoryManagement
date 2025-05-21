@@ -149,7 +149,7 @@ function App() {
           <Route path="edit/:id" element={<UtilityReadingEdit />} />
         </Route>        {/* --- VEHICLE ROUTES --- */}
         <Route path="/vehicles">
-          <Route index element={<StaffRoute><VehicleIndex /></StaffRoute>} />
+          <Route index element={<VehicleIndex />} />
           <Route path="register" element={<VehicleForm mode="create" />} />
           <Route path=":id/edit" element={<StaffRoute><VehicleForm mode="edit" /></StaffRoute>} />
           <Route path="new" element={<StaffRoute><VehicleForm mode="create" /></StaffRoute>} />

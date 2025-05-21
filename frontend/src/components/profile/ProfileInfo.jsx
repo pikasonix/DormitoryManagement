@@ -49,7 +49,7 @@ const ProfileInfo = ({ user, onEdit }) => {
     if (!user) return <p className="p-6 text-center text-gray-500">Không có thông tin người dùng.</p>;
     // Không cần kiểm tra profile ở đây nữa vì sẽ kiểm tra từng trường
 
-    const profile = user.role === 'STUDENT' ? (user.studentProfile || {}) : (user.profile || {});
+    const profile = user.profile || {}; // Dùng object rỗng nếu profile null/undefined
     const isStudent = user.role === 'STUDENT';
     const isStaff = user.role === 'STAFF';
 
@@ -78,7 +78,7 @@ const ProfileInfo = ({ user, onEdit }) => {
             {/* Body */}
             <div className="border-t border-gray-200">                <dl className="divide-y divide-gray-100"> {/* Màu divider nhạt hơn */}                    {/* --- Thông tin chung --- */}
                 {renderDetailRow('Họ và tên', profile.fullName || user.name, false)}                    {/* Hiển thị email từ user hoặc từ user bên trong profile nếu có cấu trúc lồng nhau */}
-                {renderDetailRow('Email', user.email, true, "text-gray-700 font-mono")}
+                {renderDetailRow('Email', user.email || profile.user?.email, true, "text-gray-700 font-mono")}
                 {renderDetailRow('Số điện thoại', profile.phoneNumber, false)}
                 {renderDetailRow('Giới tính', profile.gender === 'MALE' ? 'Nam' : (profile.gender === 'FEMALE' ? 'Nữ' : profile.gender), true)}
                 {renderDetailRow('Ngày sinh', formatDate(profile.birthDate), false)}

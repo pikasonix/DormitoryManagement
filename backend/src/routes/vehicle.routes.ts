@@ -11,7 +11,6 @@ router.use(authMiddleware);
 // GET /api/vehicles - Lấy danh sách đăng ký xe (Admin/Staff xem tất cả)
 router.get(
     '/',
-    checkRole([Role.ADMIN, Role.STAFF]),
     vehicleController.getAllRegistrations
 );
 

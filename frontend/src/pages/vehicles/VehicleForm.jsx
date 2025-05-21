@@ -295,7 +295,7 @@ const VehicleForm = ({ mode = 'create' }) => {
                 if (isAdmin) {
                     navigate('/vehicles'); // Admin quay lại trang quản lý xe
                 } else {
-                    navigate('/profile'); // Sinh viên quay lại trang profile
+                    navigate('/vehicles'); // Sinh viên quay lại trang danh sách xe
                 }
             }
 

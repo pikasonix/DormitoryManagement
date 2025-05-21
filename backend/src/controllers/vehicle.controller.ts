@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { VehicleService } from '../services/vehicle.service';
 import { deleteFile } from '../services/file.service';
-import { Prisma, VehicleType, FeeType } from '@prisma/client';
+import { Prisma, VehicleType, FeeType, Role } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaClient } from '@prisma/client';
 
@@ -14,9 +14,16 @@ export class VehicleController {
         try {
             const { studentProfileId, vehicleType, isActive, licensePlate, parkingCardNo, hasParkingCardNo, page, limit } = req.query;
 
+            // Tạo options chung
             const options: Prisma.VehicleRegistrationFindManyArgs = { where: {} };
+            // Nếu là sinh viên, chỉ trả về phương tiện của chính họ
+            if (req.user && req.user.role === Role.STUDENT) {
+                const studentProfile = await prisma.studentProfile.findUnique({ where: { userId: req.user.userId }, select: { id: true } });
+                if (!studentProfile) return next(new Error('Không tìm thấy hồ sơ sinh viên của bạn.'));
+                options.where!.studentProfileId = studentProfile.id;
+            }
 
-            // Xây dựng bộ lọc
+            // Xây dựng bộ lọc tiếp theo (Admin có thể dùng query param)
             if (studentProfileId) options.where!.studentProfileId = parseInt(studentProfileId as string);
             if (vehicleType && Object.values(VehicleType).includes(vehicleType as VehicleType)) {
                 options.where!.vehicleType = vehicleType as VehicleType;

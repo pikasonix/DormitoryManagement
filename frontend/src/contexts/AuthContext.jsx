@@ -95,7 +95,9 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []); useEffect(() => {
+  }, []);
+
+  useEffect(() => {
     // Check authentication status when the component mounts
     checkAuthStatus();
   }, [checkAuthStatus]);

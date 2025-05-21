@@ -121,7 +121,7 @@ export class VehicleService {
                     licensePlate: data.licensePlate,
                     brand: data.brand,
                     model: data.model,
-                    color: data.color,                    parkingCardNo: data.parkingCardNo,
+                    color: data.color, parkingCardNo: data.parkingCardNo,
                     isActive: data.isActive !== undefined ? data.isActive : false, // Mặc định false (inactive) nếu không chỉ định
                     startDate: new Date(data.startDate),
                     endDate: data.endDate ? new Date(data.endDate) : null,
