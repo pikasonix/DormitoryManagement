@@ -1,6 +1,6 @@
 // filepath: d:\CODE\DormitoryManagement\frontend\src\pages\transfers\TransferRequestForm.jsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { transferService } from '../../services/transfer.service';
 import { roomService } from '../../services/room.service';
 import { buildingService } from '../../services/building.service';
@@ -19,17 +19,17 @@ const formatCurrency = (amount) => {
 const TransferRequestForm = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const targetRoom = location.state?.targetRoom;
 
     const [buildings, setBuildings] = useState([]);
     const [isLoadingBuildings, setIsLoadingBuildings] = useState(true);
 
     const [selectedRoom, setSelectedRoom] = useState(null);
     const [roomValidationStatus, setRoomValidationStatus] = useState(null);
-    const [isCheckingRoom, setIsCheckingRoom] = useState(false);
-
-    const [formData, setFormData] = useState({
-        buildingId: '',
-        roomNumber: '',
+    const [isCheckingRoom, setIsCheckingRoom] = useState(false); const [formData, setFormData] = useState({
+        buildingId: targetRoom?.buildingId?.toString() || '',
+        roomNumber: targetRoom?.number || '',
         reason: '',
         transferDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Mặc định 7 ngày kể từ hôm nay
     });
@@ -51,7 +51,17 @@ const TransferRequestForm = () => {
     const currentRoomId = user?.profile?.roomId || user?.studentProfile?.roomId;
     const currentRoom = user?.profile?.room || user?.studentProfile?.room;
 
-    // Fetch danh sách tòa nhà
+    // Fetch danh sách tòa nhà    // Pre-select target room if provided
+    useEffect(() => {
+        if (targetRoom) {
+            setSelectedRoom(targetRoom);
+            setRoomValidationStatus({
+                isValid: true,
+                message: `Phòng ${targetRoom.number} đã được chọn từ danh sách phòng`
+            });
+        }
+    }, [targetRoom]);
+
     useEffect(() => {
         const fetchBuildings = async () => {
             setIsLoadingBuildings(true);
@@ -59,8 +69,16 @@ const TransferRequestForm = () => {
                 const data = await buildingService.getAllBuildings();
                 setBuildings(data.buildings || []);
 
-                // Tự động chọn tòa nhà hiện tại nếu có
-                if (currentBuildingId) {
+                // If we have a target room, select its building
+                if (targetRoom?.buildingId) {
+                    setFormData(prev => ({
+                        ...prev,
+                        buildingId: targetRoom.buildingId.toString(),
+                        roomNumber: targetRoom.number
+                    }));
+                }
+                // Otherwise select current building if available
+                else if (currentBuildingId) {
                     setFormData(prev => ({
                         ...prev,
                         buildingId: currentBuildingId.toString()

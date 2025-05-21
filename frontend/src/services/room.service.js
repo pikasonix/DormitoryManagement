@@ -54,6 +54,29 @@ const getRoomById = async (id) => {
 };
 
 /**
+ * Lấy thông tin chi tiết một phòng bằng ID, bao gồm danh sách sinh viên.
+ * @param {string|number} id - ID của phòng.
+ * @returns {Promise<object>} Dữ liệu chi tiết của phòng và danh sách sinh viên.
+ */
+const getRoomDetails = async (id) => {
+  try {
+    // Use the regular getRoomById endpoint since it includes residents
+    const response = await apiClient.get(`/api/rooms/${id}`);
+
+    // Controller trả về { status: 'success', data: room_object }
+    if (response.data?.status === 'success' && response.data?.data) {
+      return response.data.data;
+    } else {
+      throw new Error(response.data?.message || `Không tìm thấy thông tin chi tiết phòng với ID ${id}.`);
+    }
+  } catch (error) {
+    console.error(`Lỗi service getRoomDetails (${id}):`, error.response?.data || error.message);
+    throw error.response?.data || error;
+    throw error.response?.data || error;
+  }
+};
+
+/**
  * Tạo một phòng mới.
  * @param {object} roomData - Dữ liệu phòng mới { buildingId, number, type, capacity, floor, price, status?, description?, amenities?, imageIds? }.
  * @returns {Promise<object>} Dữ liệu phòng vừa tạo.
@@ -158,6 +181,7 @@ const uploadMedia = async (file, context = 'room-image') => {
 export const roomService = {
   getAllRooms,
   getRoomById,
+  getRoomDetails,
   createRoom,
   updateRoom,
   deleteRoom,
