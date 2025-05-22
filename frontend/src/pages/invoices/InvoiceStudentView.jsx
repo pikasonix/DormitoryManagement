@@ -87,13 +87,21 @@ const InvoiceStudentView = () => {
                 params.invoiceType = 'room';
             }
 
-            console.log('API params:', params);
-            const data = await invoiceService.getAllInvoices(params);
+            console.log('API params:', params); const data = await invoiceService.getAllInvoices(params);
             console.log('API response:', data);
 
-            // Debug - Kiểm tra cấu trúc dữ liệu từng hóa đơn
+            // Debug - Kiểm tra cấu trúc dữ liệu từng hóa đơn chi tiết
             if (data.invoices && data.invoices.length > 0) {
                 console.log('First invoice structure:', JSON.stringify(data.invoices[0], null, 2));
+
+                // Kiểm tra các trường chính cần cho việc xác định loại hóa đơn
+                data.invoices.forEach((invoice, index) => {
+                    if (index < 3) { // Chỉ log 3 hóa đơn đầu tiên tránh quá nhiều dữ liệu
+                        console.log(`Invoice #${invoice.id} - studentProfileId:`, invoice.studentProfileId,
+                            'roomId:', invoice.roomId,
+                            'Type:', invoice.studentProfileId ? 'Cá nhân' : (invoice.roomId ? 'Phòng' : 'Không xác định'));
+                    }
+                });
             }
 
             const invoiceList = data.invoices || [];
@@ -158,15 +166,18 @@ const InvoiceStudentView = () => {
                 }
                 return 'Khác';
             },
-            id: 'invoiceType',
-            Cell: ({ value, row }) => {
+            id: 'invoiceType', Cell: ({ value, row }) => {
                 const invoice = row.original;
-                let type = value || 'Không xác định';
-                let badgeColor = 'gray';
 
-                if (type === 'Cá nhân') {
+                // Xác định lại loại trực tiếp từ dữ liệu invoice
+                let type;
+                let badgeColor;
+
+                if (invoice.studentProfileId !== undefined && invoice.studentProfileId !== null) {
+                    type = 'Cá nhân';
                     badgeColor = 'blue';
-                } else if (type === 'Phòng') {
+                } else if (invoice.roomId !== undefined && invoice.roomId !== null) {
+                    type = 'Phòng';
                     badgeColor = 'green';
                     // Thêm thông tin phòng nếu có
                     if (invoice.room && invoice.room.number) {
@@ -174,9 +185,15 @@ const InvoiceStudentView = () => {
                     } else if (invoice.roomId) {
                         type = `Phòng #${invoice.roomId}`;
                     }
+                } else {
+                    type = 'Không xác định';
+                    badgeColor = 'gray';
                 }
 
                 console.log(`Invoice #${invoice.id} type:`, type, badgeColor);
+
+                // Đảm bảo hiển thị badge với nội dung đúng
+                return <Badge color={badgeColor}>{type}</Badge>;
                 return <Badge color={badgeColor}>{type}</Badge>;
             }
         },
