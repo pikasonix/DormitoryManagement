@@ -69,20 +69,10 @@ export class AuthController {
             status: 'FAILED',
             location
           });
-        }
-
-        return res.status(401).json({ message: 'Email hoặc mật khẩu không chính xác' });
+        } return res.status(401).json({ message: 'Email hoặc mật khẩu không chính xác' });
       }
 
-      // JWT Signing
-      const payload = { userId: user.id, email: user.email, role: user.role };
-      const secret: Secret = JWT_SECRET;
-      const options: SignOptions = {
-        expiresIn: JWT_EXPIRES_IN as any
-      };
-
-      const token = jwt.sign(payload, secret, options);
-
+      // Tạo và lấy profile trước
       let profile: StudentProfile | StaffProfile | null = null;
       if (user.role === Role.STUDENT) {
         profile = await prisma.studentProfile.findUnique({
@@ -93,9 +83,7 @@ export class AuthController {
         profile = await prisma.staffProfile.findUnique({
           where: { userId: user.id },
           include: { managedBuilding: true }
-        });
-
-        // Lưu log đăng nhập thành công cho ADMIN và STAFF
+        });        // Lưu log đăng nhập thành công cho ADMIN và STAFF
         const location = await getLocationFromIP(req.ip);
         await saveLoginLog({
           userId: user.id,
@@ -105,6 +93,21 @@ export class AuthController {
           location
         });
       }
+
+      // JWT Signing - Sau khi đã có profile
+      const payload: any = { userId: user.id, email: user.email, role: user.role };
+
+      // Thêm profileId vào JWT nếu có profile
+      if (profile) {
+        payload.profileId = profile.id;
+      }
+
+      const secret: Secret = JWT_SECRET;
+      const options: SignOptions = {
+        expiresIn: JWT_EXPIRES_IN as any
+      };
+
+      const token = jwt.sign(payload, secret, options);
 
       const formattedUser = formatUserResponse(user);
 
@@ -171,15 +174,19 @@ export class AuthController {
           success: false,
           message: 'Người dùng không tồn tại'
         });
-      }
+      } const formattedUser = formatUserResponse(user);
 
-      const formattedUser = formatUserResponse(user);
+      // Thêm profileId vào user response
+      const profile = userRole === Role.STUDENT ? user.studentProfile : user.staffProfile;
+      if (profile) {
+        formattedUser.profileId = profile.id;
+      }
 
       return res.json({
         success: true,
         data: {
           user: formattedUser,
-          profile: user.staffProfile || user.studentProfile || null
+          profile: profile
         }
       });
 

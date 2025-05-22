@@ -7,6 +7,7 @@ interface JwtPayload {
   userId: number;
   email: string;
   role: Role;
+  profileId?: number; // Thêm profileId là optional
   iat?: number;
   exp?: number;
 }
@@ -41,7 +42,8 @@ export const authMiddleware = async (
     req.user = {
       userId: decoded.userId,
       email: decoded.email,
-      role: decoded.role
+      role: decoded.role,
+      profileId: decoded.profileId // Thêm profileId nếu có
     };
 
     next();

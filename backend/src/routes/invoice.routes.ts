@@ -11,13 +11,14 @@ router.use(authMiddleware);
 // GET /api/invoices - Lấy danh sách hóa đơn (Admin/Staff xem tất cả)
 router.get(
     '/',
-    checkRole([Role.ADMIN, Role.STAFF]),
+    checkRole([Role.ADMIN, Role.STAFF, Role.STUDENT]),
     invoiceController.getAllInvoices
 );
 
 // GET /api/invoices/:id - Lấy chi tiết hóa đơn
 router.get(
     '/:id',
+    checkRole([Role.ADMIN, Role.STAFF, Role.STUDENT]),
     invoiceController.getInvoiceById
 );
 

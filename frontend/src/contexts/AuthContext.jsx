@@ -103,15 +103,20 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     setIsLoading(true);
     try {
-      const response = await authService.login(credentials.email, credentials.password);
-
-      // Xử lý cấu trúc phản hồi mới
+      const response = await authService.login(credentials.email, credentials.password);      // Xử lý cấu trúc phản hồi mới
       const data = response.data || response;
       const userData = data.user;
+      const profile = data.profile;
       const token = data.token;
 
       if (!userData || !token) {
         throw new Error('Dữ liệu đăng nhập không hợp lệ');
+      }
+
+      // Thêm profileId vào userData nếu có
+      if (profile && profile.id) {
+        userData.profileId = profile.id;
+        console.log('Added profileId', profile.id, 'to user data');
       }
 
       // First set token in storage
@@ -144,10 +149,14 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  };
-  // --- Update User (dùng cho cập nhật thông tin, kể cả avatar) ---
+  };  // --- Update User (dùng cho cập nhật thông tin, kể cả avatar) ---
   const updateUserInfo = async (newUserData) => {
     try {
+      // Add profileId if missing but exists in profile
+      if (!newUserData.profileId && newUserData.profile && newUserData.profile.id) {
+        newUserData.profileId = newUserData.profile.id;
+      }
+
       // First, update the user data in state and storage
       const updatedUser = { ...user, ...newUserData };
       setUser(updatedUser);

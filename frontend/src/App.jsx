@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import StaffRoute from './components/StaffRoute';
+import StudentRoute from './components/StudentRoute';
 import StudentOrStaffRoute from './components/StudentOrStaffRoute';
 
 // Import Layouts
@@ -27,6 +28,7 @@ import MaintenanceForm from './pages/maintenance/MaintenanceForm';
 import MaintenanceRequestForm from './pages/maintenance/MaintenanceRequestForm';
 import InvoiceIndex from './pages/invoices/InvoiceIndex';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
+import InvoiceStudentView from './pages/invoices/InvoiceStudentView';
 import PaymentIndex from './pages/payments/PaymentIndex';
 import PaymentForm from './pages/payments/PaymentForm';
 import PaymentNew from './pages/payments/PaymentNew';
@@ -125,14 +127,18 @@ function App() {
           <Route index element={<StudentOrStaffRoute><MaintenanceIndex /></StudentOrStaffRoute>} />
           <Route path="request" element={<StudentOrStaffRoute><MaintenanceRequestForm /></StudentOrStaffRoute>} />
           <Route path=":id/edit" element={<StaffRoute><MaintenanceForm /></StaffRoute>} />
-        </Route>
-
-        {/* --- INVOICE & PAYMENT ROUTES --- */}
-        <Route path="/invoices" element={<StaffRoute />}>
-          <Route index element={<InvoiceIndex />} />
+        </Route>        {/* --- INVOICE & PAYMENT ROUTES --- */}
+        <Route path="/invoices">
+          <Route index element={
+            <ProfileRouter
+              studentComponent={<InvoiceStudentView />}
+              staffComponent={<InvoiceIndex />}
+              adminComponent={<InvoiceIndex />}
+            />
+          } />
           <Route path=":id" element={<InvoiceDetail />} />
           {/* <Route path="new" element={<InvoiceForm />} /> */}
-        </Route>        <Route path="/payments" element={<StaffRoute />}>
+        </Route><Route path="/payments" element={<StaffRoute />}>
           <Route index element={<PaymentIndex />} />
           <Route path="new" element={<PaymentNew />} />
           <Route path=":id/edit" element={<PaymentForm />} />
