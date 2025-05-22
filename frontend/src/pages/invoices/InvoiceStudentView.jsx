@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { invoiceService } from '../../services/invoice.service';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button, Select, Badge, Card } from '../../components/shared';
 import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
-import { EyeIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useDebounce } from '../../hooks/useDebounce';
+import VNPayButton from '../../components/payment/VNPayButton';
 
 // Format ngày
 const formatDate = (dateString) => {
@@ -54,6 +55,7 @@ const getStatusBadgeColor = (status) => {
 
 const InvoiceStudentView = () => {
     const { user } = useAuth(); // Lấy thông tin người dùng đã đăng nhập
+    const navigate = useNavigate();
     const [invoices, setInvoices] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -143,6 +145,12 @@ const InvoiceStudentView = () => {
         }
     };
 
+    // Xử lý xóa/hủy hóa đơn
+    const handleDelete = (invoiceId, invoiceNumber) => {
+        console.log(`Deleting invoice #${invoiceId} (${invoiceNumber})`);
+        // Logic xóa/hủy hóa đơn
+    };
+
     // Cột cho bảng hóa đơn cá nhân
     const columns = [
         { Header: 'Số hóa đơn', accessor: 'id', Cell: ({ value }) => <span className="font-mono">{value || 'N/A'}</span> },
@@ -194,7 +202,6 @@ const InvoiceStudentView = () => {
 
                 // Đảm bảo hiển thị badge với nội dung đúng
                 return <Badge color={badgeColor}>{type}</Badge>;
-                return <Badge color={badgeColor}>{type}</Badge>;
             }
         },
         { Header: 'Tổng tiền', accessor: 'totalAmount', Cell: ({ value }) => formatCurrency(value) },
@@ -211,14 +218,34 @@ const InvoiceStudentView = () => {
             accessor: 'actions',
             Cell: ({ row }) => {
                 const invoice = row.original;
+                const canPay = ['UNPAID', 'PARTIALLY_PAID', 'OVERDUE'].includes(invoice.status?.toUpperCase());
+
                 return (
-                    <div className="flex space-x-2">
-                        <Link to={`/invoices/${invoice.id}`} className="text-blue-600 hover:text-blue-800">
-                            <EyeIcon className="w-5 h-5" />
-                        </Link>
+                    <div className="flex space-x-2 justify-center">
+                        <Button
+                            variant="icon"
+                            onClick={() => navigate(`/invoices/${invoice.id}`)}
+                            tooltip="Xem chi tiết"
+                        >
+                            <EyeIcon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
+                        </Button>
+                        {canPay && (
+                            <VNPayButton
+                                invoiceId={invoice.id}
+                                size="sm"
+                                tooltip="Thanh toán VNPay"
+                            />
+                        )}
+                        <Button
+                            variant="icon"
+                            onClick={() => handleDelete(invoice.id, invoice.invoiceNumber)}
+                            tooltip="Xóa/Hủy hóa đơn"
+                        >
+                            <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
+                        </Button>
                     </div>
                 );
-            }
+            },
         }
     ];
 

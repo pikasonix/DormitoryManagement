@@ -31,7 +31,8 @@
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.7",
     "reflect-metadata": "0.2.2",
-    "typedi": "0.10.0"
+    "typedi": "0.10.0",
+    "vnpay": "2.2.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

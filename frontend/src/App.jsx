@@ -32,6 +32,7 @@ import InvoiceStudentView from './pages/invoices/InvoiceStudentView';
 import PaymentIndex from './pages/payments/PaymentIndex';
 import PaymentForm from './pages/payments/PaymentForm';
 import PaymentNew from './pages/payments/PaymentNew';
+import PaymentResult from './pages/payments/PaymentResult';
 import FeeRateIndex from './pages/fees/FeeRateIndex';
 import FeeRateDetail from './pages/fees/FeeRateDetail';
 import FeeRateForm from './pages/fees/FeeRateForm';
@@ -143,6 +144,9 @@ function App() {
           <Route path="new" element={<PaymentNew />} />
           <Route path=":id/edit" element={<PaymentForm />} />
         </Route>
+
+        {/* --- VNPay Payment Result Route for Students --- */}
+        <Route path="/payment-result" element={<StudentRoute><PaymentResult /></StudentRoute>} />
 
         {/* --- UTILITY ROUTES --- */}
         <Route path="/utilities" element={<StaffRoute />}>
