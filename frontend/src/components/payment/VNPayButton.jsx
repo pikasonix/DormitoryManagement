@@ -50,10 +50,6 @@ const VNPayButton = ({ invoiceId, disabled, size = 'md', className = '' }) => {
             const errorMessage = error?.response?.data?.message ||
                 error?.message ||
                 'Đã xảy ra lỗi khi kết nối với cổng thanh toán.';
-            // Show detailed server error if available
-            if (error.response?.data?.errorDetail) {
-                console.error('Server error detail:', error.response.data.errorDetail);
-            }
 
             // Kiểm tra nếu là lỗi chuyển hướng đến trang lỗi VNPay
             // Ví dụ nếu URL chứa "code=72" - lỗi số tiền không hợp lệ

@@ -18,8 +18,8 @@ import { InvoiceStatus, Prisma } from '@prisma/client';
 const router = express.Router();
 
 const vnpay = new VNPay({
-    tmnCode: process.env.VNPAY_TMN_CODE ?? '2QXUI4B4',
-    secureSecret: process.env.VNPAY_SECURE_SECRET ?? 'secret',
+    tmnCode: process.env.VNPAY_TMN_CODE ?? 'ZAVGV1VT',
+    secureSecret: process.env.VNPAY_SECURE_SECRET ?? 'OR92SDL9CRPL5TOXFICMKRVASZ4FXJ4M',
     vnpayHost: 'https://sandbox.vnpayment.vn',
     testMode: true,
     hashAlgorithm: HashAlgorithm.SHA512,
@@ -161,7 +161,8 @@ router.post('/payment-url', async (req: Request, res: Response) => {
         // Đảm bảo số tiền là số nguyên - VNPay quy định
         // Xử lý đặc biệt để loại bỏ phần thập phân và đảm bảo không có vấn đề với VNPay
         const integerAmount = Math.floor(amountValue); // Lấy phần nguyên
-        const vnpAmount = integerAmount; // VNPay expects amount in VND without extra multiplier // VNPay yêu cầu số tiền * 100
+        // VNPay library multiplies amount by 100 internally, so supply raw VND integer
+        const vnpAmount = integerAmount;
 
         // Kiểm tra tính hợp lệ của số tiền
         if (isNaN(vnpAmount) || vnpAmount <= 0) {
@@ -226,6 +227,10 @@ router.post('/payment-url', async (req: Request, res: Response) => {
 
 // Xử lý IPN từ VNPay
 router.get('/ipn', async (req: Request<unknown, unknown, unknown, ReturnQueryFromVNPay>, res: Response) => {
+    console.log('=== IPN Request Received ===');
+    console.log('Query params:', req.query);
+    console.log('Headers:', req.headers);
+
     try {
         const verify: VerifyReturnUrl = vnpay.verifyIpnCall(
             { ...req.query },
@@ -237,6 +242,13 @@ router.get('/ipn', async (req: Request<unknown, unknown, unknown, ReturnQueryFro
             },
         );
 
+        console.log('IPN Verification result:', {
+            isVerified: verify.isVerified,
+            isSuccess: verify.isSuccess,
+            responseCode: verify.vnp_ResponseCode,
+            message: verify.message
+        });
+
         if (!verify.isVerified) {
             console.error('IPN verification failed:', verify.message);
             return res.json(IpnFailChecksum);
@@ -244,6 +256,8 @@ router.get('/ipn', async (req: Request<unknown, unknown, unknown, ReturnQueryFro
 
         // Phân tích mã giao dịch để lấy payment_id
         const txnRef = verify.vnp_TxnRef;
+        console.log('Processing transaction reference:', txnRef);
+
         const paymentIdMatch = txnRef.match(/PAY(\d+)_/);
 
         if (!paymentIdMatch) {
@@ -252,6 +266,7 @@ router.get('/ipn', async (req: Request<unknown, unknown, unknown, ReturnQueryFro
         }
 
         const paymentId = parseInt(paymentIdMatch[1]);
+        console.log('Extracted payment ID:', paymentId);
 
         // Tìm payment trong database
         const payment = await prisma.payment.findUnique({
@@ -262,7 +277,14 @@ router.get('/ipn', async (req: Request<unknown, unknown, unknown, ReturnQueryFro
         if (!payment) {
             console.error('Payment not found:', paymentId);
             return res.json(IpnOrderNotFound);
-        }        // Xử lý số tiền đúng cách cho việc kiểm tra
+        }
+
+        console.log('Found payment:', {
+            id: payment.id,
+            amount: payment.amount,
+            invoiceId: payment.invoiceId,
+            currentInvoiceStatus: payment.invoice.status
+        });// Xử lý số tiền đúng cách cho việc kiểm tra
         // Convert payment.amount (Decimal) to number
         let paymentAmountNumber: number;
         if (payment.amount instanceof Decimal) {
@@ -274,6 +296,7 @@ router.get('/ipn', async (req: Request<unknown, unknown, unknown, ReturnQueryFro
         }
 
         const integerAmount = Math.floor(paymentAmountNumber);
+        // VNPay trả về số tiền đã nhân 100, nên ta cần nhân payment amount với 100 để so sánh
         const expectedAmount = integerAmount * 100;
 
         // Convert received amount from VNPay to number
@@ -284,25 +307,36 @@ router.get('/ipn', async (req: Request<unknown, unknown, unknown, ReturnQueryFro
         console.log('IPN Amount check:', {
             paymentAmount: payment.amount,
             paymentAmountNumber,
+            integerAmount,
             expectedAmount,
-            receivedAmount
+            receivedAmount,
+            isMatch: receivedAmount === expectedAmount
         });
 
-        if (Math.abs(receivedAmount - expectedAmount) > 1) {
+        // So sánh chính xác số tiền
+        if (receivedAmount !== expectedAmount) {
             console.error(`Amount mismatch: expected ${expectedAmount}, got ${receivedAmount}`);
             return res.json(IpnInvalidAmount);
+        }        // Kiểm tra nếu payment đã được xử lý
+        if (payment.invoice.status === InvoiceStatus.PAID) {
+            console.log('Payment already confirmed for:', paymentId);
+            return res.json(InpOrderAlreadyConfirmed);
         }
-        // Cập nhật trạng thái payment
-        await prisma.payment.update({
-            where: { id: payment.id },
-            data: {
-                transactionCode: verify.vnp_TransactionNo?.toString() || txnRef
-            }
-        });
 
-        // Cập nhật trạng thái invoice
+        // Cập nhật trạng thái payment và invoice
         if (verify.vnp_ResponseCode === '00') {
             // Thanh toán thành công
+            console.log('Payment successful, updating invoice status for payment:', paymentId);
+
+            // Cập nhật payment với transaction number từ VNPay
+            await prisma.payment.update({
+                where: { id: payment.id },
+                data: {
+                    transactionCode: verify.vnp_TransactionNo?.toString() || txnRef
+                }
+            });
+
+            // Cập nhật trạng thái invoice
             await prisma.invoice.update({
                 where: { id: payment.invoiceId },
                 data: {
@@ -310,6 +344,18 @@ router.get('/ipn', async (req: Request<unknown, unknown, unknown, ReturnQueryFro
                     paidAmount: {
                         increment: payment.amount
                     }
+                }
+            });
+
+            console.log('Invoice status updated to PAID for invoice:', payment.invoiceId);
+        } else {
+            console.log('Payment failed with response code:', verify.vnp_ResponseCode);
+
+            // Cập nhật payment với thông tin lỗi
+            await prisma.payment.update({
+                where: { id: payment.id },
+                data: {
+                    transactionCode: verify.vnp_TransactionNo?.toString() || txnRef
                 }
             });
         }
@@ -323,7 +369,7 @@ router.get('/ipn', async (req: Request<unknown, unknown, unknown, ReturnQueryFro
 });
 
 // Xử lý return url (redirect sau thanh toán)
-router.get('/return', (req: Request<unknown, unknown, unknown, ReturnQueryFromVNPay>, res: Response) => {
+router.get('/return', async (req: Request<unknown, unknown, unknown, ReturnQueryFromVNPay>, res: Response) => {
     let verify: VerifyReturnUrl;
     try {
         verify = vnpay.verifyReturnUrl(
@@ -337,12 +383,57 @@ router.get('/return', (req: Request<unknown, unknown, unknown, ReturnQueryFromVN
             },
         );
 
+        console.log('Return URL verify result:', {
+            isVerified: verify.isVerified,
+            isSuccess: verify.isSuccess,
+            responseCode: verify.vnp_ResponseCode,
+            txnRef: verify.vnp_TxnRef
+        });
+
         // Lấy payment_id từ txnRef
         const txnRef = req.query.vnp_TxnRef || '';
         const paymentIdMatch = txnRef.toString().match(/PAY(\d+)_/);
         const paymentId = paymentIdMatch ? paymentIdMatch[1] : null;
 
-        let redirectUrl = process.env.FRONTEND_PAYMENT_RESULT_URL || '/payment-result';        // Thêm query params vào URL redirect
+        // Nếu thanh toán thành công và được verify, hãy cập nhật trạng thái
+        if (verify.isVerified && verify.isSuccess && paymentId) {
+            console.log('Return URL: Payment successful, updating status...');
+
+            try {
+                const payment = await prisma.payment.findUnique({
+                    where: { id: parseInt(paymentId) },
+                    include: { invoice: true }
+                });
+
+                if (payment && payment.invoice.status !== InvoiceStatus.PAID) {
+                    // Cập nhật payment
+                    await prisma.payment.update({
+                        where: { id: payment.id },
+                        data: {
+                            transactionCode: verify.vnp_TransactionNo?.toString() || txnRef.toString()
+                        }
+                    });
+
+                    // Cập nhật invoice
+                    await prisma.invoice.update({
+                        where: { id: payment.invoiceId },
+                        data: {
+                            status: InvoiceStatus.PAID,
+                            paidAmount: {
+                                increment: payment.amount
+                            }
+                        }
+                    });
+
+                    console.log('Return URL: Invoice status updated to PAID for invoice:', payment.invoiceId);
+                }
+            } catch (updateError) {
+                console.error('Error updating payment status in return URL:', updateError);
+            }
+        }
+
+        // Redirect to our frontend PaymentResult page
+        let redirectUrl = process.env.FRONTEND_PAYMENT_RESULT_URL || '/payments/result';// Thêm query params vào URL redirect
         redirectUrl += `?status=${verify.isSuccess ? 'success' : 'failed'}`;
 
         if (paymentId) {
@@ -379,7 +470,7 @@ router.get('/return', (req: Request<unknown, unknown, unknown, ReturnQueryFromVN
         return res.redirect(redirectUrl);
     } catch (error) {
         console.error(`Return URL error: ${error}`);
-        const redirectUrl = `${process.env.FRONTEND_PAYMENT_RESULT_URL || '/payment-result'}?status=error`;
+        const redirectUrl = `${process.env.FRONTEND_PAYMENT_RESULT_URL || '/payments/result'}?status=error`;
         return res.redirect(redirectUrl);
     }
 });
@@ -494,6 +585,151 @@ router.get('/payments/student/:studentId', async (req: Request, res: Response) =
             message: 'Failed to fetch student payments'
         });
     }
+});
+
+// Debug endpoint - kiểm tra trạng thái giao dịch
+router.get('/debug/payment/:id', async (req: Request, res: Response) => {
+    try {
+        const paymentId = parseInt(req.params.id);
+
+        if (isNaN(paymentId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid payment ID'
+            });
+        }
+
+        const payment = await prisma.payment.findUnique({
+            where: { id: paymentId },
+            include: {
+                invoice: true,
+                studentProfile: {
+                    select: {
+                        fullName: true,
+                        studentId: true
+                    }
+                }
+            }
+        });
+
+        if (!payment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Payment not found'
+            });
+        }
+
+        return res.json({
+            success: true,
+            debug: {
+                payment: {
+                    id: payment.id,
+                    invoiceId: payment.invoiceId,
+                    amount: payment.amount,
+                    paymentMethod: payment.paymentMethod,
+                    transactionCode: payment.transactionCode,
+                    paymentDate: payment.paymentDate
+                },
+                invoice: {
+                    id: payment.invoice.id,
+                    totalAmount: payment.invoice.totalAmount,
+                    paidAmount: payment.invoice.paidAmount,
+                    status: payment.invoice.status,
+                    roomId: payment.invoice.roomId,
+                    studentProfileId: payment.invoice.studentProfileId
+                },
+                student: payment.studentProfile
+            }
+        });
+    } catch (error) {
+        console.error('Error in debug endpoint:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Debug endpoint error',
+            error: String(error)
+        });
+    }
+});
+
+// Endpoint để test IPN manually (chỉ dùng cho development)
+router.post('/debug/test-ipn', async (req: Request, res: Response) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({
+            success: false,
+            message: 'This endpoint is only available in development'
+        });
+    }
+
+    try {
+        const { paymentId, responseCode = '00' } = req.body;
+
+        const payment = await prisma.payment.findUnique({
+            where: { id: paymentId },
+            include: { invoice: true }
+        });
+
+        if (!payment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Payment not found'
+            });
+        }
+
+        // Simulate successful payment
+        if (responseCode === '00') {
+            await prisma.payment.update({
+                where: { id: payment.id },
+                data: {
+                    transactionCode: `TEST_${Date.now()}`
+                }
+            });
+
+            await prisma.invoice.update({
+                where: { id: payment.invoiceId },
+                data: {
+                    status: InvoiceStatus.PAID,
+                    paidAmount: {
+                        increment: payment.amount
+                    }
+                }
+            });
+
+            return res.json({
+                success: true,
+                message: 'Payment marked as successful',
+                paymentId,
+                invoiceId: payment.invoiceId
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: 'Payment test completed',
+            responseCode
+        });
+    } catch (error) {
+        console.error('Error in test IPN:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Test IPN error',
+            error: String(error)
+        });
+    }
+});
+
+// Endpoint kiểm tra cấu hình VNPay
+router.get('/config', (req: Request, res: Response) => {
+    return res.json({
+        success: true,
+        config: {
+            tmnCode: process.env.VNPAY_TMN_CODE,
+            returnUrl: process.env.VNPAY_RETURN_URL,
+            frontendResultUrl: process.env.FRONTEND_PAYMENT_RESULT_URL,
+            ipnUrl: `${req.protocol}://${req.get('host')}/api/vnpay/ipn`,
+            vnpayHost: 'https://sandbox.vnpayment.vn',
+            testMode: true
+        }
+    });
 });
 
 export default router;
