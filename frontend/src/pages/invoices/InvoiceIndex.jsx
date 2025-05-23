@@ -51,6 +51,7 @@ const InvoiceIndex = () => {
     const [students, setStudents] = useState([]); // DS sinh viên cho filter
     const [rooms, setRooms] = useState({}); // Cache thông tin phòng theo ID
     const [isLoading, setIsLoading] = useState(true);
+    const [isBulkCreating, setIsBulkCreating] = useState(false); // Loading state for bulk creation
     const [error, setError] = useState(null);
     const [meta, setMeta] = useState({ currentPage: 1, totalPages: 1, limit: 10, total: 0 });
     const [currentPage, setCurrentPage] = useState(1);
@@ -146,7 +147,116 @@ const InvoiceIndex = () => {
                 toast.error(err?.message || `Xóa hóa đơn "${invoiceNumber}" thất bại.`);
             }
         }
-    };    // Xử lý chuyển đến trang tạo thanh toán cho hóa đơn
+    };    // Hàm xử lý tạo hóa đơn hàng loạt cho tháng hiện tại
+    const handleBulkCreateInvoices = async () => {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        const monthNames = [
+            'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+            'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+        ];
+
+        if (window.confirm(`Bạn có chắc chắn muốn tạo hóa đơn hàng loạt cho ${monthNames[currentMonth - 1]} ${currentYear} không?\n\nLưu ý: Hệ thống sẽ tự động tạo:\n- Hóa đơn tiền phòng cho tất cả sinh viên đang thuê\n- Hóa đơn phí gửi xe cho sinh viên có đăng ký xe\n- Hóa đơn tiền điện/nước dựa trên chỉ số đã ghi`)) {
+            setIsBulkCreating(true);
+            try {
+                const result = await invoiceService.createBulkInvoices(currentMonth, currentYear);
+
+                let message = `Đã tạo thành công ${result.totalCreated} hóa đơn cho ${monthNames[currentMonth - 1]} ${currentYear}:\n`;
+                message += `• ${result.roomFeeCount} hóa đơn tiền phòng\n`;
+                message += `• ${result.parkingCount} hóa đơn phí gửi xe\n`;
+                message += `• ${result.utilityCount} hóa đơn tiền điện/nước`;
+
+                toast.success(message);
+                fetchInvoices(currentPage, filters); // Refresh danh sách hóa đơn
+            } catch (err) {
+                console.error('Lỗi tạo hóa đơn hàng loạt:', err);
+                toast.error(err?.message || 'Tạo hóa đơn hàng loạt thất bại.');
+            } finally {
+                setIsBulkCreating(false);
+            }
+        }
+    };
+
+    // Hàm xử lý tạo hóa đơn tiền phòng
+    const handleCreateRoomFeeInvoices = async () => {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        const monthNames = [
+            'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+            'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+        ];
+
+        if (window.confirm(`Bạn có chắc chắn muốn tạo hóa đơn tiền phòng cho ${monthNames[currentMonth - 1]} ${currentYear} không?\n\nHệ thống sẽ tạo hóa đơn tiền phòng cho tất cả sinh viên đang thuê phòng.`)) {
+            setIsBulkCreating(true);
+            try {
+                const result = await invoiceService.createRoomFeeInvoices(currentMonth, currentYear);
+
+                toast.success(`Đã tạo thành công ${result.totalInvoicesCreated} hóa đơn tiền phòng cho ${monthNames[currentMonth - 1]} ${currentYear}`);
+                fetchInvoices(currentPage, filters); // Refresh danh sách hóa đơn
+            } catch (err) {
+                console.error('Lỗi tạo hóa đơn tiền phòng:', err);
+                toast.error(err?.message || 'Tạo hóa đơn tiền phòng thất bại.');
+            } finally {
+                setIsBulkCreating(false);
+            }
+        }
+    };
+
+    // Hàm xử lý tạo hóa đơn phí gửi xe
+    const handleCreateParkingFeeInvoices = async () => {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        const monthNames = [
+            'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+            'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+        ];
+
+        if (window.confirm(`Bạn có chắc chắn muốn tạo hóa đơn phí gửi xe cho ${monthNames[currentMonth - 1]} ${currentYear} không?\n\nHệ thống sẽ tạo hóa đơn phí gửi xe cho các sinh viên có đăng ký xe hiệu lực.`)) {
+            setIsBulkCreating(true);
+            try {
+                const result = await invoiceService.createParkingFeeInvoices(currentMonth, currentYear);
+
+                toast.success(`Đã tạo thành công ${result.totalInvoicesCreated} hóa đơn phí gửi xe cho ${monthNames[currentMonth - 1]} ${currentYear}`);
+                fetchInvoices(currentPage, filters); // Refresh danh sách hóa đơn
+            } catch (err) {
+                console.error('Lỗi tạo hóa đơn phí gửi xe:', err);
+                toast.error(err?.message || 'Tạo hóa đơn phí gửi xe thất bại.');
+            } finally {
+                setIsBulkCreating(false);
+            }
+        }
+    };
+
+    // Hàm xử lý tạo hóa đơn tiện ích (điện/nước)
+    const handleCreateUtilityInvoices = async () => {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        const monthNames = [
+            'Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+            'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'
+        ];
+
+        if (window.confirm(`Bạn có chắc chắn muốn tạo hóa đơn tiền điện/nước cho ${monthNames[currentMonth - 1]} ${currentYear} không?\n\nHệ thống sẽ tính toán dựa trên công thức: (chỉ số tháng này - chỉ số tháng trước) × giá tiền cho các phòng có chỉ số đã ghi.`)) {
+            setIsBulkCreating(true);
+            try {
+                const result = await invoiceService.createUtilityInvoices(currentMonth, currentYear);
+
+                toast.success(`Đã tạo thành công ${result.totalInvoicesCreated} hóa đơn tiện ích cho ${monthNames[currentMonth - 1]} ${currentYear}`);
+                fetchInvoices(currentPage, filters); // Refresh danh sách hóa đơn
+            } catch (err) {
+                console.error('Lỗi tạo hóa đơn tiện ích:', err);
+                toast.error(err?.message || 'Tạo hóa đơn tiện ích thất bại.');
+            } finally {
+                setIsBulkCreating(false);
+            }
+        }
+    };
+
+    // Xử lý chuyển đến trang tạo thanh toán cho hóa đơn
     const handleCreatePayment = (invoiceId) => {
         navigate(`/payments/new?invoiceId=${invoiceId}`);
     };
@@ -202,13 +312,19 @@ const InvoiceIndex = () => {
                 const canPay = ['UNPAID', 'PARTIALLY_PAID', 'OVERDUE'].includes(invoice.status?.toUpperCase());
 
                 return (
-                    <div className="flex space-x-2 justify-center">
+                    <div className="flex space-x-2 justify-center">                        <Button
+                        variant="icon"
+                        onClick={() => navigate(`/invoices/${invoice.id}`)} // Link đến trang chi tiết
+                        tooltip="Xem chi tiết"
+                    >
+                        <EyeIcon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
+                    </Button>
                         <Button
                             variant="icon"
-                            onClick={() => navigate(`/invoices/${invoice.id}`)} // Link đến trang chi tiết
-                            tooltip="Xem chi tiết"
+                            onClick={() => navigate(`/invoices/${invoice.id}/edit`)}
+                            tooltip="Chỉnh sửa hóa đơn"
                         >
-                            <EyeIcon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
+                            <PencilSquareIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
                         </Button>
                         {canPay && (
                             <Button
@@ -238,67 +354,116 @@ const InvoiceIndex = () => {
         ...students.map(s => ({ value: s.id.toString(), label: `${s.fullName} (${s.studentId || 'N/A'})` })) // Thêm mã SV nếu có
     ];
 
-    return (
-        <div className="space-y-4">
-            <div className="flex flex-wrap justify-between items-center gap-4">
-                <h1 className="text-2xl font-semibold">Quản lý Hóa đơn</h1>
-                {/* Nút tạo hóa đơn mới nếu cần */}
-                {/* <Button onClick={() => navigate('/invoices/new')} icon={PlusIcon}>Tạo Hóa đơn</Button> */}
-            </div>
+    return (<div className="space-y-4">            <div className="flex flex-wrap justify-between items-center gap-4">
+        <h1 className="text-2xl font-semibold">Quản lý Hóa đơn</h1>
+        <div className="flex flex-wrap gap-2">
+            {/* Nút thêm hóa đơn mới */}
+            <Button
+                onClick={() => navigate('/invoices/new')}
+                icon={PlusIcon}
+                className="bg-blue-600 hover:bg-blue-700 text-sm"
+            >
+                Thêm hoá đơn
+            </Button>
 
-            {/* Bộ lọc */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
-                <Input
-                    label="Số hợp đồng"
-                    id="search"
-                    name="search"
-                    value={filters.search}
-                    onChange={handleFilterChange}
-                    placeholder="Nhập số hợp đồng..."
-                />
-                <Input
-                    label="Mã SV/Phòng"
-                    id="identifier"
-                    name="identifier"
-                    value={filters.identifier}
-                    onChange={handleFilterChange}
-                    placeholder="Nhập mã SV hoặc phòng (VD: B3-105)"
-                    helpText="Tìm theo mã sinh viên hoặc phòng"
-                />
-                <Select
-                    label="Trạng thái"
-                    id="status"
-                    name="status"
-                    value={filters.status}
-                    onChange={handleFilterChange}
-                    options={invoiceStatusOptions}
-                />
-            </div>
+            {/* Nút tạo hóa đơn tiền phòng */}
+            <Button
+                onClick={handleCreateRoomFeeInvoices}
+                icon={PlusIcon}
+                disabled={isBulkCreating}
+                className="bg-green-600 hover:bg-green-700 text-sm"
+            >
+                {isBulkCreating ? 'Đang tạo...' : `Tiền phòng T${new Date().getMonth() + 1}`}
+            </Button>
 
-            {/* Bảng dữ liệu */}
-            {isLoading ? (
-                <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
-            ) : error ? (
-                <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
-            ) : invoices.length === 0 ? (
-                <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
-                    Không tìm thấy hóa đơn nào.
-                </div>
-            ) : (
-                <PaginationTable
-                    columns={columns}
-                    data={invoices}
-                    currentPage={currentPage}
-                    totalPages={meta.totalPages}
-                    onPageChange={handlePageChange}
-                    totalRecords={meta.total}
-                    recordsPerPage={meta.limit}
-                    showingText={`Hiển thị hóa đơn ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
-                    recordsText="hóa đơn"
-                    pageText="Trang"
-                />
-            )}
+            {/* Nút tạo hóa đơn phí gửi xe */}
+            <Button
+                onClick={handleCreateParkingFeeInvoices}
+                icon={PlusIcon}
+                disabled={isBulkCreating}
+                className="bg-orange-600 hover:bg-orange-700 text-sm"
+            >
+                {isBulkCreating ? 'Đang tạo...' : `Gửi xe T${new Date().getMonth() + 1}`}
+            </Button>
+
+            {/* Nút tạo hóa đơn tiện ích */}
+            <Button
+                onClick={handleCreateUtilityInvoices}
+                icon={PlusIcon}
+                disabled={isBulkCreating}
+                className="bg-purple-600 hover:bg-purple-700 text-sm"
+            >
+                {isBulkCreating ? 'Đang tạo...' : `Điện nước T${new Date().getMonth() + 1}`}
+            </Button>
+
+            {/* Nút tạo tất cả hóa đơn */}
+            <Button
+                onClick={handleBulkCreateInvoices}
+                icon={PlusIcon}
+                disabled={isBulkCreating}
+                className="bg-blue-600 hover:bg-blue-700 text-sm"
+            >
+                {isBulkCreating ? 'Đang tạo...' : `Tất cả T${new Date().getMonth() + 1}`}
+            </Button>
+
+            {/* Nút tạo hóa đơn mới nếu cần */}
+            {/* <Button onClick={() => navigate('/invoices/new')} icon={PlusIcon}>Tạo Hóa đơn</Button> */}
         </div>
+    </div>
+
+        {/* Bộ lọc */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
+            <Input
+                label="Số hợp đồng"
+                id="search"
+                name="search"
+                value={filters.search}
+                onChange={handleFilterChange}
+                placeholder="Nhập số hợp đồng..."
+            />
+            <Input
+                label="Mã SV/Phòng"
+                id="identifier"
+                name="identifier"
+                value={filters.identifier}
+                onChange={handleFilterChange}
+                placeholder="Nhập mã SV hoặc phòng (VD: B3-105)"
+                helpText="Tìm theo mã sinh viên hoặc phòng"
+            />
+            <Select
+                label="Trạng thái"
+                id="status"
+                name="status"
+                value={filters.status}
+                onChange={handleFilterChange}
+                options={invoiceStatusOptions}
+            />
+        </div>
+
+        {/* Bảng dữ liệu */}
+        {isLoading ? (
+            <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
+        ) : error ? (
+            <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
+        ) : invoices.length === 0 ? (
+            <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
+                Không tìm thấy hóa đơn nào.
+            </div>
+        ) : (
+            <PaginationTable
+                columns={columns}
+                data={invoices}
+                currentPage={currentPage}
+                totalPages={meta.totalPages}
+                onPageChange={handlePageChange}
+                totalRecords={meta.total}
+                recordsPerPage={meta.limit}
+                showingText={`Hiển thị hóa đơn ${(currentPage - 1) * meta.limit + 1} - ${Math.min(currentPage * meta.limit, meta.total)}`}
+                recordsText="hóa đơn"
+                pageText="Trang"
+            />
+        )}
+    </div>
     );
 };
 

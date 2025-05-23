@@ -29,6 +29,34 @@ router.post(
     invoiceController.createInvoice
 );
 
+// POST /api/invoices/bulk - Tạo hóa đơn hàng loạt cho tháng (Admin only)
+router.post(
+    '/bulk',
+    checkRole([Role.ADMIN]),
+    invoiceController.createBulkInvoices
+);
+
+// POST /api/invoices/bulk/room-fee - Tạo hóa đơn tiền phòng cho tháng (Admin only)
+router.post(
+    '/bulk/room-fee',
+    checkRole([Role.ADMIN]),
+    invoiceController.createRoomFeeInvoices
+);
+
+// POST /api/invoices/bulk/parking-fee - Tạo hóa đơn phí gửi xe cho tháng (Admin only)
+router.post(
+    '/bulk/parking-fee',
+    checkRole([Role.ADMIN]),
+    invoiceController.createParkingFeeInvoices
+);
+
+// POST /api/invoices/bulk/utility - Tạo hóa đơn tiện ích cho tháng (Admin only)
+router.post(
+    '/bulk/utility',
+    checkRole([Role.ADMIN]),
+    invoiceController.createUtilityInvoices
+);
+
 // PUT /api/invoices/:id - Cập nhật hóa đơn (Admin/Staff)
 router.put(
     '/:id',

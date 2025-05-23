@@ -9,11 +9,11 @@ import { toast } from 'react-hot-toast';
 import { ArrowLeftIcon, PlusCircleIcon, BoltIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import WaterDropIcon from '../../components/icons/WaterDropIcon';
 
-// Options for utility types including "Other"
+// Options for utility types
 const utilityTypeOptions = [
     { value: 'ELECTRICITY', label: 'Điện' },
     { value: 'WATER', label: 'Nước' },
-    { value: 'OTHER', label: 'Khác' }
+    { value: 'OTHER_FEE', label: 'Khác' }
 ];
 
 const UtilityReadingCreate = () => {
@@ -54,12 +54,10 @@ const UtilityReadingCreate = () => {
         billingYear: currentYear,
         notes: '',
         tempRoomNumber: '',
-    });
-
-    const [otherForm, setOtherForm] = useState({
+    }); const [otherForm, setOtherForm] = useState({
         roomId: '',
         buildingId: '',
-        type: 'OTHER',
+        type: 'OTHER_FEE',
         indexValue: '',
         readingDate: formattedDate,
         billingMonth: currentMonth,

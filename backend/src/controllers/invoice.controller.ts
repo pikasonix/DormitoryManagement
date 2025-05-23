@@ -167,11 +167,22 @@ export class InvoiceController {
         } catch (error) {
             next(error);
         }
-    }
-
-    async createInvoice(req: Request, res: Response, next: NextFunction) {
+    } async createInvoice(req: Request, res: Response, next: NextFunction) {
         try {
-            const { studentProfileId, roomId, billingMonth, billingYear, dueDate, paymentDeadline, notes, items, status } = req.body;
+            const {
+                studentProfileId,
+                roomId,
+                studentCode,
+                roomNumber,
+                buildingName,
+                billingMonth,
+                billingYear,
+                dueDate,
+                paymentDeadline,
+                notes,
+                items,
+                status
+            } = req.body;
 
             // Validation cơ bản đã được service xử lý, nhưng có thể thêm validate ở đây nếu muốn
             if (!items || !Array.isArray(items) || items.length === 0) {
@@ -194,6 +205,9 @@ export class InvoiceController {
             const createData = {
                 studentProfileId,
                 roomId,
+                studentCode,
+                roomNumber,
+                buildingName,
                 billingMonth: parseInt(billingMonth),
                 billingYear: parseInt(billingYear),
                 dueDate, // Service sẽ chuyển thành Date
@@ -265,6 +279,191 @@ export class InvoiceController {
                 status: 'success',
                 message: 'Hóa đơn đã được xóa thành công.',
                 data: null
+            });
+        } catch (error) {
+            next(error);
+        }
+    } async createBulkInvoices(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { month, year } = req.body;
+
+            // Sử dụng tháng và năm hiện tại nếu không được cung cấp
+            const currentDate = new Date();
+            const targetMonth = month || (currentDate.getMonth() + 1);
+            const targetYear = year || currentDate.getFullYear();
+
+            // Kiểm tra xem đã có hóa đơn cho tháng này chưa
+            const existingInvoices = await prisma.invoice.findFirst({
+                where: {
+                    billingMonth: targetMonth,
+                    billingYear: targetYear
+                }
+            });
+
+            if (existingInvoices) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `Đã có hóa đơn cho tháng ${targetMonth}/${targetYear}. Không thể tạo hóa đơn trùng lặp.`
+                });
+            }
+
+            const result = await invoiceService.createBulkMonthlyInvoices(targetMonth, targetYear);
+
+            res.status(201).json({
+                status: 'success',
+                message: `Đã tạo thành công hóa đơn cho tháng ${targetMonth}/${targetYear}`,
+                data: {
+                    month: targetMonth,
+                    year: targetYear,
+                    totalInvoicesCreated: result.totalCreated,
+                    roomFeeInvoices: result.roomFeeCount,
+                    parkingInvoices: result.parkingCount,
+                    utilityInvoices: result.utilityCount,
+                    details: result.details
+                }
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async createRoomFeeInvoices(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { month, year } = req.body;
+
+            // Sử dụng tháng và năm hiện tại nếu không được cung cấp
+            const currentDate = new Date();
+            const targetMonth = month || (currentDate.getMonth() + 1);
+            const targetYear = year || currentDate.getFullYear();
+
+            // Kiểm tra xem đã có hóa đơn tiền phòng cho tháng này chưa
+            const existingRoomFeeInvoices = await prisma.invoice.findFirst({
+                where: {
+                    billingMonth: targetMonth,
+                    billingYear: targetYear,
+                    studentProfileId: { not: null },
+                    items: {
+                        some: { type: 'ROOM_FEE' }
+                    }
+                }
+            });
+
+            if (existingRoomFeeInvoices) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `Đã có hóa đơn tiền phòng cho tháng ${targetMonth}/${targetYear}. Không thể tạo hóa đơn trùng lặp.`
+                });
+            }
+
+            const result = await invoiceService.createRoomFeeInvoices(targetMonth, targetYear);
+
+            res.status(201).json({
+                status: 'success',
+                message: `Đã tạo thành công ${result.totalCreated} hóa đơn tiền phòng cho tháng ${targetMonth}/${targetYear}`,
+                data: {
+                    month: targetMonth,
+                    year: targetYear,
+                    type: 'ROOM_FEE',
+                    totalInvoicesCreated: result.totalCreated,
+                    invoiceIds: result.invoiceIds,
+                    details: result.details
+                }
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async createParkingFeeInvoices(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { month, year } = req.body;
+
+            // Sử dụng tháng và năm hiện tại nếu không được cung cấp
+            const currentDate = new Date();
+            const targetMonth = month || (currentDate.getMonth() + 1);
+            const targetYear = year || currentDate.getFullYear();
+
+            // Kiểm tra xem đã có hóa đơn phí gửi xe cho tháng này chưa
+            const existingParkingInvoices = await prisma.invoice.findFirst({
+                where: {
+                    billingMonth: targetMonth,
+                    billingYear: targetYear,
+                    studentProfileId: { not: null },
+                    items: {
+                        some: { type: 'PARKING' }
+                    }
+                }
+            });
+
+            if (existingParkingInvoices) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `Đã có hóa đơn phí gửi xe cho tháng ${targetMonth}/${targetYear}. Không thể tạo hóa đơn trùng lặp.`
+                });
+            }
+
+            const result = await invoiceService.createParkingFeeInvoices(targetMonth, targetYear);
+
+            res.status(201).json({
+                status: 'success',
+                message: `Đã tạo thành công ${result.totalCreated} hóa đơn phí gửi xe cho tháng ${targetMonth}/${targetYear}`,
+                data: {
+                    month: targetMonth,
+                    year: targetYear,
+                    type: 'PARKING',
+                    totalInvoicesCreated: result.totalCreated,
+                    invoiceIds: result.invoiceIds,
+                    details: result.details
+                }
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    async createUtilityInvoices(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { month, year } = req.body;
+
+            // Sử dụng tháng và năm hiện tại nếu không được cung cấp
+            const currentDate = new Date();
+            const targetMonth = month || (currentDate.getMonth() + 1);
+            const targetYear = year || currentDate.getFullYear();
+
+            // Kiểm tra xem đã có hóa đơn tiện ích cho tháng này chưa
+            const existingUtilityInvoices = await prisma.invoice.findFirst({
+                where: {
+                    billingMonth: targetMonth,
+                    billingYear: targetYear,
+                    roomId: { not: null },
+                    items: {
+                        some: {
+                            type: { in: ['ELECTRICITY', 'WATER'] }
+                        }
+                    }
+                }
+            });
+
+            if (existingUtilityInvoices) {
+                return res.status(400).json({
+                    status: 'error',
+                    message: `Đã có hóa đơn tiện ích cho tháng ${targetMonth}/${targetYear}. Không thể tạo hóa đơn trùng lặp.`
+                });
+            }
+
+            const result = await invoiceService.createUtilityInvoices(targetMonth, targetYear);
+
+            res.status(201).json({
+                status: 'success',
+                message: `Đã tạo thành công ${result.totalCreated} hóa đơn tiện ích cho tháng ${targetMonth}/${targetYear}`,
+                data: {
+                    month: targetMonth,
+                    year: targetYear,
+                    type: 'UTILITY',
+                    totalInvoicesCreated: result.totalCreated,
+                    invoiceIds: result.invoiceIds,
+                    details: result.details
+                }
             });
         } catch (error) {
             next(error);

@@ -100,6 +100,126 @@ const createInvoice = async (invoiceData) => {
 };
 
 /**
+ * Tạo hóa đơn hàng loạt cho tất cả sinh viên trong tháng hiện tại.
+ * @param {number} month - Tháng tạo hóa đơn (1-12, mặc định là tháng hiện tại)
+ * @param {number} year - Năm tạo hóa đơn (mặc định là năm hiện tại)
+ * @returns {Promise<object>} Kết quả tạo hóa đơn hàng loạt
+ */
+const createBulkInvoices = async (month = null, year = null) => {
+    try {
+        const now = new Date();
+        const requestData = {
+            month: month || now.getMonth() + 1,
+            year: year || now.getFullYear()
+        };
+
+        const response = await apiClient.post('/api/invoices/bulk', requestData);
+
+        if (response.data?.status === 'success') {
+            return response.data.data;
+        } else {
+            throw new Error(response.data?.message || 'Tạo hóa đơn hàng loạt thất bại.');
+        }
+    } catch (error) {
+        console.error('Lỗi service createBulkInvoices:', error.response?.data || error.message);
+        if (error.response?.data?.errors) {
+            throw error.response.data;
+        }
+        throw error.response?.data || error;
+    }
+};
+
+/**
+ * Tạo hóa đơn tiền phòng cho tháng
+ * @param {number} month - Tháng tạo hóa đơn (1-12, mặc định là tháng hiện tại)
+ * @param {number} year - Năm tạo hóa đơn (mặc định là năm hiện tại)
+ * @returns {Promise<object>} Kết quả tạo hóa đơn tiền phòng
+ */
+const createRoomFeeInvoices = async (month = null, year = null) => {
+    try {
+        const now = new Date();
+        const requestData = {
+            month: month || now.getMonth() + 1,
+            year: year || now.getFullYear()
+        };
+
+        const response = await apiClient.post('/api/invoices/bulk/room-fee', requestData);
+
+        if (response.data?.status === 'success') {
+            return response.data.data;
+        } else {
+            throw new Error(response.data?.message || 'Tạo hóa đơn tiền phòng thất bại.');
+        }
+    } catch (error) {
+        console.error('Lỗi service createRoomFeeInvoices:', error.response?.data || error.message);
+        if (error.response?.data?.errors) {
+            throw error.response.data;
+        }
+        throw error.response?.data || error;
+    }
+};
+
+/**
+ * Tạo hóa đơn phí gửi xe cho tháng
+ * @param {number} month - Tháng tạo hóa đơn (1-12, mặc định là tháng hiện tại)
+ * @param {number} year - Năm tạo hóa đơn (mặc định là năm hiện tại)
+ * @returns {Promise<object>} Kết quả tạo hóa đơn phí gửi xe
+ */
+const createParkingFeeInvoices = async (month = null, year = null) => {
+    try {
+        const now = new Date();
+        const requestData = {
+            month: month || now.getMonth() + 1,
+            year: year || now.getFullYear()
+        };
+
+        const response = await apiClient.post('/api/invoices/bulk/parking-fee', requestData);
+
+        if (response.data?.status === 'success') {
+            return response.data.data;
+        } else {
+            throw new Error(response.data?.message || 'Tạo hóa đơn phí gửi xe thất bại.');
+        }
+    } catch (error) {
+        console.error('Lỗi service createParkingFeeInvoices:', error.response?.data || error.message);
+        if (error.response?.data?.errors) {
+            throw error.response.data;
+        }
+        throw error.response?.data || error;
+    }
+};
+
+/**
+ * Tạo hóa đơn tiện ích (điện/nước) cho tháng
+ * @param {number} month - Tháng tạo hóa đơn (1-12, mặc định là tháng hiện tại)
+ * @param {number} year - Năm tạo hóa đơn (mặc định là năm hiện tại)
+ * @returns {Promise<object>} Kết quả tạo hóa đơn tiện ích
+ */
+const createUtilityInvoices = async (month = null, year = null) => {
+    try {
+        const now = new Date();
+        const requestData = {
+            month: month || now.getMonth() + 1,
+            year: year || now.getFullYear()
+        };
+
+        const response = await apiClient.post('/api/invoices/bulk/utility', requestData);
+
+        if (response.data?.status === 'success') {
+            return response.data.data;
+        } else {
+            throw new Error(response.data?.message || 'Tạo hóa đơn tiện ích thất bại.');
+        }
+    } catch (error) {
+        console.error('Lỗi service createUtilityInvoices:', error.response?.data || error.message);
+        if (error.response?.data?.errors) {
+            throw error.response.data;
+        }
+        throw error.response?.data || error;
+    }
+};
+
+/**
  * Cập nhật thông tin một hóa đơn (thường là trạng thái hoặc hạn thanh toán).
  * @param {string|number} id - ID của hóa đơn cần cập nhật.
  * @param {object} invoiceData - Dữ liệu cần cập nhật { status?, dueDate?, items? }.
@@ -148,6 +268,10 @@ export const invoiceService = {
     getAllInvoices,
     getInvoiceById,
     createInvoice,
+    createBulkInvoices,
+    createRoomFeeInvoices,
+    createParkingFeeInvoices,
+    createUtilityInvoices,
     updateInvoice,
     deleteInvoice,
 };

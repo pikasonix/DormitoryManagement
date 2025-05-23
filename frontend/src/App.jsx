@@ -29,6 +29,7 @@ import MaintenanceRequestForm from './pages/maintenance/MaintenanceRequestForm';
 import InvoiceIndex from './pages/invoices/InvoiceIndex';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import InvoiceStudentView from './pages/invoices/InvoiceStudentView';
+import InvoiceForm from './pages/invoices/InvoiceForm';
 import PaymentIndex from './pages/payments/PaymentIndex';
 import PaymentForm from './pages/payments/PaymentForm';
 import PaymentNew from './pages/payments/PaymentNew';
@@ -138,7 +139,8 @@ function App() {
             />
           } />
           <Route path=":id" element={<InvoiceDetail />} />
-          {/* <Route path="new" element={<InvoiceForm />} /> */}
+          <Route path="new" element={<StaffRoute><InvoiceForm /></StaffRoute>} />
+          <Route path=":id/edit" element={<StaffRoute><InvoiceForm /></StaffRoute>} />
         </Route><Route path="/payments" element={<StaffRoute />}>
           <Route index element={<PaymentIndex />} />
           <Route path="new" element={<PaymentNew />} />
