@@ -278,17 +278,8 @@ const InvoiceStudentView = () => {
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">Hóa đơn của tôi</h1>
                 <p className="text-gray-600 mt-1">
-                    Quản lý các hóa đơn cá nhân và phòng của bạn
+                    Quản lý hóa đơn cá nhân và phòng của bạn
                 </p>
-                {/* Debug info */}
-                {process.env.NODE_ENV === 'development' && (
-                    <div className="mt-2 p-2 bg-gray-100 rounded text-xs">
-                        <div>User ID: {user?.id}</div>
-                        <div>ProfileID: {user?.profileId}</div>
-                        <div>Role: {user?.role}</div>
-                        <div>Records count: {invoices?.length || 0}</div>
-                    </div>
-                )}
             </div>
             {/* Bộ lọc */}
             <div className="bg-white rounded-lg shadow mb-6 p-4">

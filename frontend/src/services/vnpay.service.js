@@ -78,9 +78,30 @@ const getStudentPayments = async (studentId) => {
     }
 };
 
+/**
+ * Lấy thông tin chi tiết thanh toán theo invoice ID.
+ * @param {number} invoiceId - ID của hóa đơn.
+ * @returns {Promise<object>} Dữ liệu chi tiết thanh toán.
+ */
+const getPaymentByInvoiceId = async (invoiceId) => {
+    try {
+        const response = await apiClient.get(`/api/vnpay/payments/invoice/${invoiceId}`);
+
+        if (response.data?.success) {
+            return response.data.payment;
+        } else {
+            throw new Error(response.data?.message || 'Không thể lấy thông tin thanh toán.');
+        }
+    } catch (error) {
+        console.error(`Lỗi service getPaymentByInvoiceId (${invoiceId}):`, error.response?.data || error.message);
+        throw error.response?.data || error;
+    }
+};
+
 // Export service object
 export const vnpayService = {
     getPaymentUrl,
     getPaymentDetails,
+    getPaymentByInvoiceId,
     getStudentPayments,
 };

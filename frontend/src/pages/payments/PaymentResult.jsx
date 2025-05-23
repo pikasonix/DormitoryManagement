@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { vnpayService } from '../../services/vnpay.service';
 import { Button } from '../../components/shared';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
-import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon, XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import { format } from 'date-fns';
 
 /**
@@ -11,10 +11,10 @@ import { format } from 'date-fns';
  */
 const PaymentResult = () => {
     const navigate = useNavigate();
-    const location = useLocation();
-    const queryParams = new URLSearchParams(location.search);
+    const location = useLocation(); const queryParams = new URLSearchParams(location.search);
     const paymentStatus = queryParams.get('status');
     const paymentId = queryParams.get('paymentId');
+    const invoiceId = queryParams.get('invoiceId'); // Thêm invoiceId
     const responseCode = queryParams.get('responseCode');
     // Get raw VNPay return parameters
     const resultParams = {
@@ -34,16 +34,21 @@ const PaymentResult = () => {
 
     const [payment, setPayment] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    useEffect(() => {
+    const [error, setError] = useState(null); useEffect(() => {
         const fetchPaymentDetails = async () => {
             try {
+                // Ưu tiên sử dụng paymentId nếu có
                 if (paymentId) {
                     const paymentData = await vnpayService.getPaymentDetails(paymentId);
                     setPayment(paymentData);
-                } else {
-                    // Nếu không có paymentId, thử lấy từ localStorage
+                }                // Nếu không có paymentId nhưng có invoiceId, tìm payment theo invoice
+                else if (invoiceId) {
+                    console.log('Using invoiceId to find payment:', invoiceId);
+                    const paymentData = await vnpayService.getPaymentByInvoiceId(invoiceId);
+                    setPayment(paymentData);
+                }
+                // Fallback: thử lấy từ localStorage
+                else {
                     const storedPaymentInfo = localStorage.getItem('vnpay_payment_info');
                     if (storedPaymentInfo) {
                         const paymentInfo = JSON.parse(storedPaymentInfo);
@@ -51,22 +56,22 @@ const PaymentResult = () => {
                             const paymentData = await vnpayService.getPaymentDetails(paymentInfo.payment_id);
                             setPayment(paymentData);
                         } else {
-                            throw new Error('Không tìm thấy thông tin thanh toán');
+                            throw new Error('Không tìm thấy thông tin thanh toán trong bộ nhớ tạm');
                         }
                     } else {
-                        throw new Error('Không tìm thấy thông tin thanh toán');
+                        throw new Error('Không tìm thấy thông tin thanh toán. Vui lòng kiểm tra lại URL hoặc thử lại từ danh sách hóa đơn.');
                     }
                 }
             } catch (error) {
                 console.error('Error fetching payment details:', error);
-                setError('Không thể lấy thông tin thanh toán. Vui lòng kiểm tra trong lịch sử thanh toán của bạn.');
+                setError(error.message || 'Không thể lấy thông tin thanh toán. Vui lòng kiểm tra trong lịch sử thanh toán của bạn.');
             } finally {
                 setIsLoading(false);
             }
         };
 
         fetchPaymentDetails();
-    }, [paymentId]);
+    }, [paymentId, invoiceId]);
 
     // Xóa thông tin thanh toán từ localStorage sau khi đã xử lý
     useEffect(() => {
@@ -130,20 +135,9 @@ const PaymentResult = () => {
 
     const formatCurrency = (amount) => {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-    };
-
-    return (
+    }; return (
         <div className="container mx-auto px-4 py-8">
             <div className="max-w-2xl mx-auto">
-                <Button
-                    variant="link"
-                    onClick={() => navigate('/invoices')}
-                    icon={ArrowLeftIcon}
-                    className="text-sm mb-4"
-                >
-                    Quay lại danh sách hóa đơn
-                </Button>
-
                 <div className="bg-white shadow rounded-lg overflow-hidden">
                     {/* Header */}
                     <div className="p-6 border-b flex flex-col items-center">
@@ -156,52 +150,45 @@ const PaymentResult = () => {
                     {isLoading ? (
                         <div className="flex justify-center p-10">
                             <LoadingSpinner text="Đang tải thông tin thanh toán..." />
-                        </div>
-                    ) : error ? (
-                        <div className="p-6 text-center">
-                            <p className="text-red-500">{error}</p>
-                            <Button
-                                variant="primary"
-                                onClick={() => navigate('/invoices')}
-                                className="mt-4"
-                            >
-                                Xem danh sách hóa đơn
-                            </Button>
-                        </div>
-                    ) : payment ? (
-                        <>
-                            {/* Raw VNPay result details */}
-                            <div className="p-6 border-t">
-                                <h2 className="text-lg font-semibold mb-4">Chi tiết VNPay</h2>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {Object.entries(resultParams).map(([key, value]) => (
-                                        <div key={key}>
-                                            <p className="text-sm font-medium text-gray-500">{key}</p>
-                                            <p className="text-gray-900">{value || 'N/A'}</p>
-                                        </div>
-                                    ))}
-                                </div>
+                        </div>) : error ? (
+                            <div className="p-6 text-center">
+                                <p className="text-red-500">{error}</p>
                             </div>
+                        ) : payment ? (
                             <div className="p-6 space-y-4">
+                                {/* Thông tin thanh toán cơ bản */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                                     <div>
                                         <p className="text-sm text-gray-500">Mã giao dịch</p>
-                                        <p className="font-mono">{payment.transactionCode || 'N/A'}</p>
+                                        <p className="font-mono">{payment.transactionCode || resultParams.vnp_TransactionNo || 'N/A'}</p>
                                     </div>
                                     <div>
                                         <p className="text-sm text-gray-500">Ngày thanh toán</p>
                                         <p>{payment.paymentDate ? format(new Date(payment.paymentDate), 'dd/MM/yyyy HH:mm') : 'N/A'}</p>
                                     </div>
                                     <div>
-                                        <p className="text-sm text-gray-500">Số tiền</p>
-                                        <p className="font-semibold text-lg">{formatCurrency(payment.amount)}</p>
+                                        <p className="text-sm text-gray-500">Số tiền thanh toán</p>
+                                        <p className="font-semibold text-lg text-green-600">{formatCurrency(payment.amount)}</p>
                                     </div>
                                     <div>
                                         <p className="text-sm text-gray-500">Phương thức thanh toán</p>
-                                        <p>{payment.paymentMethod}</p>
+                                        <p>VNPay</p>
+                                    </div>
+                                    {resultParams.vnp_BankCode && (
+                                        <div>
+                                            <p className="text-sm text-gray-500">Ngân hàng</p>
+                                            <p>{resultParams.vnp_BankCode}</p>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <p className="text-sm text-gray-500">Trạng thái</p>
+                                        <p className={`${paymentStatus === 'success' || responseCode === '00' ? 'text-green-600' : 'text-red-600'}`}>
+                                            {paymentStatus === 'success' || responseCode === '00' ? 'Thành công' : 'Thất bại'}
+                                        </p>
                                     </div>
                                 </div>
 
+                                {/* Thông tin hóa đơn */}
                                 {payment.invoice && (
                                     <div className="border-t pt-4 mt-4">
                                         <p className="text-sm text-gray-500 mb-2">Thông tin hóa đơn</p>
@@ -217,13 +204,16 @@ const PaymentResult = () => {
                                             <div>
                                                 <p className="text-sm text-gray-500">Trạng thái hóa đơn</p>
                                                 <p className={`${payment.invoice.status === 'PAID' ? 'text-green-600' : payment.invoice.status === 'PARTIALLY_PAID' ? 'text-blue-600' : 'text-red-600'}`}>
-                                                    {payment.invoice.status}
+                                                    {payment.invoice.status === 'PAID' ? 'Đã thanh toán' :
+                                                        payment.invoice.status === 'PARTIALLY_PAID' ? 'Thanh toán một phần' :
+                                                            'Chưa thanh toán'}
                                                 </p>
                                             </div>
                                         </div>
                                     </div>
                                 )}
 
+                                {/* Thông tin sinh viên */}
                                 {payment.studentProfile && (
                                     <div className="border-t pt-4 mt-4">
                                         <p className="text-sm text-gray-500 mb-2">Thông tin sinh viên</p>
@@ -238,31 +228,19 @@ const PaymentResult = () => {
                                             </div>
                                         </div>
                                     </div>
-                                )}
-                            </div>
-                        </>
-                    ) : (
+                                )}                        </div>
+                        ) : (
                         <div className="p-6 text-center text-gray-500">
                             Không tìm thấy thông tin thanh toán
                         </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="p-6 border-t bg-gray-50 flex justify-between">
+                    )}                    {/* Actions */}
+                    <div className="p-6 border-t bg-gray-50 flex justify-center">
                         <Button
-                            variant="secondary"
+                            variant="primary"
                             onClick={() => navigate('/invoices')}
                         >
                             Quay lại danh sách hóa đơn
                         </Button>
-                        {payment && (
-                            <Button
-                                variant="primary"
-                                onClick={() => navigate('/payments')}
-                            >
-                                Xem lịch sử thanh toán
-                            </Button>
-                        )}
                     </div>
                 </div>
             </div>
