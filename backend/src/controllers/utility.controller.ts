@@ -7,19 +7,22 @@ const prisma = new PrismaClient();
 const utilityService = new UtilityService();
 
 export class UtilityController {
-
     async getAllReadings(req: Request, res: Response, next: NextFunction) {
         try {
-            const { roomId, type, month, year, page, limit, search, roomNumber } = req.query;
+            const { roomId, type, month, year, page, limit, search, roomNumber, buildingId } = req.query;
 
             console.log('Utility API called with query params:', req.query);
 
-            const options: Prisma.UtilityMeterReadingFindManyArgs = { where: {} };
+            const options: Prisma.UtilityMeterReadingFindManyArgs = { where: {} };            // Building filtering for STAFF users
+            if (buildingId) {
+                if (!options.where!.room) {
+                    options.where!.room = {};
+                }
+                (options.where!.room as any).buildingId = parseInt(buildingId as string);
+            }
 
             // Xây dựng bộ lọc
-            if (roomId) options.where!.roomId = parseInt(roomId as string);
-
-            // Tìm kiếm theo số phòng nâng cao
+            if (roomId) options.where!.roomId = parseInt(roomId as string);            // Tìm kiếm theo số phòng nâng cao
             if (roomNumber) {
                 const roomSearch = roomNumber as string;
 
@@ -27,42 +30,42 @@ export class UtilityController {
                 const roomWithBuildingPattern = /(\d+)\s*\(([^)]+)\)/;
                 const matchRoomWithBuilding = roomSearch.match(roomWithBuildingPattern);
 
+                const roomFilter: any = { ...(options.where!.room || {}) };
+
                 if (matchRoomWithBuilding) {
                     // Pattern "306 (B3)" - tìm theo cả số phòng và tòa nhà
                     const roomNum = matchRoomWithBuilding[1]; // "306"
                     const buildingName = matchRoomWithBuilding[2]; // "B3"
 
-                    options.where!.room = {
-                        number: {
-                            contains: roomNum,
+                    roomFilter.number = {
+                        contains: roomNum,
+                        mode: 'insensitive'
+                    };
+                    roomFilter.building = {
+                        ...roomFilter.building,
+                        name: {
+                            contains: buildingName,
                             mode: 'insensitive'
-                        },
-                        building: {
-                            name: {
-                                contains: buildingName,
-                                mode: 'insensitive'
-                            }
                         }
                     };
                 } else if (/^\D+$/.test(roomSearch)) {
                     // Pattern chỉ có chữ cái (không có số) - có thể là tên tòa nhà "B3"
-                    options.where!.room = {
-                        building: {
-                            name: {
-                                contains: roomSearch,
-                                mode: 'insensitive'
-                            }
-                        }
-                    };
-                } else {
-                    // Mặc định - chỉ tìm theo số phòng
-                    options.where!.room = {
-                        number: {
+                    roomFilter.building = {
+                        ...roomFilter.building,
+                        name: {
                             contains: roomSearch,
                             mode: 'insensitive'
                         }
                     };
+                } else {
+                    // Mặc định - chỉ tìm theo số phòng
+                    roomFilter.number = {
+                        contains: roomSearch,
+                        mode: 'insensitive'
+                    };
                 }
+
+                options.where!.room = roomFilter;
             }
 
             // Tìm kiếm chung

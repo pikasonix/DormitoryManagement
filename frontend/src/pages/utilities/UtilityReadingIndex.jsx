@@ -11,6 +11,7 @@ import { PlusIcon, PencilSquareIcon, TrashIcon, BoltIcon } from '@heroicons/reac
 import WaterDropIcon from '../../components/icons/WaterDropIcon';
 import { format, parseISO } from 'date-fns';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Các hàm tiện ích bổ sung
 const getUtilityTypeIcon = (type) => {
@@ -67,6 +68,7 @@ const formatDateTime = (dateString) => {
 }
 
 const UtilityReadingIndex = () => {
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [readings, setReadings] = useState([]);
@@ -158,6 +160,12 @@ const UtilityReadingIndex = () => {
 
             if (filters.year) {
                 params.year = filters.year;
+            }
+
+            // Thêm buildingId filter cho STAFF users
+            if (user?.role === 'STAFF' && user?.staffProfile?.managedBuildingId) {
+                params.buildingId = user.staffProfile.managedBuildingId;
+                console.log('STAFF user filtering utilities by building ID:', params.buildingId);
             }
 
             console.log('Sending utility reading request with params:', params);
