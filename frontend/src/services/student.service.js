@@ -184,6 +184,35 @@ const deleteStudent = async (id) => {
   }
 };
 
+// Duyệt hồ sơ sinh viên (chuyển từ PENDING_APPROVAL sang RENTING)
+const approveStudent = async (id) => {
+  try {
+    const response = await apiClient.patch(`/students/${id}/approve`);
+    if (response.data?.status === 'success') {
+      return response.data;
+    } else {
+      throw new Error(response.data?.message || 'Duyệt hồ sơ sinh viên thất bại.');
+    }
+  } catch (error) {
+    console.error(`Lỗi service approveStudent (${id}):`, error.response?.data || error.message);
+    throw error.response?.data || error;
+  }
+};
+
+// Từ chối hồ sơ sinh viên (chuyển từ PENDING_APPROVAL sang CHECKED_OUT)
+const rejectStudent = async (id, reason = null) => {
+  try {
+    const response = await apiClient.patch(`/students/${id}/reject`, { reason });
+    if (response.data?.status === 'success') {
+      return response.data;
+    } else {
+      throw new Error(response.data?.message || 'Từ chối hồ sơ sinh viên thất bại.');
+    }
+  } catch (error) {
+    console.error(`Lỗi service rejectStudent (${id}):`, error.response?.data || error.message);
+    throw error.response?.data || error;
+  }
+};
 
 // Export service object
 export const studentService = {
@@ -194,4 +223,6 @@ export const studentService = {
   createStudent,
   updateStudent,
   deleteStudent,
+  approveStudent,
+  rejectStudent,
 };

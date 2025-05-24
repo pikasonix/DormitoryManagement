@@ -138,6 +138,16 @@ const staffIdParamSchema = z.object({
   }),
 });
 
+// Schema cho approve/reject student
+const rejectStudentSchema = z.object({
+  params: z.object({
+    id: z.coerce.number().int().positive("ID hồ sơ sinh viên không hợp lệ"),
+  }),
+  body: z.object({
+    reason: z.string().optional().nullable(),
+  }),
+});
+
 router.use(authMiddleware);
 
 router.get(
@@ -182,6 +192,21 @@ router.delete(
   checkRole([Role.ADMIN]),
   validate(studentIdParamSchema),
   studentController.deleteStudent
+);
+
+// Routes cho approve/reject student
+router.patch(
+  '/:id/approve',
+  checkRole([Role.ADMIN]),
+  validate(studentIdParamSchema),
+  studentController.approveStudent
+);
+
+router.patch(
+  '/:id/reject',
+  checkRole([Role.ADMIN]),
+  validate(rejectStudentSchema),
+  studentController.rejectStudent
 );
 
 router.get(

@@ -17,6 +17,7 @@ export class StudentController {
       const offset = applyPagination ? (page - 1) * limit : 0;
 
       const keyword = req.query.keyword as string;
+      const status = req.query.status as string;
 
       const whereCondition: any = {};
       if (keyword) {
@@ -26,6 +27,11 @@ export class StudentController {
           { user: { email: { contains: keyword, mode: 'insensitive' } } },
           { phoneNumber: { contains: keyword, mode: 'insensitive' } }
         ];
+      }
+
+      // Lọc theo trạng thái nếu có
+      if (status && Object.values(StudentStatus).includes(status as StudentStatus)) {
+        whereCondition.status = status as StudentStatus;
       }
 
       const totalStudents = await prisma.studentProfile.count({
@@ -508,6 +514,105 @@ export class StudentController {
         return next(new Error(`Không tìm thấy hồ sơ sinh viên hoặc tài nguyên liên quan (ID: ${req.params.id})`));
       } else if (error.message.includes('Không tìm thấy hồ sơ sinh viên')) {
         return next(new Error(error.message));
+      }
+      next(error);
+    }
+  }
+
+  // Duyệt hồ sơ sinh viên (chuyển từ PENDING_APPROVAL sang RENTING)
+  async approveStudent(req: Request, res: Response, next: NextFunction) {
+    try {
+      const profileId = parseInt(req.params.id);
+      if (isNaN(profileId)) {
+        return next(new Error('ID hồ sơ sinh viên không hợp lệ'));
+      }
+
+      // Kiểm tra sinh viên có tồn tại và đang ở trạng thái PENDING_APPROVAL không
+      const student = await prisma.studentProfile.findUnique({
+        where: { id: profileId },
+        include: { user: { select: { email: true } } }
+      });
+
+      if (!student) {
+        return next(new Error(`Không tìm thấy hồ sơ sinh viên với ID ${profileId}`));
+      }
+
+      if (student.status !== StudentStatus.PENDING_APPROVAL) {
+        return next(new Error('Chỉ có thể duyệt sinh viên có trạng thái "Chờ duyệt"'));
+      }
+
+      // Cập nhật trạng thái thành RENTING
+      const approvedStudent = await prisma.studentProfile.update({
+        where: { id: profileId },
+        data: { status: StudentStatus.RENTING },
+        include: {
+          user: { select: { id: true, email: true, isActive: true, avatar: true } },
+          room: { include: { building: true } }
+        }
+      });
+
+      res.status(200).json({
+        status: 'success',
+        message: `Đã duyệt hồ sơ sinh viên "${student.fullName}" thành công`,
+        data: approvedStudent
+      });
+
+    } catch (error: any) {
+      console.error('Lỗi khi duyệt sinh viên:', error);
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return next(new Error(`Không tìm thấy hồ sơ sinh viên với ID ${req.params.id}`));
+      }
+      next(error);
+    }
+  }
+
+  // Từ chối hồ sơ sinh viên (chuyển từ PENDING_APPROVAL sang REJECTED/INACTIVE)
+  async rejectStudent(req: Request, res: Response, next: NextFunction) {
+    try {
+      const profileId = parseInt(req.params.id);
+      if (isNaN(profileId)) {
+        return next(new Error('ID hồ sơ sinh viên không hợp lệ'));
+      }
+
+      const { reason } = req.body;
+
+      // Kiểm tra sinh viên có tồn tại và đang ở trạng thái PENDING_APPROVAL không
+      const student = await prisma.studentProfile.findUnique({
+        where: { id: profileId },
+        include: { user: { select: { email: true } } }
+      });
+
+      if (!student) {
+        return next(new Error(`Không tìm thấy hồ sơ sinh viên với ID ${profileId}`));
+      }
+
+      if (student.status !== StudentStatus.PENDING_APPROVAL) {
+        return next(new Error('Chỉ có thể từ chối sinh viên có trạng thái "Chờ duyệt"'));
+      }
+
+      // Cập nhật trạng thái thành CHECKED_OUT và ghi lý do (nếu có)
+      const rejectedStudent = await prisma.studentProfile.update({
+        where: { id: profileId },
+        data: {
+          status: StudentStatus.CHECKED_OUT,
+          // Có thể thêm trường note hoặc rejectionReason nếu cần
+        },
+        include: {
+          user: { select: { id: true, email: true, isActive: true, avatar: true } },
+          room: { include: { building: true } }
+        }
+      });
+
+      res.status(200).json({
+        status: 'success',
+        message: `Đã từ chối hồ sơ sinh viên "${student.fullName}"${reason ? `. Lý do: ${reason}` : ''}`,
+        data: rejectedStudent
+      });
+
+    } catch (error: any) {
+      console.error('Lỗi khi từ chối sinh viên:', error);
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        return next(new Error(`Không tìm thấy hồ sơ sinh viên với ID ${req.params.id}`));
       }
       next(error);
     }

@@ -5,7 +5,7 @@ import { Button, Input, Badge } from '../../components/shared';
 import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import { PlusIcon, PencilSquareIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilSquareIcon, TrashIcon, EyeIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -38,6 +38,8 @@ const StudentIndex = () => {
   const [meta, setMeta] = useState({ currentPage: 1, totalPages: 1, limit: 10, total: 0 });
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL'); // Filter theo trạng thái
+  const [pendingCount, setPendingCount] = useState(0); // Số lượng sinh viên chờ duyệt
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
   const navigate = useNavigate();
   const { user } = useAuth(); // Get current user to check if admin
@@ -47,13 +49,14 @@ const StudentIndex = () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Lấy tất cả sinh viên từ API (không giới hạn limit)
+      // Lấy tất cả sinh viên từ API với filter theo status nếu có
       const params = {
         // Không chỉ định limit để API trả về tất cả sinh viên
         keyword: undefined, // Không dùng keyword từ API nữa, sẽ lọc ở client
+        status: statusFilter !== 'ALL' ? statusFilter : undefined
       };
 
-      console.log('Fetching all students with params:', params);
+      console.log('Fetching students with params:', params);
       const data = await studentService.getAllStudents(params);
       console.log('Students data received:', data);
 
@@ -69,6 +72,12 @@ const StudentIndex = () => {
           return studentId.includes(searchTerm);
         });
         console.log(`Filtered to ${students.length} students with student ID containing "${searchTerm}"`);
+      }
+
+      // Lọc theo trạng thái nếu có filter (bổ sung để đảm bảo filter hoạt động)
+      if (statusFilter && statusFilter !== 'ALL') {
+        students = students.filter(student => student.status === statusFilter);
+        console.log(`Filtered to ${students.length} students with status "${statusFilter}"`);
       }
 
       // Extract and normalize metadata for pagination
@@ -105,12 +114,37 @@ const StudentIndex = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [statusFilter]); // Thêm statusFilter vào dependency array
 
-  // Fetch khi trang thay đổi hoặc search term (đã debounce) thay đổi
+  // Fetch khi trang thay đổi hoặc search term (đã debounce) thay đổi hoặc statusFilter thay đổi
   useEffect(() => {
     fetchStudents(currentPage, debouncedSearchTerm);
   }, [fetchStudents, currentPage, debouncedSearchTerm]);
+
+  // Reset về trang đầu khi thay đổi filter hoặc search
+  useEffect(() => {
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
+  }, [statusFilter, debouncedSearchTerm]);
+
+  // Fetch số lượng sinh viên chờ duyệt
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const params = { status: 'PENDING_APPROVAL' };
+        const data = await studentService.getAllStudents(params);
+        const allStudentsList = data.students || data.data || data;
+        const students = Array.isArray(allStudentsList) ? allStudentsList : [];
+        setPendingCount(students.length);
+      } catch (err) {
+        console.error('Error fetching pending count:', err);
+        setPendingCount(0);
+      }
+    };
+
+    fetchPendingCount();
+  }, [students]); // Cập nhật khi danh sách sinh viên thay đổi
 
   // Hàm xử lý xóa
   const handleDelete = async (id, name) => {
@@ -122,6 +156,35 @@ const StudentIndex = () => {
         fetchStudents(currentPage, debouncedSearchTerm);
       } catch (err) {
         toast.error(err?.message || `Xóa hồ sơ sinh viên "${name}" thất bại.`);
+      }
+    }
+  };
+
+  // Hàm xử lý duyệt sinh viên
+  const handleApprove = async (studentId, studentName) => {
+    if (window.confirm(`Bạn có chắc chắn muốn duyệt hồ sơ sinh viên "${studentName}" không?`)) {
+      try {
+        await studentService.approveStudent(studentId);
+        toast.success(`Đã duyệt hồ sơ sinh viên "${studentName}" thành công!`);
+        // Fetch lại danh sách sinh viên
+        fetchStudents(currentPage, debouncedSearchTerm);
+      } catch (err) {
+        toast.error(err?.message || `Duyệt hồ sơ sinh viên "${studentName}" thất bại.`);
+      }
+    }
+  };
+
+  // Hàm xử lý từ chối sinh viên
+  const handleReject = async (studentId, studentName) => {
+    const reason = window.prompt(`Nhập lý do từ chối hồ sơ sinh viên "${studentName}":`);
+    if (reason !== null) { // User didn't cancel
+      try {
+        await studentService.rejectStudent(studentId, reason.trim() || undefined);
+        toast.success(`Đã từ chối hồ sơ sinh viên "${studentName}" thành công!`);
+        // Fetch lại danh sách sinh viên
+        fetchStudents(currentPage, debouncedSearchTerm);
+      } catch (err) {
+        toast.error(err?.message || `Từ chối hồ sơ sinh viên "${studentName}" thất bại.`);
       }
     }
   };
@@ -241,6 +304,10 @@ const StudentIndex = () => {
       Cell: ({ row }) => {
         // Sử dụng userId thay vì id của student profile để đi đến trang chi tiết
         const userId = row?.original?.userId; // user ID từ bảng users
+        const studentId = row?.original?.id; // student ID từ bảng students
+        const studentStatus = row?.original?.status;
+        const studentName = row?.original?.fullName || 'Sinh viên này';
+
         if (!userId) return null;
 
         return (
@@ -254,15 +321,27 @@ const StudentIndex = () => {
             </Button>
             <Button
               variant="icon"
-              onClick={() => navigate(`/students/${row?.original?.id}/edit`)}
+              onClick={() => navigate(`/students/${studentId}/edit`)}
               tooltip="Chỉnh sửa"
             >
               <PencilSquareIcon className="h-5 w-5 text-yellow-600 hover:text-yellow-800" />
             </Button>
+
+            {/* Nút duyệt cho admin khi sinh viên ở trạng thái PENDING_APPROVAL */}
+            {user?.role === 'ADMIN' && studentStatus === 'PENDING_APPROVAL' && (
+              <Button
+                variant="icon"
+                onClick={() => handleApprove(studentId, studentName)}
+                tooltip="Duyệt hồ sơ"
+              >
+                <CheckIcon className="h-5 w-5 text-green-600 hover:text-green-800" />
+              </Button>
+            )}
+
             {user?.role === 'ADMIN' && (
               <Button
                 variant="icon"
-                onClick={() => handleDelete(row?.original?.id, row.original.fullName || 'Sinh viên này')}
+                onClick={() => handleDelete(studentId, studentName)}
                 tooltip="Xóa"
               >
                 <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
@@ -272,7 +351,7 @@ const StudentIndex = () => {
         );
       },
     },
-  ], [navigate, user, handleDelete]);
+  ], [navigate, user, handleDelete, handleApprove]);
 
   return (
     <div className="space-y-4">
@@ -287,6 +366,43 @@ const StudentIndex = () => {
             Thêm tài khoản sinh viên
           </Button>
         )}
+      </div>
+
+      {/* Thanh lọc theo trạng thái */}
+      <div className="border-b border-gray-200">
+        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+          {[
+            { key: 'ALL', label: 'Tất cả', count: null },
+            { key: 'PENDING_APPROVAL', label: 'Chờ duyệt', count: pendingCount },
+            { key: 'RENTING', label: 'Đang thuê', count: null },
+            { key: 'CHECKED_OUT', label: 'Đã trả phòng', count: null },
+            { key: 'EVICTED', label: 'Bị đuổi', count: null }
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setStatusFilter(tab.key)}
+              className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${statusFilter === tab.key
+                ? 'border-indigo-500 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+            >
+              {tab.label}
+              {tab.key === 'PENDING_APPROVAL' && pendingCount > 0 && (
+                <span className="ml-1 bg-red-500 text-white px-2 py-0.5 rounded-full text-xs animate-pulse">
+                  {pendingCount}
+                </span>
+              )}
+              {tab.count !== null && tab.key !== 'PENDING_APPROVAL' && (
+                <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${statusFilter === tab.key
+                  ? 'bg-indigo-100 text-indigo-600'
+                  : 'bg-gray-100 text-gray-900'
+                  }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
       </div>
 
       {/* Thanh tìm kiếm */}
