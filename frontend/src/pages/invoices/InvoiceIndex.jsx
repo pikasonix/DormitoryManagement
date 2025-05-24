@@ -7,10 +7,11 @@ import { Button, Select, Input, Badge } from '../../components/shared';
 import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import { EyeIcon, PencilSquareIcon, TrashIcon, PlusIcon, CreditCardIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, PencilSquareIcon, TrashIcon, PlusIcon, CreditCardIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useAuth } from '../../contexts/AuthContext'; // Import useAuth để lấy thông tin user
 
 // Format ngày
 const formatDate = (dateString) => {
@@ -47,6 +48,7 @@ const getStatusBadgeColor = (status) => {
 }
 
 const InvoiceIndex = () => {
+    const { user } = useAuth(); // Lấy thông tin user để kiểm tra role và building
     const [invoices, setInvoices] = useState([]);
     const [students, setStudents] = useState([]); // DS sinh viên cho filter
     const [rooms, setRooms] = useState({}); // Cache thông tin phòng theo ID
@@ -62,9 +64,7 @@ const InvoiceIndex = () => {
     });
     const debouncedSearch = useDebounce(filters.search, 500); // Debounce cho tìm kiếm số hợp đồng
     const debouncedIdentifier = useDebounce(filters.identifier, 500); // Debounce cho tìm kiếm mã SV/phòng
-    const navigate = useNavigate();
-
-    // Fetch danh sách hóa đơn
+    const navigate = useNavigate();    // Fetch danh sách hóa đơn
     const fetchInvoices = useCallback(async (page = 1, currentFilters) => {
         setIsLoading(true);
         setError(null);
@@ -76,6 +76,14 @@ const InvoiceIndex = () => {
                 invoiceNumber: debouncedSearch || undefined, // Tìm theo số hợp đồng
                 identifier: debouncedIdentifier || undefined, // Tìm theo mã SV/phòng
             };
+
+            // Thêm buildingId filter cho STAFF users (tương tự như maintenance)
+            if (user?.role === 'STAFF' && user?.staffProfile?.managedBuildingId) {
+                params.buildingId = user.staffProfile.managedBuildingId;
+                console.log(`STAFF user filtering invoices by building ID: ${params.buildingId}`);
+            }
+
+            console.log('Fetching invoices with params:', params);
             const data = await invoiceService.getAllInvoices(params);
             const invoiceList = data.invoices || [];
             setInvoices(invoiceList);
@@ -103,11 +111,10 @@ const InvoiceIndex = () => {
                 });
             }
         } catch (err) {
-            setError('Không thể tải danh sách hóa đơn.');
-        } finally {
+            setError('Không thể tải danh sách hóa đơn.');        } finally {
             setIsLoading(false);
         }
-    }, [meta.limit, rooms, debouncedSearch, debouncedIdentifier]); // Thêm rooms và debouncedSearch vào dependencies
+    }, [meta.limit, rooms, debouncedSearch, debouncedIdentifier, user]); // Thêm user vào dependencies
 
     // Fetch danh sách sinh viên cho bộ lọc
     const fetchStudents = useCallback(async () => {
@@ -407,9 +414,20 @@ const InvoiceIndex = () => {
             </Button>
 
             {/* Nút tạo hóa đơn mới nếu cần */}
-            {/* <Button onClick={() => navigate('/invoices/new')} icon={PlusIcon}>Tạo Hóa đơn</Button> */}
-        </div>
+            {/* <Button onClick={() => navigate('/invoices/new')} icon={PlusIcon}>Tạo Hóa đơn</Button> */}        </div>
     </div>
+
+        {/* Thông báo cho STAFF về tòa nhà được quản lý */}
+        {user?.role === 'STAFF' && user?.staffProfile?.managedBuildingId && (
+            <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
+                <p className="font-medium text-blue-800">
+                    Hiển thị hóa đơn cho tòa nhà: {user?.staffProfile?.managedBuilding?.name || `ID: ${user?.staffProfile?.managedBuildingId}`}
+                </p>
+                <p className="text-sm text-blue-600 mt-1">
+                    Bạn chỉ có thể xem và quản lý các hóa đơn liên quan đến tòa nhà mình được phân công quản lý.
+                </p>
+            </div>
+        )}
 
         {/* Bộ lọc */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">

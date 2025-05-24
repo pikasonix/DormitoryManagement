@@ -10,14 +10,13 @@ const prisma = new PrismaClient();
 const invoiceService = new InvoiceService();
 
 export class InvoiceController {
-    async getAllInvoices(req: Request, res: Response, next: NextFunction) {
-        try {
+    async getAllInvoices(req: Request, res: Response, next: NextFunction) {        try {
             const {
                 studentProfileId, roomId, status, month, year, page, limit,
-                invoiceNumber, identifier, invoiceType // Thêm tham số tìm kiếm mới: loại hóa đơn
+                invoiceNumber, identifier, invoiceType, buildingId // Thêm tham số tìm kiếm mới: loại hóa đơn và building
             } = req.query;
 
-            const options: Prisma.InvoiceFindManyArgs = { where: {} };            // Nếu người dùng là STUDENT, chỉ cho phép xem hóa đơn của bản thân hoặc phòng của họ
+            const options: Prisma.InvoiceFindManyArgs = { where: {} };// Nếu người dùng là STUDENT, chỉ cho phép xem hóa đơn của bản thân hoặc phòng của họ
             if (req.user && typeof req.user === 'object' && 'role' in req.user && req.user.role === 'STUDENT') {
                 console.log('User object:', req.user); // Debug
                 const studentProfileId = 'profileId' in req.user ? Number(req.user.profileId) : undefined;
@@ -37,12 +36,45 @@ export class InvoiceController {
                 } else {
                     // Nếu không có profileId, không cho phép xem hóa đơn nào
                     options.where!.id = -1;
-                }
-            } else {
+                }            } else {
                 // Đối với ADMIN/STAFF, xây dựng bộ lọc bình thường
                 if (studentProfileId) options.where!.studentProfileId = parseInt(studentProfileId as string);
                 if (roomId) options.where!.roomId = parseInt(roomId as string);
-            }            // Lọc theo loại hóa đơn (cá nhân hoặc phòng)
+            }
+
+            // Lọc theo buildingId cho STAFF (tương tự như maintenance)
+            if (buildingId) {
+                console.log(`[API] Filtering invoices by buildingId: ${buildingId}`);
+                const buildingIdNum = parseInt(buildingId as string);
+
+                if (!isNaN(buildingIdNum)) {
+                    // Đảm bảo options.where tồn tại
+                    options.where = options.where || {};
+
+                    // Lọc invoices có liên quan đến tòa nhà thông qua room
+                    // Bao gồm cả invoice cá nhân (qua studentProfile.room) và invoice phòng (qua room trực tiếp)
+                    const existingWhere = options.where;
+                    options.where = {
+                        ...existingWhere,
+                        OR: [
+                            // Invoice phòng: có roomId và room thuộc building
+                            {
+                                roomId: { not: null },
+                                room: { buildingId: buildingIdNum }
+                            },
+                            // Invoice cá nhân: có studentProfileId và student ở trong phòng thuộc building
+                            {
+                                studentProfileId: { not: null },
+                                studentProfile: {
+                                    room: { buildingId: buildingIdNum }
+                                }
+                            }
+                        ]
+                    };
+
+                    console.log(`[API] Applied buildingId filter for invoices: ${buildingIdNum}`);
+                }
+            }// Lọc theo loại hóa đơn (cá nhân hoặc phòng)
             if (invoiceType === 'personal') {
                 // Chỉ lấy hóa đơn cá nhân (có studentProfileId)
                 options.where!.studentProfileId = { not: null };
