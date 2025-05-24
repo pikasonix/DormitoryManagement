@@ -184,38 +184,53 @@ export class MaintenanceController {
                         mode: 'insensitive' as Prisma.QueryMode
                     }
                 };
-            }
-
-            // Lọc theo tòa nhà
+            }            // Lọc theo tòa nhà
             if (buildingId) {
-                // Đảm bảo options.where!.room đã được khởi tạo
-                if (!options.where!.room) {
-                    options.where!.room = {};
-                }
-
+                console.log(`[API] Filtering by buildingId: ${buildingId}`);
                 const buildingIdNum = parseInt(buildingId as string);
+
                 if (!isNaN(buildingIdNum)) {
-                    options.where!.room.buildingId = buildingIdNum;
+                    // Đảm bảo options.where tồn tại
+                    options.where = options.where || {};
+
+                    // Xử lý trường hợp room filter đã được khởi tạo trước đó
+                    const existingRoom = options.where.room as any || {};
+
+                    // Tạo room filter với buildingId
+                    options.where.room = {
+                        ...existingRoom,
+                        buildingId: buildingIdNum
+                    } as any;
+
+                    console.log(`[API] Applied buildingId filter: ${buildingIdNum}`);
                 }
             }
             // Hoặc lọc theo tên tòa nhà
             else if (buildingName) {
-                // Đảm bảo options.where!.room đã được khởi tạo
-                if (!options.where!.room) {
-                    options.where!.room = {};
-                }
+                // Đảm bảo options.where tồn tại
+                options.where = options.where || {};
 
-                options.where!.room.building = {
-                    name: {
-                        contains: buildingName as string,
-                        mode: 'insensitive' as Prisma.QueryMode
+                // Xử lý trường hợp room filter đã được khởi tạo trước đó
+                const existingRoom = options.where.room as any || {};
+
+                // Tạo room filter với building.name
+                options.where.room = {
+                    ...existingRoom,
+                    building: {
+                        ...(existingRoom.building || {}),
+                        name: {
+                            contains: buildingName as string,
+                            mode: 'insensitive' as Prisma.QueryMode
+                        }
                     }
-                };
-            }
-
-            // Áp dụng phân trang
+                } as any;
+            }            // Áp dụng phân trang
             options.skip = (pageNum - 1) * limitNum;
             options.take = limitNum;
+
+            // Đảm bảo options.skip và options.take là số hợp lệ
+            options.skip = typeof options.skip === 'number' ? options.skip : 0;
+            options.take = typeof options.take === 'number' ? options.take : 10;
 
             console.log('[API] Final query options:', JSON.stringify(options.where));
 

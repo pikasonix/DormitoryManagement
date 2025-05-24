@@ -45,6 +45,14 @@ const Dashboard = () => {
       try {
         if (user.role === 'ADMIN' || user.role === 'STAFF') {
           // --- Fetch data cho Admin/Staff ---
+
+          // Lấy buildingId từ user profile nếu là Staff (sẽ là undefined nếu là Admin)
+          const managedBuildingId = user.role === 'STAFF' && user.staffProfile?.managedBuildingId;
+          const isStaffWithBuilding = user.role === 'STAFF' && managedBuildingId;
+
+          // Tạo query params cho API calls dựa trên role và buildingId
+          const buildingQueryParam = isStaffWithBuilding ? `?buildingId=${managedBuildingId}` : '';
+
           const [
             dashboardRes,
             roomRes,
@@ -52,13 +60,17 @@ const Dashboard = () => {
             invoiceRes
           ] = await Promise.allSettled([
             // Use dashboard stats API to get all the stats we need
-            apiClient.get('/dashboard/stats'),
-            // Still get room info for the chart data
-            apiClient.get('/rooms'),
-            // These are kept for backwards compatibility but we'll
-            // use the dashboard stats for the UI metrics
-            apiClient.get('/maintenance?status=PENDING&limit=1'),
-            apiClient.get('/invoices?status=UNPAID&limit=1'),
+            // Nếu là Staff, chỉ lấy thông tin của tòa nhà đang quản lý
+            apiClient.get(`/dashboard/stats${buildingQueryParam}`),
+
+            // Chỉ lấy phòng trong tòa nhà quản lý nếu là Staff
+            apiClient.get(`/rooms${buildingQueryParam}`),
+
+            // Lấy yêu cầu bảo trì PENDING, lọc theo tòa nhà nếu là Staff
+            apiClient.get(`/maintenance?status=PENDING&limit=1${isStaffWithBuilding ? `&buildingId=${managedBuildingId}` : ''}`),
+
+            // Lấy hóa đơn chưa thanh toán, lọc theo tòa nhà nếu là Staff
+            apiClient.get(`/invoices?status=UNPAID&limit=1${isStaffWithBuilding ? `&buildingId=${managedBuildingId}` : ''}`),
           ]);
 
           // Get stats from dashboard API
@@ -87,6 +99,11 @@ const Dashboard = () => {
             roomStats,
             pendingMaintenance,
             pendingInvoices,
+            // Store the building information for staff users
+            managedBuilding: isStaffWithBuilding && user.staffProfile?.managedBuilding ? {
+              id: managedBuildingId,
+              name: user.staffProfile?.managedBuilding?.name || 'Tòa nhà được quản lý',
+            } : null
           });
 
         } else if (user.role === 'STUDENT') {
@@ -213,9 +230,32 @@ const Dashboard = () => {
 
   // --- Render cho Admin/Staff ---
   if (user && (user.role === 'ADMIN' || user.role === 'STAFF') && stats) {
+    // Determine if the user is a staff member with a managed building
+    const isStaffWithBuilding = user.role === 'STAFF' && stats.managedBuilding;
+
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Bảng điều khiển</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">
+          {isStaffWithBuilding
+            ? `Bảng điều khiển - Tòa nhà ${stats.managedBuilding.name}`
+            : 'Bảng điều khiển'}
+        </h1>
+
+        {/* Hiển thị thông báo cho staff để biết họ đang xem dữ liệu của tòa nhà họ quản lý */}
+        {isStaffWithBuilding && (
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <BuildingOffice2Icon className="h-5 w-5 text-blue-400" aria-hidden="true" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-blue-700">
+                  Bạn đang xem dữ liệu của tòa nhà {stats.managedBuilding.name} mà bạn được phân công quản lý.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Các thẻ thống kê nhanh */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
@@ -325,9 +365,22 @@ const Dashboard = () => {
             <div className="p-5">
               <h3 className="text-lg font-medium text-gray-900 mb-4">Thông báo</h3>
               <ul className="space-y-2 text-sm text-gray-600">
-                <li>- Yêu cầu bảo trì mới từ phòng A101.</li>
-                <li>- Sinh viên Nguyễn Văn B vừa đăng ký xe.</li>
-                <li>- Hóa đơn tháng 5 đã được tạo.</li>
+                {stats.managedBuilding ? (
+                  // Hiển thị thông báo cho staff quản lý tòa nhà cụ thể
+                  <>
+                    <li>- Yêu cầu bảo trì mới từ tòa {stats.managedBuilding.name}.</li>
+                    <li>- Sinh viên tòa {stats.managedBuilding.name} vừa đăng ký xe.</li>
+                    <li>- Cần kiểm tra phòng bảo trì ở tòa {stats.managedBuilding.name}.</li>
+                    <li>- Hóa đơn tháng 5 cho tòa {stats.managedBuilding.name} đã được tạo.</li>
+                  </>
+                ) : (
+                  // Hiển thị thông báo cho admin (tất cả tòa nhà)
+                  <>
+                    <li>- Yêu cầu bảo trì mới từ phòng A101.</li>
+                    <li>- Sinh viên Nguyễn Văn B vừa đăng ký xe.</li>
+                    <li>- Hóa đơn tháng 5 đã được tạo.</li>
+                  </>
+                )}
               </ul>
               <Link to="#" className="mt-4 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500">Xem tất cả</Link>
             </div>
