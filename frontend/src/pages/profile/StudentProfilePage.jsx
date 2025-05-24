@@ -263,7 +263,7 @@ const StudentProfilePage = () => {
                 <h1 className="text-2xl font-semibold">Hồ sơ sinh viên</h1>
                 <Button
                     onClick={() => navigate('/profile/edit')}
-                    icon={PencilSquareIcon}
+                    startIcon={<PencilSquareIcon className="h-5 w-5" />}
                 >
                     Cập nhật hồ sơ cá nhân
                 </Button>

@@ -77,7 +77,7 @@ const DashboardLayout = () => {
   // --- Định nghĩa cấu trúc menu (Đã tối ưu với useMemo và role filtering) ---
   const navigation = useMemo(() => {
     const allNavItems = [
-      { name: 'Trang chủ', href: '/dashboard', icon: HomeIcon, roles: ['ADMIN', 'STAFF', 'STUDENT'] },
+      { name: 'Trang chủ', href: '/dashboard', icon: HomeIcon, roles: ['ADMIN', 'STAFF'] },
       { name: 'Hồ sơ cá nhân', href: '/profile', icon: UserCircleIcon, roles: ['ADMIN', 'STAFF', 'STUDENT'] },
       { name: 'Quản lý sinh viên', href: '/students', icon: UsersIcon, roles: ['ADMIN', 'STAFF'] },
       { name: 'Quản lý tòa nhà', href: '/buildings', icon: BuildingOffice2Icon, roles: ['ADMIN', 'STAFF'] },
@@ -102,10 +102,9 @@ const DashboardLayout = () => {
       user?.status;
 
     if (user.role === 'STUDENT' && studentStatus === 'PENDING_APPROVAL') {
-      console.log('Student with PENDING_APPROVAL status. Filtering sidebar menu...');
       // Chỉ cho phép truy cập Dashboard và Profile
       return allNavItems.filter(item =>
-        item.href === '/dashboard' || item.href === '/profile'
+        item.href === '/profile'
       );
     }
 
@@ -154,8 +153,8 @@ const DashboardLayout = () => {
 
   // --- Render Layout ---
   return (
-    <div className="min-h-screen bg-gray-100"> {/* Đổi nền sang gray-100 cho dịu mắt hơn */}
-      <div className="relative z-10 flex flex-col lg:flex-row min-h-screen"> {/* Thêm min-h-screen */}
+    <div className="min-h-screen bg-gray-100">
+      <div className="relative z-10 flex flex-col lg:flex-row min-h-screen">
 
         {/* --- Sidebar Desktop (fixed) --- */}
         <div className="hidden lg:fixed lg:inset-y-0 lg:z-20 lg:flex lg:w-64 lg:flex-col"> {/* Tăng z-index */}
@@ -188,31 +187,32 @@ const DashboardLayout = () => {
 
 
         {/* --- Main Content Area --- */}
-        <div className="flex flex-1 flex-col lg:pl-64"> {/* Đảm bảo padding left đúng bằng chiều rộng sidebar */}
+        <div className="flex flex-1 flex-col lg:pl-64">
           {/* Navbar */}
           <div className="sticky top-0 z-10 flex h-16 flex-shrink-0 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
             {/* Nút mở menu mobile */}
             <button type="button" className="-m-2.5 p-2.5 text-gray-700 lg:hidden" onClick={() => setIsSidebarOpen(true)}>
               <span className="sr-only">Mở thanh bên</span>
               <Bars3Icon className="h-6 w-6" aria-hidden="true" />
-            </button>            {/* Thêm trạng thái sinh viên PENDING_APPROVAL */}
-            <div className="flex flex-1 items-center justify-between gap-x-4 self-stretch lg:gap-x-6">
+            </button>            {/* Thêm trạng thái sinh viên PENDING_APPROVAL */}            <div className="flex flex-1 items-center justify-between gap-x-4 self-stretch lg:gap-x-6">
               {/* Hiển thị thông báo trạng thái PENDING_APPROVAL nếu sinh viên cần cập nhật hồ sơ */}
-              {user?.role === 'STUDENT' &&
-                (user?.profile?.status === 'PENDING_APPROVAL' ||
-                  user?.studentProfile?.status === 'PENDING_APPROVAL' ||
-                  user?.status === 'PENDING_APPROVAL') && (
-                  <div className="flex items-center">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-full">
-                      <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs font-medium">
-                        Tài khoản đang chờ phê duyệt - Vui lòng cập nhật hồ sơ cá nhân
-                      </span>
+              <div className="flex-1">
+                {user?.role === 'STUDENT' &&
+                  (user?.profile?.status === 'PENDING_APPROVAL' ||
+                    user?.studentProfile?.status === 'PENDING_APPROVAL' ||
+                    user?.status === 'PENDING_APPROVAL') && (
+                    <div className="flex items-center">
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-full">
+                        <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
+                        <span className="text-xs font-medium">
+                          Tài khoản đang chờ phê duyệt - Vui lòng cập nhật hồ sơ cá nhân
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+              </div>
 
-              <div className="flex items-center gap-x-4 lg:gap-x-6">
+              <div className="flex items-center gap-x-4 lg:gap-x-6 justify-end">
                 <div className="relative">
                   <button
                     type="button"
