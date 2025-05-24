@@ -265,7 +265,7 @@ const StudentProfilePage = () => {
                     onClick={() => navigate('/profile/edit')}
                     icon={PencilSquareIcon}
                 >
-                    Chỉnh sửa
+                    Cập nhật hồ sơ cá nhân
                 </Button>
             </div>
 

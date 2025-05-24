@@ -1,19 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../../services/auth.service';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button, Card, Input, Select, DatePicker } from '../../components/shared';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 const StudentProfileEditPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const { checkAuthStatus } = useAuth();
     const [profile, setProfile] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState(null);
+
+    // Check if user came from pending approval redirect
+    const isPendingApproval = location.state?.pendingApproval;
     const [formData, setFormData] = useState({
         fullName: '',
         studentId: '',
@@ -143,14 +149,23 @@ const StudentProfileEditPage = () => {
                 emergencyContactRelation: formData.emergencyContactRelation || null,
                 emergencyContactPhone: formData.emergencyContactPhone || null,
                 emergencyContactAddress: formData.emergencyContactAddress || null
-            };
-
-            console.log('Submit data with ID:', submitData.id);
+            }; console.log('Submit data with ID:', submitData.id);
 
             // Gọi API cập nhật thông tin sinh viên
             const response = await authService.updateProfile(submitData);
             if (response?.success || response?.status === 'success') {
                 toast.success('Cập nhật thông tin thành công');
+
+                // Cập nhật trạng thái xác thực để làm mới dữ liệu người dùng
+                await checkAuthStatus();
+
+                // Thêm thông báo đặc biệt nếu là sinh viên đang chờ duyệt
+                if (profile.status === 'PENDING_APPROVAL') {
+                    toast.success('Thông tin của bạn đã được gửi và đang chờ phê duyệt từ quản trị viên', {
+                        duration: 6000
+                    });
+                }
+
                 navigate('/profile');
             } else {
                 throw new Error(response?.message || 'Cập nhật thông tin thất bại');
@@ -186,33 +201,62 @@ const StudentProfileEditPage = () => {
     }
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
-            <div className="flex items-center gap-4">
-                <Button
-                    variant="link"
-                    onClick={() => navigate('/profile')}
-                >
-                    <div className="flex items-center gap-1">
-                        <ArrowLeftIcon className="h-4 w-4" />
-                        <span>Quay lại</span>
+        <div className="space-y-6 max-w-5xl mx-auto">            <div className="flex items-center gap-4">
+            <Button
+                variant="link"
+                onClick={() => navigate('/profile')}
+            >
+                <div className="flex items-center gap-1">
+                    <ArrowLeftIcon className="h-4 w-4" />
+                    <span>Quay lại</span>
+                </div>
+            </Button>
+            <h1 className="text-2xl font-semibold">Chỉnh sửa hồ sơ sinh viên</h1>
+        </div>            {/* Thông báo cho sinh viên có trạng thái PENDING_APPROVAL */}
+            {(profile.status === 'PENDING_APPROVAL' || isPendingApproval) && (
+                <div className="bg-red-50 border-l-4 border-red-500 p-5 mb-6 rounded-md shadow-sm">
+                    <div className="flex">
+                        <div className="flex-shrink-0">
+                            <ExclamationTriangleIcon className="h-6 w-6 text-red-500" aria-hidden="true" />
+                        </div>
+                        <div className="ml-3">
+                            <h3 className="text-lg font-medium text-red-800">
+                                Tài khoản cần được cập nhật
+                            </h3>
+                            <div className="mt-2 text-sm text-red-700">
+                                <p className="font-bold mb-2">
+                                    Trạng thái tài khoản: ĐANG CHỜ PHÊ DUYỆT
+                                </p>
+                                <p className="mb-1">
+                                    Bạn cần hoàn tất hồ sơ cá nhân để có thể sử dụng đầy đủ các chức năng của hệ thống
+                                </p>
+                                <p className="mt-2 font-medium">
+                                    Bạn sẽ không thể truy cập các tính năng khác cho đến khi được admin duyệt
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                </Button>
-                <h1 className="text-2xl font-semibold">Chỉnh sửa hồ sơ sinh viên</h1>
-            </div>
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Thông tin cơ bản */}
                 <Card title="Thông tin cơ bản" className="bg-white shadow-sm">
                     <p className="text-sm text-gray-500 mb-4">Thông tin cá nhân cơ bản của sinh viên</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                            label="Họ và tên"
-                            name="fullName"
-                            value={formData.fullName}
-                            onChange={handleInputChange}
-                            required
-                            placeholder="Nhập họ và tên đầy đủ"
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">                        <Input
+                        label={
+                            profile.status === 'PENDING_APPROVAL' ? (
+                                <span>
+                                    Họ và tên <span className="text-red-500">*</span>
+                                </span>
+                            ) : "Họ và tên"
+                        }
+                        name="fullName"
+                        value={formData.fullName}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Nhập họ và tên đầy đủ"
+                    />
                         <Input
                             label="Mã sinh viên"
                             name="studentId"
@@ -221,9 +265,14 @@ const StudentProfileEditPage = () => {
                             required
                             disabled
                             placeholder="Mã sinh viên"
-                        />
-                        <Input
-                            label="Số điện thoại"
+                        />                        <Input
+                            label={
+                                profile.status === 'PENDING_APPROVAL' ? (
+                                    <span>
+                                        Số điện thoại <span className="text-red-500">*</span>
+                                    </span>
+                                ) : "Số điện thoại"
+                            }
                             name="phoneNumber"
                             value={formData.phoneNumber}
                             onChange={handleInputChange}
@@ -240,17 +289,27 @@ const StudentProfileEditPage = () => {
                                 { value: 'MALE', label: 'Nam' },
                                 { value: 'FEMALE', label: 'Nữ' }
                             ]}
-                        />
-                        <Input
+                        />                        <Input
+                            label={
+                                profile.status === 'PENDING_APPROVAL' ? (
+                                    <span>
+                                        Ngày sinh <span className="text-red-500">*</span>
+                                    </span>
+                                ) : "Ngày sinh"
+                            }
                             type="date"
-                            label="Ngày sinh"
                             name="birthDate"
                             value={formData.birthDate}
                             onChange={handleInputChange}
                             required
-                        />
-                        <Input
-                            label="Số CCCD/CMND"
+                        />                        <Input
+                            label={
+                                profile.status === 'PENDING_APPROVAL' ? (
+                                    <span>
+                                        Số CCCD/CMND <span className="text-red-500">*</span>
+                                    </span>
+                                ) : "Số CCCD/CMND"
+                            }
                             name="identityCardNumber"
                             value={formData.identityCardNumber}
                             onChange={handleInputChange}
@@ -263,15 +322,20 @@ const StudentProfileEditPage = () => {
                 {/* Thông tin học tập */}
                 <Card title="Thông tin học tập" className="bg-white shadow-sm">
                     <p className="text-sm text-gray-500 mb-4">Thông tin về quá trình học tập tại trường</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input
-                            label="Khoa/Viện"
-                            name="faculty"
-                            value={formData.faculty}
-                            onChange={handleInputChange}
-                            required
-                            placeholder="Nhập tên khoa/viện"
-                        />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">                        <Input
+                        label={
+                            profile.status === 'PENDING_APPROVAL' ? (
+                                <span>
+                                    Khoa/Viện <span className="text-red-500">*</span>
+                                </span>
+                            ) : "Khoa/Viện"
+                        }
+                        name="faculty"
+                        value={formData.faculty}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Nhập tên khoa/viện"
+                    />
                         <Input
                             type="number"
                             label="Khóa"

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { PrismaClient, Prisma, StudentStatus, Role, Gender } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { deleteFile } from '../services/file.service';
+import { isStudentProfileComplete } from '../utils/validation';
 
 const prisma = new PrismaClient();
 
@@ -376,7 +377,8 @@ export class StudentController {
           }
         }
 
-        const studentUpdateData: Prisma.StudentProfileUpdateInput = {
+        // Prepare update data
+        const updateData: any = {
           studentId: profileData.studentId,
           fullName: profileData.fullName,
           gender: profileData.gender,
@@ -389,7 +391,6 @@ export class StudentController {
           permanentProvince: profileData.permanentProvince,
           permanentDistrict: profileData.permanentDistrict,
           permanentAddress: profileData.permanentAddress,
-          status: profileData.status as StudentStatus,
           startDate: profileData.startDate ? new Date(profileData.startDate) : undefined,
           contractEndDate: profileData.contractEndDate ? new Date(profileData.contractEndDate) : undefined,
           checkInDate: profileData.checkInDate !== undefined ? (profileData.checkInDate ? new Date(profileData.checkInDate) : null) : undefined,
@@ -398,11 +399,33 @@ export class StudentController {
           fatherName: profileData.fatherName, fatherDobYear: profileData.fatherDobYear ? parseInt(profileData.fatherDobYear) : null, fatherPhone: profileData.fatherPhone, fatherAddress: profileData.fatherAddress,
           motherName: profileData.motherName, motherDobYear: profileData.motherDobYear ? parseInt(profileData.motherDobYear) : null, motherPhone: profileData.motherPhone, motherAddress: profileData.motherAddress,
           emergencyContactRelation: profileData.emergencyContactRelation, emergencyContactPhone: profileData.emergencyContactPhone, emergencyContactAddress: profileData.emergencyContactAddress,
-
-          room: roomId !== undefined
-            ? (roomId ? { connect: { id: parseInt(roomId) } } : { disconnect: true })
-            : undefined
         };
+
+        // Auto-update status for PENDING_APPROVAL students when they complete their profile
+        // Check if current status is PENDING_APPROVAL and check if profile is now complete
+        if (currentProfile.status === StudentStatus.PENDING_APPROVAL) {
+          // Use utility function to check if all required fields are filled
+          if (isStudentProfileComplete({
+            ...currentProfile,
+            ...updateData
+          })) {
+            console.log(`Student ${profileId} profile is now complete, automatically setting status to RENTING`);
+            updateData.status = StudentStatus.RENTING;
+          } else {
+            // Keep as PENDING_APPROVAL if incomplete
+            updateData.status = StudentStatus.PENDING_APPROVAL;
+          }
+        } else {
+          // If not PENDING_APPROVAL, use the status provided or keep current
+          updateData.status = profileData.status as StudentStatus || currentProfile.status;
+        }
+
+        // Add room connection/disconnection if needed
+        if (roomId !== undefined) {
+          updateData.room = roomId ? { connect: { id: parseInt(roomId) } } : { disconnect: true };
+        }
+
+        const studentUpdateData: Prisma.StudentProfileUpdateInput = updateData;
 
         const profileAfterUpdate = await tx.studentProfile.update({
           where: { id: profileId },

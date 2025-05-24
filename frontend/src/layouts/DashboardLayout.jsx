@@ -74,7 +74,6 @@ const DashboardLayout = () => {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-
   // --- Định nghĩa cấu trúc menu (Đã tối ưu với useMemo và role filtering) ---
   const navigation = useMemo(() => {
     const allNavItems = [
@@ -96,6 +95,21 @@ const DashboardLayout = () => {
     ];
 
     if (!user || !user.role) return [];
+
+    // Kiểm tra nếu là sinh viên đang chờ phê duyệt, chỉ hiển thị Dashboard và Profile
+    const studentStatus = user?.profile?.status ||
+      user?.studentProfile?.status ||
+      user?.status;
+
+    if (user.role === 'STUDENT' && studentStatus === 'PENDING_APPROVAL') {
+      console.log('Student with PENDING_APPROVAL status. Filtering sidebar menu...');
+      // Chỉ cho phép truy cập Dashboard và Profile
+      return allNavItems.filter(item =>
+        item.href === '/dashboard' || item.href === '/profile'
+      );
+    }
+
+    // Trường hợp bình thường
     return allNavItems.filter(item => item.roles.includes(user.role));
   }, [user]);
 
@@ -181,10 +195,23 @@ const DashboardLayout = () => {
             <button type="button" className="-m-2.5 p-2.5 text-gray-700 lg:hidden" onClick={() => setIsSidebarOpen(true)}>
               <span className="sr-only">Mở thanh bên</span>
               <Bars3Icon className="h-6 w-6" aria-hidden="true" />
-            </button>
+            </button>            {/* Thêm trạng thái sinh viên PENDING_APPROVAL */}
+            <div className="flex flex-1 items-center justify-between gap-x-4 self-stretch lg:gap-x-6">
+              {/* Hiển thị thông báo trạng thái PENDING_APPROVAL nếu sinh viên cần cập nhật hồ sơ */}
+              {user?.role === 'STUDENT' &&
+                (user?.profile?.status === 'PENDING_APPROVAL' ||
+                  user?.studentProfile?.status === 'PENDING_APPROVAL' ||
+                  user?.status === 'PENDING_APPROVAL') && (
+                  <div className="flex items-center">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-full">
+                      <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs font-medium">
+                        Tài khoản đang chờ phê duyệt - Vui lòng cập nhật hồ sơ cá nhân
+                      </span>
+                    </div>
+                  </div>
+                )}
 
-            {/* Profile Dropdown (đẩy sang phải) */}
-            <div className="flex flex-1 justify-end gap-x-4 self-stretch lg:gap-x-6">
               <div className="flex items-center gap-x-4 lg:gap-x-6">
                 <div className="relative">
                   <button

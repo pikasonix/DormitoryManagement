@@ -3,6 +3,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext'; // Đường dẫn đến context
 import LoadingSpinner from './shared/LoadingSpinner'; // Component spinner
 import DashboardLayout from '../layouts/DashboardLayout'; // Import layout
+import PendingApprovalGuard from './PendingApprovalGuard'; // Import the new guard
 
 const PrivateRoute = () => {
   const { user, isLoading } = useAuth(); // Lấy user và trạng thái loading
@@ -28,9 +29,12 @@ const PrivateRoute = () => {
 
   // Trường hợp 3: Đã đăng nhập
   // Render DashboardLayout và Outlet để hiển thị các route con bên trong layout này
+  // Wrap with PendingApprovalGuard to check student status and redirect if needed
   return (
     <DashboardLayout>
-      <Outlet />
+      <PendingApprovalGuard>
+        <Outlet />
+      </PendingApprovalGuard>
     </DashboardLayout>
   );
 };
