@@ -11,7 +11,7 @@
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://frontend-house-of-hope.vercel.app"
+          "value": "hdormitory-management-dusky.vercel.app"
         },
         {
           "key": "Access-Control-Allow-Methods",
@@ -28,4 +28,4 @@
       ]
     }
   ]
-} 
+}

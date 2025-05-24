@@ -5,12 +5,17 @@
   "main": "dist/server.ts",
   "scripts": {
     "start": "node dist/server.js",
+    "start:prod": "NODE_ENV=production node dist/server.js",
     "dev": "nodemon src/server.ts",
     "debug": "nodemon --exec \"node --inspect -r ts-node/register\" src/server.ts",
     "start:simple": "ts-node src/server.ts",
     "kill": "node scripts/kill-port.js",
     "dev:clean": "npm run kill && npm run dev",
     "build": "npx prisma generate && tsc",
+    "postbuild": "node -e \"const fs=require('fs');const path=require('path');if(fs.existsSync('prisma')){try{fs.cpSync('prisma',path.join('dist','prisma'),{recursive:true});}catch(e){console.log('Copy prisma folder:',e.message);}}\"",
+    "railway:build": "npx prisma generate && npm run build",
+    "railway:start": "npx prisma migrate deploy && npm run start:prod",
+    "health": "node scripts/health-check.js",
     "test": "jest",
     "check-uploads": "node -e \"const fs=require('fs');const path=require('path');const dir=path.resolve(__dirname,'uploads');console.log('Uploads:',{dir,exists:fs.existsSync(dir),files:fs.existsSync(dir)?fs.readdirSync(dir):'none'});\""
   },
