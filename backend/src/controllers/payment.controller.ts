@@ -7,8 +7,7 @@ const prisma = new PrismaClient();
 
 // Lấy danh sách thanh toán (có thể lọc)
 export const getPayments = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    // Lấy tất cả các tham số lọc từ query params
+  try {    // Lấy tất cả các tham số lọc từ query params
     const {
       id,
       studentId,
@@ -17,7 +16,8 @@ export const getPayments = async (req: Request, res: Response, next: NextFunctio
       method, // Tham số từ frontend
       page,
       limit,
-      transactionCode
+      transactionCode,
+      buildingId
     } = req.query;
 
     // Lọc và phân trang
@@ -56,14 +56,49 @@ export const getPayments = async (req: Request, res: Response, next: NextFunctio
     // Lọc theo phương thức thanh toán
     if (method) {
       whereClause.paymentMethod = method as string; // Sử dụng giá trị chính xác từ frontend
-    }
-
-    // Lọc theo mã giao dịch (nếu có)
+    }    // Lọc theo mã giao dịch (nếu có)
     if (transactionCode) {
       whereClause.transactionCode = {
         contains: transactionCode as string,
         mode: 'insensitive' // Tìm kiếm không phân biệt chữ hoa/thường
       };
+    }
+
+    // Lọc theo tòa nhà (building filter for STAFF users)
+    if (buildingId) {
+      console.log('=== BUILDING FILTER DEBUG ===');
+      console.log('Building ID received:', buildingId);
+      const buildingIdNum = parseInt(buildingId as string);
+      console.log('Building ID parsed:', buildingIdNum);
+
+      // For payments, we need to filter by studentProfile.room.buildingId
+      // We need to handle existing studentProfile filters carefully
+      if (whereClause.studentProfile) {
+        // If there's already a studentProfile filter (e.g., from studentId search)
+        console.log('Existing studentProfile filter found:', JSON.stringify(whereClause.studentProfile, null, 2));
+        // We need to merge them using AND
+        const existingStudentProfileFilter = whereClause.studentProfile;
+        whereClause.studentProfile = {
+          AND: [
+            existingStudentProfileFilter,
+            {
+              room: {
+                buildingId: buildingIdNum
+              }
+            }
+          ]
+        };
+      } else {
+        // If no existing studentProfile filter, just add the building filter
+        console.log('No existing studentProfile filter, adding building filter only');
+        whereClause.studentProfile = {
+          room: {
+            buildingId: buildingIdNum
+          }
+        };
+      }
+      console.log('Final whereClause.studentProfile:', JSON.stringify(whereClause.studentProfile, null, 2));
+      console.log('=== END BUILDING FILTER DEBUG ===');
     }
 
     // Đếm tổng số bản ghi phù hợp với điều kiện lọc
@@ -82,7 +117,7 @@ export const getPayments = async (req: Request, res: Response, next: NextFunctio
             id: true,
             fullName: true,
             studentId: true,
-            room: { select: { id: true, number: true, building: { select: { name: true } } } }
+            room: { select: { id: true, number: true, building: { select: { id: true, name: true } } } }
           }
         },
         invoice: {
@@ -99,6 +134,22 @@ export const getPayments = async (req: Request, res: Response, next: NextFunctio
         paymentDate: 'desc'
       }
     });
+
+    // Debug: Log the payments and their building info
+    if (buildingId) {
+      console.log('=== PAYMENT RESULTS DEBUG ===');
+      console.log(`Total payments found: ${payments.length}`);
+      payments.forEach((payment, index) => {
+        console.log(`Payment ${index + 1}:`, {
+          id: payment.id,
+          studentId: payment.studentProfile?.studentId,
+          roomNumber: payment.studentProfile?.room?.number,
+          buildingId: payment.studentProfile?.room?.building?.id,
+          buildingName: payment.studentProfile?.room?.building?.name
+        });
+      });
+      console.log('=== END PAYMENT RESULTS DEBUG ===');
+    }
 
     res.status(200).json({
       status: 'success',

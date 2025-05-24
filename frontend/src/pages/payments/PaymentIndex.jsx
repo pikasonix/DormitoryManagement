@@ -5,9 +5,10 @@ import { Button, Select, Input, Badge } from '../../components/shared';
 import PaginationTable from '../../components/shared/PaginationTable';
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import { TrashIcon, CreditCardIcon, BanknotesIcon, ArrowPathIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import { TrashIcon, CreditCardIcon, BanknotesIcon, ArrowPathIcon, PencilSquareIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Format ngày giờ
 const formatDateTime = (dateString) => {
@@ -42,6 +43,7 @@ const getMethodIcon = (method) => {
 }
 
 const PaymentIndex = () => {
+  const { user } = useAuth();
   const [payments, setPayments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -71,9 +73,18 @@ const PaymentIndex = () => {
       }
       if (currentFilters.studentId) {
         params.studentId = currentFilters.studentId;
-      }
-      if (currentFilters.transactionCode) {
+      } if (currentFilters.transactionCode) {
         params.transactionCode = currentFilters.transactionCode;
+      }
+
+      // Add building filter for STAFF users (giống trang invoices)
+      if (user?.role === 'STAFF' && user?.staffProfile?.managedBuildingId) {
+        params.buildingId = user.staffProfile.managedBuildingId;
+        console.log('Adding building filter to payment request:', {
+          userRole: user.role,
+          managedBuildingId: user.staffProfile.managedBuildingId,
+          params
+        });
       }
 
       const data = await paymentService.getAllPayments(params);
@@ -88,11 +99,11 @@ const PaymentIndex = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [meta.limit]);
+  }, [meta.limit, user]);
 
   useEffect(() => {
     fetchPayments(currentPage, filters);
-  }, [fetchPayments, currentPage, filters]);
+  }, [fetchPayments, currentPage, filters, user]);
 
   // Handlers
   const handleFilterChange = (e) => {
@@ -184,12 +195,24 @@ const PaymentIndex = () => {
       className: 'text-center'
     },
   ], []);
-
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap justify-between items-center gap-4">
         <h1 className="text-2xl font-semibold">Lịch sử Thanh toán</h1>
       </div>
+
+      {/* Building Notification for STAFF users */}
+      {user?.role === 'STAFF' && user?.staffProfile?.managedBuilding && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
+          <BuildingOffice2Icon className="h-5 w-5 text-blue-600 flex-shrink-0" />
+          <div className="text-sm text-blue-800">
+            <span className="font-medium">Đang quản lý tòa:</span> {user.staffProfile.managedBuilding.name}
+            <div className="text-blue-600 mt-1">
+              Bạn chỉ có thể xem thanh toán của sinh viên/phòng thuộc tòa nhà này.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bộ lọc */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
