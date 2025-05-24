@@ -40,10 +40,10 @@ const TransferIndex = () => {
     const [error, setError] = useState(null);
     const [meta, setMeta] = useState({ currentPage: 1, totalPages: 1, limit: 10, total: 0 });
     const [currentPage, setCurrentPage] = useState(1); const [filters, setFilters] = useState({ status: '', studentId: '' });
-    const navigate = useNavigate();
-    // Sử dụng AuthContext để lấy thông tin user
+    const navigate = useNavigate();    // Sử dụng AuthContext để lấy thông tin user
     const { user } = useAuth();
-    const isStudent = user?.role === 'STUDENT'; // Fix: role is uppercase STUDENT, not lowercase student    // Thiết lập giá trị studentId dựa trên vai trò khi component được mount
+    const isStudent = user?.role === 'STUDENT';
+    const isStaff = user?.role === 'STAFF';// Thiết lập giá trị studentId dựa trên vai trò khi component được mount
     useEffect(() => {
         if (user && isStudent) {
             // Đối với sinh viên, luôn sử dụng ID của chính họ
@@ -83,18 +83,14 @@ const TransferIndex = () => {
         fetchRequests(currentPage, filters);
     }, [fetchRequests, currentPage, filters]);    // Handle filter changes
     const handleFilterChange = (e) => {
-        const { name, value } = e.target;
-
-        // Nếu là sinh viên và đang cố thay đổi studentId, không cho phép
+        const { name, value } = e.target;        // Nếu là sinh viên và đang cố thay đổi studentId, không cho phép
         if (isStudent && name === 'studentId') {
             return;
         }
 
         setFilters(prev => ({ ...prev, [name]: value }));
         setCurrentPage(1);
-    };
-
-    // Reset filters
+    };    // Reset filters
     const resetFilters = () => {
         // Chỉ reset studentId filter nếu người dùng không phải là sinh viên
         setFilters({
@@ -146,8 +142,8 @@ const TransferIndex = () => {
     // --- Cấu hình bảng ---
     const columns = useMemo(() => {
         const baseColumns = [
-            // Chỉ hiển thị cột MSSV khi là admin
-            !isStudent && {
+            // Chỉ hiển thị cột MSSV khi là admin hoặc staff
+            (!isStudent) && {
                 Header: 'Mã số sinh viên',
                 accessor: 'studentProfile',
                 Cell: ({ value }) => value?.studentId || '-'
@@ -203,10 +199,8 @@ const TransferIndex = () => {
                             >
                                 <TrashIcon className="h-5 w-5 text-gray-600 hover:text-gray-800" />
                             </Button>
-                        )}
-
-                        {/* Admin Actions */}
-                        {!isStudent && row.original.status === 'PENDING' && (
+                        )}                        {/* Admin/Staff Actions */}
+                        {(!isStudent) && row.original.status === 'PENDING' && (
                             <>
                                 <Button
                                     variant="success"
@@ -224,7 +218,7 @@ const TransferIndex = () => {
                                 </Button>
                             </>
                         )}
-                        {!isStudent && row.original.status === 'REJECTED' && (
+                        {(!isStudent) && row.original.status === 'REJECTED' && (
                             <Button
                                 variant="icon"
                                 onClick={() => handleDelete(row.original.id)}
@@ -243,17 +237,18 @@ const TransferIndex = () => {
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-wrap justify-between items-center gap-4">
-                <h1 className="text-2xl font-semibold">
-                    {isStudent ? 'Yêu cầu chuyển phòng của bạn' : 'Quản lý Yêu cầu Chuyển phòng'}
-                </h1>                {isStudent && (
-                    <Button
-                        variant="primary"
-                        onClick={() => navigate('/transfers/request')}
-                    >
-                        Tạo yêu cầu mới
-                    </Button>
-                )}
+            <div className="flex flex-wrap justify-between items-center gap-4">                <h1 className="text-2xl font-semibold">
+                {isStudent ? 'Yêu cầu chuyển phòng của bạn' :
+                    isStaff ? 'Quản lý yêu cầu chuyển phòng (Tòa nhà được phân công)' :
+                        'Quản lý Yêu cầu Chuyển phòng'}
+            </h1>{isStudent && (
+                <Button
+                    variant="primary"
+                    onClick={() => navigate('/transfers/request')}
+                >
+                    Tạo yêu cầu mới
+                </Button>
+            )}
             </div>
 
             {/* Filter Section */}
@@ -266,8 +261,8 @@ const TransferIndex = () => {
                         value={filters.status}
                         onChange={handleFilterChange}
                         options={transferStatusOptions}
-                    />            {/* Chỉ hiển thị filter MSSV khi KHÔNG phải là student */}
-                    {!isStudent && (
+                    />                    {/* Chỉ hiển thị filter MSSV khi KHÔNG phải là student */}
+                    {(!isStudent) && (
                         <Input
                             label="Mã số sinh viên"
                             id="studentId"
@@ -285,10 +280,11 @@ const TransferIndex = () => {
                 <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>
             ) : error ? (
                 <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>
-            ) : requests.length === 0 ? (
-                <div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
-                    {isStudent ? 'Bạn chưa có yêu cầu chuyển phòng nào.' : 'Không tìm thấy yêu cầu chuyển phòng nào.'}
-                </div>
+            ) : requests.length === 0 ? (<div className="text-gray-600 bg-gray-100 p-4 rounded text-center">
+                {isStudent ? 'Bạn chưa có yêu cầu chuyển phòng nào.' :
+                    isStaff ? 'Không tìm thấy yêu cầu chuyển phòng nào đến tòa nhà bạn quản lý.' :
+                        'Không tìm thấy yêu cầu chuyển phòng nào.'}
+            </div>
             ) : (
                 <PaginationTable
                     columns={columns}

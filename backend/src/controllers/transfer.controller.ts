@@ -18,9 +18,7 @@ export class TransferController {
                 return next(new Error('Không tìm thấy thông tin người dùng.'));
             }
 
-            const options: Prisma.RoomTransferFindManyArgs = { where: {} };
-
-            // Nếu là sinh viên, chỉ cho xem yêu cầu của chính mình
+            const options: Prisma.RoomTransferFindManyArgs = { where: {} };            // Nếu là sinh viên, chỉ cho xem yêu cầu của chính mình
             if (userRole === Role.STUDENT) {
                 const studentProfile = await prisma.studentProfile.findUnique({
                     where: { userId },
@@ -32,8 +30,51 @@ export class TransferController {
                 }
 
                 options.where!.studentProfileId = studentProfile.id;
-            } else {
-                // Xây dựng bộ lọc
+            }
+            // Nếu là STAFF, chỉ xem yêu cầu chuyển đến tòa nhà mà STAFF quản lý
+            else if (userRole === Role.STAFF) {
+                const staffProfile = await prisma.staffProfile.findUnique({
+                    where: { userId },
+                    select: { managedBuildingId: true }
+                });
+
+                if (!staffProfile || !staffProfile.managedBuildingId) {
+                    return next(new Error('Bạn không được phân công quản lý tòa nhà nào.'));
+                }
+
+                // Lọc theo toRoom thuộc tòa nhà mà STAFF quản lý
+                options.where!.toRoom = {
+                    buildingId: staffProfile.managedBuildingId
+                };
+
+                // Các bộ lọc khác cho STAFF
+                if (studentProfileId) options.where!.studentProfileId = parseInt(studentProfileId as string);
+                if (fromRoomId) options.where!.fromRoomId = parseInt(fromRoomId as string);
+                if (toRoomId) options.where!.toRoomId = parseInt(toRoomId as string);
+
+                // Xử lý khi có tham số studentId (mã số sinh viên)
+                if (studentId) {
+                    const matchingStudents = await prisma.studentProfile.findMany({
+                        where: {
+                            studentId: {
+                                contains: studentId as string,
+                                mode: 'insensitive'
+                            }
+                        },
+                        select: { id: true }
+                    });
+
+                    if (matchingStudents.length > 0) {
+                        const studentIds = matchingStudents.map(student => student.id);
+                        options.where!.studentProfileId = { in: studentIds };
+                    } else {
+                        options.where!.id = -1;
+                    }
+                }
+            }
+            // ADMIN có thể xem tất cả
+            else {
+                // Xây dựng bộ lọc cho ADMIN
                 if (studentProfileId) options.where!.studentProfileId = parseInt(studentProfileId as string);
                 if (fromRoomId) options.where!.fromRoomId = parseInt(fromRoomId as string);
                 if (toRoomId) options.where!.toRoomId = parseInt(toRoomId as string);
