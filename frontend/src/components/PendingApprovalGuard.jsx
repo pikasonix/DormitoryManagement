@@ -4,10 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from './shared/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 
-/**
- * Component to guard routes for students with PENDING_APPROVAL status
- * Redirects to profile edit page if student status is PENDING_APPROVAL
- */
+
 const PendingApprovalGuard = ({ children }) => {
     const { user, isLoading } = useAuth();
     const location = useLocation();

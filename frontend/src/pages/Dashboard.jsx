@@ -19,6 +19,10 @@ import {
   DocumentTextIcon,
   BellAlertIcon, // Icon cho thông báo hoặc yêu cầu mới
   InformationCircleIcon, // Icon cho thông tin sinh viên
+  UserCircleIcon, // Icon cho hồ sơ cá nhân
+  TruckIcon, // Icon cho phương tiện
+  ArrowsRightLeftIcon, // Icon cho chuyển phòng
+  ExclamationTriangleIcon, // Icon cho cảnh báo
 } from '@heroicons/react/24/outline';
 
 // Đăng ký các thành phần cần thiết cho ChartJS (chỉ cần cho Pie/Doughnut)
@@ -90,8 +94,16 @@ const Dashboard = () => {
           // Thông tin user cơ bản đã có trong `user` từ context
           // Cần lấy thêm: phòng đang ở, hóa đơn chưa trả
           const studentProfileId = user.profile?.id; // Lấy ID profile sinh viên từ user context
+
+          // Không throw error nếu không có studentProfileId, thay vào đó chỉ cần log và tiếp tục
           if (!studentProfileId) {
-            throw new Error("Không tìm thấy thông tin hồ sơ sinh viên.");
+            console.warn("Không tìm thấy thông tin hồ sơ sinh viên, có thể hồ sơ chưa được tạo hoặc đang chờ phê duyệt");
+            // Set studentInfo rỗng để tránh lỗi và vẫn hiển thị giao diện
+            setStudentInfo({
+              currentRoom: null,
+              pendingInvoicesCount: 0,
+            });
+            return; // Thoát sớm, không làm các API call tiếp theo
           }
 
           const [roomRes, invoiceRes] = await Promise.allSettled([
@@ -112,7 +124,14 @@ const Dashboard = () => {
         }
       } catch (err) {
         console.error('Lỗi khi tải dữ liệu Dashboard:', err);
-        setError('Không thể tải dữ liệu cho bảng điều khiển.');
+
+        // Nếu là sinh viên, không hiển thị lỗi - chỉ log ra console
+        if (user.role === 'STUDENT') {
+          console.warn('Bỏ qua lỗi cho tài khoản sinh viên và hiển thị dashboard mặc định');
+          setError(null); // Đảm bảo không có lỗi nào được hiển thị
+        } else {
+          setError('Không thể tải dữ liệu cho bảng điều khiển.');
+        }
         // Lỗi 401/403 đã được interceptor xử lý
       } finally {
         setIsLoading(false);
@@ -301,11 +320,10 @@ const Dashboard = () => {
             </div>
           </Card>
 
-          {/* Có thể thêm Card cho các hoạt động gần đây hoặc thông báo khác */}
+          {/* Bổ sung tính năng thông báo */}
           <Card>
             <div className="p-5">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Hoạt động gần đây</h3>
-              {/* TODO: Fetch và hiển thị hoạt động gần đây */}
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Thông báo</h3>
               <ul className="space-y-2 text-sm text-gray-600">
                 <li>- Yêu cầu bảo trì mới từ phòng A101.</li>
                 <li>- Sinh viên Nguyễn Văn B vừa đăng ký xe.</li>
@@ -320,49 +338,147 @@ const Dashboard = () => {
   }
 
   // --- Render cho Student ---
-  if (user && user.role === 'STUDENT' && studentInfo) {
-    const { currentRoom, pendingInvoicesCount } = studentInfo;
+  if (user && user.role === 'STUDENT') {
+    // Xác định trạng thái sinh viên từ các nguồn có thể
+    const studentStatus = user.studentProfile?.status
+
+    // Lấy tên hiển thị của sinh viên
+    const userName = user.studentProfile?.fullName
+
+    // Hiển thị đặc biệt cho sinh viên với trạng thái PENDING_APPROVAL
+    if (studentStatus === 'PENDING_APPROVAL') {
+      return (
+        <div className="space-y-6">
+          <h1 className="text-2xl font-semibold text-gray-900">Chào mừng, {userName}!</h1>
+
+          {/* Giới thiệu - Logo và tiêu đề */}
+          <Card>
+            <div className="pt-1">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <img src="/LOGO.svg" alt="KTX Bách Khoa" className="h-8 w-auto" />
+                </div>
+                <div className="ml-4">
+                  <h2 className="text-xl font-semibold text-gray-900">HỆ THỐNG QUẢN LÝ KÝ TÚC XÁ BÁCH KHOA</h2>
+                  <p className="text-sm text-gray-500">Phiên bản 1.0 - {new Date().getFullYear()}</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Thông báo hoàn thành hồ sơ */}
+          <Card>
+            <div className="p-6 border-l-4 border-yellow-400">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <ExclamationTriangleIcon className="h-7 w-7 text-yellow-500" aria-hidden="true" />
+                </div>
+                <div className="ml-4">
+                  <h3 className="text-lg font-medium text-yellow-800">Hồ sơ của bạn đang chờ phê duyệt</h3>
+                  <div className="mt-2 text-yellow-700">
+                    <p className="mb-3">
+                      Bạn cần hoàn thiện hồ sơ cá nhân và cung cấp đầy đủ thông tin để được phê duyệt đăng ký Ký túc xá
+                    </p>
+                    <p className="mb-3">
+                      Vui lòng cập nhật các thông tin sau:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li>Thông tin cá nhân</li>
+                      <li>Thông tin học tập</li>
+                      <li>Địa chỉ thường trú</li>
+                      <li>Thông tin gia đình</li>
+                      <li>Thông tin liên hệ khẩn cấp</li>
+                    </ul>
+                  </div>
+                  <div className="mt-6">
+                    <Link
+                      to="/profile/edit"
+                      state={{ pendingApproval: true }}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                    >
+                      Cập nhật hồ sơ
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Các câu hỏi thường gặp */}
+          <Card>
+            <div className="p-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-4">Các câu hỏi thường gặp</h2>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-medium text-gray-900">Khi nào hồ sơ của tôi sẽ được phê duyệt?</h3>
+                  <p className="mt-1 text-gray-600">Hồ sơ sẽ được phê duyệt vào 16:00 - 17:00 hàng ngày.</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">Tôi có thể sử dụng những dịch vụ nào khi chưa được phê duyệt?</h3>
+                  <p className="mt-1 text-gray-600">Bạn chỉ có thể xem và chỉnh sửa hồ sơ cá nhân. Các dịch vụ khác sẽ được mở sau khi hồ sơ được phê duyệt.</p>
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">Làm sao để liên hệ với quản lý KTX?</h3>
+                  <p className="mt-1 text-gray-600">Bạn có thể liên hệ qua email: admin@example.com</p>
+                </div>
+              </div>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // Hiển thị dashboard bình thường cho sinh viên đã được phê duyệt
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-gray-900">Chào mừng, {user.profile?.fullName || user.name || user.email}!</h1>
+        <h1 className="text-2xl font-semibold text-gray-900">Chào mừng, {userName}!</h1>
 
-        {/* Thông tin phòng ở */}
+        {/* Giới thiệu */}
         <Card>
-          <div className="p-5">
-            <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
-              <RectangleGroupIcon className="h-5 w-5 mr-2 text-indigo-500" />
-              Phòng ở hiện tại
-            </h3>
-            {currentRoom ? (
-              <div>
-                <p><span className="font-medium">Tòa nhà:</span> {currentRoom.building?.name || 'N/A'}</p>
-                <p><span className="font-medium">Số phòng:</span> {currentRoom.number}</p>
-                <p><span className="font-medium">Loại phòng:</span> {currentRoom.type}</p>
-                {/* Thêm các thông tin khác nếu cần */}
-                <Link to={`/rooms`} className="mt-3 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500">Xem chi tiết phòng</Link>
+          <div className="pt-1">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <img src="/LOGO.svg" alt="KTX Bách Khoa" className="h-8 w-auto" />
               </div>
-            ) : (
-              <p className="text-gray-600">Bạn chưa được xếp phòng.</p>
-              // Có thể thêm Link đến trang đăng ký phòng
-            )}
+              <div className="ml-4">
+                <h2 className="text-xl font-semibold text-gray-900">HỆ THỐNG QUẢN LÝ KÝ TÚC XÁ BÁCH KHOA</h2>
+                <p className="text-sm text-gray-500">Phiên bản 1.0 - {new Date().getFullYear()}</p>
+              </div>
+            </div>
           </div>
         </Card>
 
-        {/* Thông báo & Hành động nhanh */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          {/* Hóa đơn chờ thanh toán */}
+        {/* Các chức năng chính */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Hồ sơ cá nhân */}
+          <Card>
+            <div className="p-5">
+              <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+                <UserCircleIcon className="h-5 w-5 mr-2 text-blue-500" />
+                Hồ sơ cá nhân
+              </h3>
+              <p className="text-gray-600 mb-3">Cập nhật thông tin cá nhân và xem hồ sơ của bạn</p>
+              <Link to="/profile" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                Xem hồ sơ
+              </Link>
+            </div>
+          </Card>
+
+          {/* Hóa đơn & Thanh toán */}
           <Card>
             <div className="p-5">
               <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
                 <DocumentTextIcon className="h-5 w-5 mr-2 text-red-500" />
                 Hóa đơn & Thanh toán
               </h3>
-              {pendingInvoicesCount > 0 ? (
-                <p className="text-red-600">Bạn có {pendingInvoicesCount} hóa đơn chưa thanh toán.</p>
+              {studentInfo?.pendingInvoicesCount > 0 ? (
+                <p className="text-red-600 mb-3">Bạn có {studentInfo.pendingInvoicesCount} hóa đơn chưa thanh toán.</p>
               ) : (
-                <p className="text-green-600">Không có hóa đơn nào cần thanh toán.</p>
+                <p className="text-gray-600 mb-3">Quản lý và thanh toán các hóa đơn của bạn</p>
               )}
-              <Link to="/profile" className="mt-3 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-500">Xem hóa đơn của bạn</Link> {/* Link đến tab billing trong profile? */}
+              <Link to="/invoices" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                Xem hóa đơn
+              </Link>
             </div>
           </Card>
 
@@ -373,17 +489,55 @@ const Dashboard = () => {
                 <WrenchScrewdriverIcon className="h-5 w-5 mr-2 text-yellow-500" />
                 Bảo trì & Sửa chữa
               </h3>
-              <p className="text-gray-600 mb-3">Gặp sự cố trong phòng? Gửi yêu cầu ngay.</p>
-              <Link
-                to="/maintenance/request"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-              >
-                Gửi yêu cầu mới
+              <p className="text-gray-600 mb-3">Gặp sự cố trong phòng? Gửi yêu cầu ngay</p>
+              <Link to="/maintenance" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                Yêu cầu sửa chữa
+              </Link>
+            </div>
+          </Card>
+
+          {/* Đăng ký phương tiện */}
+          <Card>
+            <div className="p-5">
+              <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+                <TruckIcon className="h-5 w-5 mr-2 text-purple-500" />
+                Quản lý phương tiện
+              </h3>
+              <p className="text-gray-600 mb-3">Đăng ký và quản lý xe của bạn trong ký túc xá</p>
+              <Link to="/vehicles" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                Quản lý phương tiện
+              </Link>
+            </div>
+          </Card>
+
+          {/* Thông tin phòng */}
+          <Card>
+            <div className="p-5">
+              <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+                <BuildingOffice2Icon className="h-5 w-5 mr-2 text-teal-500" />
+                Thông tin phòng ở
+              </h3>
+              <p className="text-gray-600 mb-3">Xem thông tin chi tiết về phòng ở, các tiện ích và danh sách sinh viên phòng</p>
+              <Link to="/buildings" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                Xem phòng ở
+              </Link>
+            </div>
+          </Card>
+
+          {/* Đăng ký chuyển phòng */}
+          <Card>
+            <div className="p-5">
+              <h3 className="text-lg font-medium text-gray-900 mb-3 flex items-center">
+                <ArrowsRightLeftIcon className="h-5 w-5 mr-2 text-green-500" />
+                Chuyển phòng
+              </h3>
+              <p className="text-gray-600 mb-3">Yêu cầu chuyển sang phòng ở mới hoặc thay đổi chỗ ở</p>
+              <Link to="/transfers" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+                Đăng ký chuyển phòng
               </Link>
             </div>
           </Card>
         </div>
-        {/* Có thể thêm phần Thông báo chung hoặc Lịch hoạt động sắp tới */}
       </div>
     );
   }
