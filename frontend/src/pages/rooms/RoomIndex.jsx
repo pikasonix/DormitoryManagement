@@ -74,6 +74,15 @@ const RoomIndex = () => {
           params[key] = filters[key];
         }
       });
+
+      // Add buildingId parameter for STAFF users to filter rooms by their managed building
+      // STAFF users should only see rooms from their managed building
+      if (user?.role === 'STAFF' && user?.staffProfile?.managedBuildingId) {
+        params.buildingId = user.staffProfile.managedBuildingId;
+        console.log(`STAFF user filtering rooms by building ID: ${params.buildingId}`);
+      }
+
+      console.log('Fetching rooms with params:', params);
       const roomsData = await roomService.getAllRooms(params);
 
       // Make sure we have an array of rooms
@@ -470,7 +479,7 @@ const RoomIndex = () => {
           </div>
 
           {/* Bộ lọc */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
+          <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-md shadow-sm ${user?.role !== 'STAFF' ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
             <Input
               label="Tìm số phòng"
               id="search"
@@ -480,15 +489,18 @@ const RoomIndex = () => {
               onChange={handleFilterChange}
             />
 
-            <Select
-              label="Tòa nhà"
-              id="buildingId"
-              name="buildingId"
-              value={filters.buildingId}
-              onChange={handleFilterChange}
-              options={buildingOptions}
-              className="w-full"
-            />
+            {/* Hide building filter for STAFF users since they can only see their managed building */}
+            {user?.role !== 'STAFF' && (
+              <Select
+                label="Tòa nhà"
+                id="buildingId"
+                name="buildingId"
+                value={filters.buildingId}
+                onChange={handleFilterChange}
+                options={buildingOptions}
+                className="w-full"
+              />
+            )}
 
             <div className="flex flex-col gap-1">
               <label htmlFor="status" className="text-sm font-medium text-gray-700">

@@ -80,7 +80,7 @@ const DashboardLayout = () => {
       { name: 'Trang chủ', href: '/dashboard', icon: HomeIcon, roles: ['ADMIN', 'STAFF', 'STUDENT'] },
       { name: 'Hồ sơ cá nhân', href: '/profile', icon: UserCircleIcon, roles: ['ADMIN', 'STAFF', 'STUDENT'] },
       { name: 'Quản lý sinh viên', href: '/students', icon: UsersIcon, roles: ['ADMIN', 'STAFF'] },
-      { name: 'Quản lý tòa nhà', href: '/buildings', icon: BuildingOffice2Icon, roles: ['ADMIN', 'STAFF'] },
+      { name: 'Quản lý tòa nhà', href: '/buildings', icon: BuildingOffice2Icon, roles: ['ADMIN'] },
       { name: 'Quản lý phòng ở', href: '/rooms', icon: RectangleGroupIcon, roles: ['ADMIN', 'STAFF', 'STUDENT'] },
       { name: 'Tiện nghi KTX', href: '/amenities', icon: Cog6ToothIcon, roles: ['ADMIN', 'STAFF'] },
       { name: 'Quản lý bảo trì', href: '/maintenance', icon: WrenchScrewdriverIcon, roles: ['ADMIN', 'STAFF'] },
@@ -205,7 +205,7 @@ const DashboardLayout = () => {
                       <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-full">
                         <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
                         <span className="text-xs font-medium">
-                          Tài khoản đang chờ phê duyệt - Vui lòng cập nhật hồ sơ cá nhân
+                          Tài khoản đang chờ phê duyệt - Hãy cập nhật hồ sơ
                         </span>
                       </div>
                     </div>
