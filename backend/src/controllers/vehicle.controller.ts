@@ -12,7 +12,7 @@ const vehicleService = new VehicleService();
 export class VehicleController {
     async getAllRegistrations(req: Request, res: Response, next: NextFunction) {
         try {
-            const { studentProfileId, vehicleType, isActive, licensePlate, parkingCardNo, hasParkingCardNo, page, limit } = req.query;
+            const { studentProfileId, vehicleType, isActive, licensePlate, parkingCardNo, hasParkingCardNo, buildingId, page, limit } = req.query;
             const requesterUserId = req.user?.userId;
             const requesterRole = req.user?.role;
 
@@ -31,10 +31,18 @@ export class VehicleController {
 
                 // Luôn filter theo studentProfileId của chính sinh viên đó
                 options.where!.studentProfileId = studentProfile.id;
-            }
-            // Admin/Staff có thể xem tất cả hoặc lọc theo studentProfileId
+            }            // Admin/Staff có thể xem tất cả hoặc lọc theo studentProfileId
             else if (requesterRole === 'ADMIN' || requesterRole === 'STAFF') {
                 if (studentProfileId) options.where!.studentProfileId = parseInt(studentProfileId as string);
+
+                // Nếu là STAFF và có buildingId, lọc theo tòa nhà
+                if (requesterRole === 'STAFF' && buildingId) {
+                    options.where!.studentProfile = {
+                        room: {
+                            buildingId: parseInt(buildingId as string)
+                        }
+                    };
+                }
             }
 
             // Các bộ lọc khác

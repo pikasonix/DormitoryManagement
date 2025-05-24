@@ -148,9 +148,7 @@ const VehicleIndex = () => {
                 toast.error(err?.message || `Duyệt đăng ký xe thất bại.`);
             }
         }
-    };
-
-    // Fetch danh sách xe
+    };    // Fetch danh sách xe
     const fetchVehicles = useCallback(async (page = 1, currentFilters, search = '') => {
         setIsLoading(true);
         setError(null);
@@ -166,6 +164,11 @@ const VehicleIndex = () => {
                 licensePlate: search || undefined, // Chuyển search thành licensePlate param
                 parkingCardNo: currentFilters.parkingCardNo || undefined,
             };
+
+            // Nếu là STAFF, chỉ lấy xe của sinh viên thuộc tòa quản lý
+            if (isStaff && user?.staffProfile?.managedBuildingId) {
+                params.buildingId = user.staffProfile.managedBuildingId;
+            }
 
             console.log('API params:', params);
 
@@ -195,7 +198,7 @@ const VehicleIndex = () => {
         } finally {
             setIsLoading(false);
         }
-    }, [meta.limit, owners]);
+    }, [meta.limit, owners, isStaff, user]);
 
     // Fetch danh sách xe đang chờ duyệt (isActive = false và không có parkingCardNo)
     const fetchPendingVehicles = useCallback(async (page = 1) => {
@@ -208,6 +211,11 @@ const VehicleIndex = () => {
                 isActive: false,
                 hasParkingCardNo: false // Thêm tham số này để lọc xe chưa có mã thẻ gửi xe
             };
+
+            // Nếu là STAFF, chỉ lấy xe của sinh viên thuộc tòa quản lý
+            if (isStaff && user?.staffProfile?.managedBuildingId) {
+                params.buildingId = user.staffProfile.managedBuildingId;
+            }
 
             const data = await vehicleService.getAllVehicles(params);
             const vehicleList = data.vehicles || [];
@@ -234,7 +242,7 @@ const VehicleIndex = () => {
         } finally {
             setIsPendingLoading(false);
         }
-    }, [pendingMeta.limit, owners]);
+    }, [pendingMeta.limit, owners, isStaff, user]);
 
     useEffect(() => {
         if (activeTab === 'active') {
@@ -254,6 +262,12 @@ const VehicleIndex = () => {
                     isActive: false,
                     hasParkingCardNo: false
                 };
+
+                // Nếu là STAFF, chỉ lấy xe của sinh viên thuộc tòa quản lý
+                if (isStaff && user?.staffProfile?.managedBuildingId) {
+                    params.buildingId = user.staffProfile.managedBuildingId;
+                }
+
                 const data = await vehicleService.getAllVehicles(params);
                 setPendingMeta(prev => ({ ...prev, total: data.meta.total }));
             } catch (err) {
@@ -262,7 +276,7 @@ const VehicleIndex = () => {
         };
 
         fetchPendingCount();
-    }, []);
+    }, [isStaff, user]);
 
     // Handle Tab Change
     const handleTabChange = (tab) => {
