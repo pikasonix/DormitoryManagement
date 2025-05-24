@@ -112,19 +112,12 @@ function App() {
             <Route path="new" element={<RoomForm />} />
             <Route path=":id/edit" element={<RoomForm />} />
           </Route>
-        </Route>
-
-        {/* --- AMENITY ROUTES (Xem lại quyền tạo/sửa) --- */}
+        </Route>        {/* --- AMENITY ROUTES --- */}
         <Route path="/amenities" element={<StaffRoute />}>
           <Route index element={<AmenityIndex />} />
-          {/* Chỉ Admin được tạo/sửa? */}
-          <Route path="new" element={<AdminRoute><AmenityForm /></AdminRoute>} />
-          <Route path=":id/edit" element={<AdminRoute><AmenityForm /></AdminRoute>} />
-          {/* Hoặc nếu Staff cũng được:
-             <Route path="new" element={<AmenityForm />} />
-             <Route path=":id/edit" element={<AmenityForm />} />
-             */}
-        </Route>        {/* --- MAINTENANCE ROUTES --- */}
+          <Route path="new" element={<AmenityForm />} />
+          <Route path=":id/edit" element={<AmenityForm />} />
+        </Route>{/* --- MAINTENANCE ROUTES --- */}
         <Route path="/maintenance">
           <Route index element={<StudentOrStaffRoute><MaintenanceIndex /></StudentOrStaffRoute>} />
           <Route path="request" element={<StudentOrStaffRoute><MaintenanceRequestForm /></StudentOrStaffRoute>} />

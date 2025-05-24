@@ -25,7 +25,7 @@ const AmenityIndex = () => {
       const params = {
         page: page,
         limit: meta.limit,
-        search: search || undefined, // Giả sử API hỗ trợ ?search=...
+        search: search || undefined,
       };
       const data = await amenityService.getAllAmenities(params);
       setAmenities(data.amenities || []);

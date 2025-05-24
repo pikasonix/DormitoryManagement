@@ -98,7 +98,7 @@ const AmenityForm = () => {
   if (isLoading) return <div className="flex justify-center items-center h-64"><LoadingSpinner /></div>;
 
   return (
-    <div className="space-y-6 max-w-lg mx-auto"> {/* Giảm max-width */}
+    <div className="space-y-6 max-w-lg mx-auto">
       <div>
         <Button variant="link" onClick={() => navigate('/amenities')} icon={ArrowLeftIcon} className="text-sm mb-4">
           Quay lại danh sách tiện nghi

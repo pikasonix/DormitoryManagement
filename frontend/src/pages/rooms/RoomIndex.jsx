@@ -105,7 +105,7 @@ const RoomIndex = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [filters, currentPage, meta.limit]);
+  }, [filters, currentPage, meta.limit, user]);
 
   // Hàm fetch danh sách tòa nhà cho bộ lọc
   const fetchBuildings = useCallback(async () => {
