@@ -19,6 +19,7 @@ export class StudentController {
 
       const keyword = req.query.keyword as string;
       const status = req.query.status as string;
+      const buildingId = req.query.buildingId as string;
 
       const whereCondition: any = {};
       if (keyword) {
@@ -33,6 +34,17 @@ export class StudentController {
       // Lọc theo trạng thái nếu có
       if (status && Object.values(StudentStatus).includes(status as StudentStatus)) {
         whereCondition.status = status as StudentStatus;
+      }
+
+      // Lọc theo tòa nhà nếu có (for STAFF users)
+      if (buildingId) {
+        const parsedBuildingId = parseInt(buildingId);
+        if (!isNaN(parsedBuildingId)) {
+          whereCondition.room = {
+            buildingId: parsedBuildingId
+          };
+          console.log(`[StudentController] Filtering students by building ID: ${parsedBuildingId}`);
+        }
       }
 
       const totalStudents = await prisma.studentProfile.count({

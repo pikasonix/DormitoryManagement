@@ -31,9 +31,7 @@ const StaffProfilePage = () => {
     const navigate = useNavigate();
     const [profile, setProfile] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState(null);
-
-    useEffect(() => {
+    const [error, setError] = useState(null); useEffect(() => {
         const fetchProfile = async () => {
             setIsLoading(true);
             try {
@@ -46,7 +44,15 @@ const StaffProfilePage = () => {
 
                 if (staffProfile) {
                     console.log('Staff profile data retrieved:', staffProfile);
-                    setProfile(staffProfile);
+                    console.log('User data from response:', response?.user);
+
+                    // Attach user data to profile so we can access email
+                    const profileWithUser = {
+                        ...staffProfile,
+                        user: response?.user || response?.data?.user
+                    };
+
+                    setProfile(profileWithUser);
                 } else {
                     console.error('Staff profile not found in response:', response);
                     setError('Không tìm thấy thông tin hồ sơ nhân viên');

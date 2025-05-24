@@ -56,6 +56,12 @@ const StudentIndex = () => {
         status: statusFilter !== 'ALL' ? statusFilter : undefined
       };
 
+      // For STAFF users, add buildingId filter to params
+      if (user?.role === 'STAFF' && user?.staffProfile?.managedBuildingId) {
+        params.buildingId = user.staffProfile.managedBuildingId;
+        console.log(`STAFF user filtering students by building ID: ${params.buildingId}`);
+      }
+
       console.log('Fetching students with params:', params);
       const data = await studentService.getAllStudents(params);
       console.log('Students data received:', data);

@@ -114,8 +114,8 @@ const StudentProfilePage = () => {
                 <h3 className="text-base font-semibold text-gray-900">Thông tin cơ bản</h3>
             </div>
             {renderDetailRow('Họ và tên', profile.fullName, false)}
-            {renderDetailRow('Mã sinh viên', profile.studentId, true, "font-semibold font-mono")}
-            {renderDetailRow('Email', profile.user?.email || profile.user?.studentProfile?.user?.email || profile.email, false, "text-gray-700 font-mono")}
+            {renderDetailRow('Mã sinh viên', profile.studentId, true)}
+            {renderDetailRow('Email', profile.user?.email, false)}
             {renderDetailRow('Số điện thoại', profile.phoneNumber, true)}
             {renderDetailRow('Giới tính', profile.gender === 'MALE' ? 'Nam' : (profile.gender === 'FEMALE' ? 'Nữ' : profile.gender), false)}
             {renderDetailRow('Ngày sinh', formatDate(profile.birthDate), true)}

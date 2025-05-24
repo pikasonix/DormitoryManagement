@@ -17,8 +17,6 @@ const Profile = () => {
   const tabs = useMemo(() => [
     { id: 'profile', name: 'Hồ sơ', icon: UserCircleIcon },
     { id: 'security', name: 'Bảo mật', icon: KeyIcon },
-    // { id: 'billing', name: 'Hóa đơn & Thanh toán', icon: CreditCardIcon }, // Ví dụ thêm tab Billing cho Student
-    // { id: 'my_requests', name: 'Yêu cầu của tôi', icon: ClipboardDocumentListIcon }, // Ví dụ Tab yêu cầu của Student
   ], []);
   // --- Xử lý Loading ---
   if (isAuthLoading || !user) {
@@ -92,9 +90,9 @@ const Profile = () => {
           <div>
             {/* **Kiểm tra user.profile trước khi dùng fullName** */}
             <p className="text-xl font-semibold text-gray-900">
-              {user.profile?.fullName || user.name || user.email}
+              {user.profile?.fullName}
             </p>
-            <p className="text-sm text-gray-500">{user.email}</p>
+            <p className="text-sm text-gray-500">{user.profile?.email}</p>
             <span className={`mt-1 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-800 ring-purple-600/20' :
               user.role === 'STAFF' ? 'bg-blue-100 text-blue-800 ring-blue-600/20' :
                 'bg-green-100 text-green-800 ring-green-600/20' // STUDENT
@@ -105,7 +103,7 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Phần Tabs (Giữ nguyên cấu trúc tabs, đã tốt) */}
+      {/* Phần Tabs*/}
       <div className="bg-white shadow sm:rounded-lg">
         {/* Tabs cho Mobile */}
         <div className="sm:hidden px-4 pt-4">
@@ -155,9 +153,6 @@ const Profile = () => {
           // Component này sẽ tự xử lý logic và gọi API đổi mật khẩu
           <SecuritySettings />
         )}
-        {/* Thêm nội dung cho các tab khác nếu cần */}
-        {/* {activeTab === 'billing' && <BillingHistory />} */}
-        {/* {activeTab === 'my_requests' && <MyRequests />} */}
       </div>
     </div>
   );
