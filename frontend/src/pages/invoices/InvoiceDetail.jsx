@@ -118,9 +118,13 @@ const InvoiceDetail = () => {
         <div className="space-y-6 max-w-4xl mx-auto">
             {/* Header và nút Back */}
             <div>
-                <Button variant="link" onClick={() => navigate('/invoices')} icon={ArrowLeftIcon} className="text-sm mb-4">
-                    Quay lại danh sách hóa đơn
-                </Button>                <div className="flex flex-wrap justify-between items-start gap-4">
+                <Button variant="link" onClick={() => navigate('/invoices')} className="text-sm mb-4">
+                    <div className="flex items-center gap-1">
+                        <ArrowLeftIcon className="h-4 w-4" />
+                        <span>Quay lại danh sách hóa đơn</span>
+                    </div>
+                </Button>
+                <div className="flex flex-wrap justify-between items-start gap-4">
                     <div>
                         <h1 className="text-2xl font-semibold text-gray-900">Chi tiết Hóa đơn #{id}</h1>
                         <p className="mt-1 text-sm text-gray-500">
@@ -130,16 +134,17 @@ const InvoiceDetail = () => {
                     </div>
                     {/* Actions: In, Thanh toán (nếu chưa trả), Cập nhật status */}
                     <div className="flex items-center space-x-3 mt-2 sm:mt-0">
-                        {/* Nút cập nhật status (ví dụ) */}                        {(invoice.status === 'UNPAID' || invoice.status === 'PARTIALLY_PAID' || invoice.status === 'OVERDUE') && (
-                            <Button
-                                variant='success'
-                                onClick={() => handleUpdateStatus('PAID')}
-                                isLoading={isUpdatingStatus}
-                                disabled={isUpdatingStatus}
-                                icon={CheckCircleIcon}
-                            >
-                                Đánh dấu Đã thanh toán
-                            </Button>
+                        {/* Nút cập nhật status (ví dụ) */}                        {(invoice.status === 'UNPAID' || invoice.status === 'PARTIALLY_PAID' || invoice.status === 'OVERDUE') && (<Button
+                            variant='success'
+                            onClick={() => handleUpdateStatus('PAID')}
+                            isLoading={isUpdatingStatus}
+                            disabled={isUpdatingStatus}
+                        >
+                            <div className="flex items-center gap-1">
+                                <CheckCircleIcon className="h-4 w-4" />
+                                <span>Đánh dấu Đã thanh toán</span>
+                            </div>
+                        </Button>
                         )}
                         {invoice.status === 'PAID' && (
                             <Button
@@ -151,9 +156,11 @@ const InvoiceDetail = () => {
                                 Đánh dấu Chờ thanh toán
                             </Button>
                         )}
-                        {/* Nút In */}
-                        <Button variant="outline" icon={PrinterIcon} onClick={() => window.print()}> {/* Đơn giản là print trang */}
-                            In hóa đơn
+                        {/* Nút In */}                        <Button variant="outline" onClick={() => window.print()}>
+                            <div className="flex items-center gap-1">
+                                <PrinterIcon className="h-4 w-4" />
+                                <span>In hóa đơn</span>
+                            </div>
                         </Button>
                         {/* Nút Thanh toán (nếu tích hợp cổng thanh toán) */}
                         {/* {invoice.status === 'pending' && <Button icon={CreditCardIcon}>Thanh toán ngay</Button>} */}

@@ -322,10 +322,12 @@ const RoomForm = () => {
 
     return (
         <div className="space-y-6 max-w-4xl mx-auto"> {/* Tăng max-width */}
-            <div>
-                <Button variant="link" onClick={() => navigate('/rooms')} icon={ArrowLeftIcon} className="text-sm mb-4">
-                    Quay lại danh sách phòng
-                </Button>
+            <div>                <Button variant="link" onClick={() => navigate('/rooms')} className="text-sm mb-4">
+                <div className="flex items-center gap-1">
+                    <ArrowLeftIcon className="h-4 w-4" />
+                    <span>Quay lại danh sách phòng</span>
+                </div>
+            </Button>
                 <h1 className="text-2xl font-semibold">
                     {isEditMode ? 'Chỉnh sửa thông tin Phòng' : 'Thêm Phòng mới'}
                 </h1>

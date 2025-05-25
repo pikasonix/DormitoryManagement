@@ -119,25 +119,28 @@ const FeeRateDetail = () => {
                             ID: {id} | Cập nhật: {formatDate(feeRate.updatedAt)}
                         </p>
                     </div>                    {/* Action buttons */}
-                    <div className="flex items-center space-x-3 mt-2 sm:mt-0">
-                        {user?.role !== 'STAFF' && (
-                            <>
-                                <Button
-                                    variant="primary"
-                                    icon={PencilIcon}
-                                    onClick={() => navigate(`/fees/${id}/edit`)}
-                                >
-                                    Chỉnh sửa
-                                </Button>
-                                <Button
-                                    variant="danger"
-                                    icon={TrashIcon}
-                                    onClick={handleDelete}
-                                >
-                                    Xóa
-                                </Button>
-                            </>
-                        )}
+                    <div className="flex items-center space-x-3 mt-2 sm:mt-0">                        {user?.role !== 'STAFF' && (
+                        <>
+                            <Button
+                                variant="primary"
+                                onClick={() => navigate(`/fees/${id}/edit`)}
+                            >
+                                <div className="flex items-center gap-1">
+                                    <PencilIcon className="h-4 w-4" />
+                                    <span>Chỉnh sửa</span>
+                                </div>
+                            </Button>
+                            <Button
+                                variant="danger"
+                                onClick={handleDelete}
+                            >
+                                <div className="flex items-center gap-1">
+                                    <TrashIcon className="h-4 w-4" />
+                                    <span>Xóa</span>
+                                </div>
+                            </Button>
+                        </>
+                    )}
                     </div>
                 </div>
             </div>

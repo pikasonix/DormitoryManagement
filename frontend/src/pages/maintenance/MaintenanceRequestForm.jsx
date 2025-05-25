@@ -148,8 +148,14 @@ const MaintenanceRequestForm = () => {
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
       <div>
-        <Button variant="link" onClick={() => navigate(-1)} icon={ArrowLeftIcon} className="text-sm mb-4">
-          Quay lại
+        <Button
+          variant="link"
+          onClick={() => navigate(-1)}
+        >
+          <div className="flex items-center gap-1">
+            <ArrowLeftIcon className="h-4 w-4" />
+            <span>Quay lại</span>
+          </div>
         </Button>
         <h1 className="text-2xl font-semibold">Gửi yêu cầu Sửa chữa / Bảo trì</h1>
         <p className="mt-1 text-sm text-gray-600">Mô tả sự cố bạn đang gặp phải trong phòng.</p>
@@ -178,7 +184,7 @@ const MaintenanceRequestForm = () => {
         />
 
         {/* Upload hình ảnh */}
-        <div>
+        {/* <div>
           <label className="block text-sm font-medium leading-6 text-gray-900">Hình ảnh minh họa (Tối đa 5 ảnh, 5MB/ảnh)</label>
           <div className="mt-2">
             <label htmlFor="image-upload-maintenance" className="cursor-pointer relative inline-flex items-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
@@ -186,9 +192,10 @@ const MaintenanceRequestForm = () => {
               Chọn ảnh
             </label>
             <input id="image-upload-maintenance" name="images" type="file" multiple className="sr-only" onChange={handleImageChange} accept="image/*" ref={fileInputRef} />
-          </div>
-          {/* Preview ảnh đã chọn */}
-          {imagePreviews.length > 0 && (
+          </div> */}
+
+        {/* Preview ảnh đã chọn */}
+        {/* {imagePreviews.length > 0 && (
             <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
               {imagePreviews.map((src, index) => (
                 <div key={index} className="relative group aspect-square">
@@ -206,7 +213,7 @@ const MaintenanceRequestForm = () => {
               ))}
             </div>
           )}
-        </div>
+        </div> */}
 
         {/* Nút Submit */}
         <div className="flex justify-end gap-3 pt-5 border-t border-gray-200">

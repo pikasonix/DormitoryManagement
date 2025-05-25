@@ -307,13 +307,16 @@ const UtilityReadingCreate = () => {
     return (
         <div className="container mx-auto px-4 py-6">
             <div className="flex items-center mb-6">
-                <button
+                <Button
+                    variant="link"
                     onClick={() => navigate('/utilities')}
-                    className="mr-4 p-2 rounded-full hover:bg-gray-200"
                 >
-                    <ArrowLeftIcon className="h-6 w-6" />
-                </button>
-                <h1 className="text-2xl font-bold">Thêm chỉ số tiện ích</h1>
+                    <div className="flex items-center gap-1">
+                        <ArrowLeftIcon className="h-4 w-4" />
+                        <span>Quay lại</span>
+                    </div>
+                </Button>
+                <h1 className="text-2xl font-bold ml-6">Thêm chỉ số tiện ích</h1>
             </div>
 
             <Tabs activeTab={activeTab} onChange={setActiveTab}>

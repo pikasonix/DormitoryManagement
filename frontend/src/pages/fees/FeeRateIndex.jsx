@@ -189,7 +189,12 @@ const FeeRateIndex = () => {
         <div className="space-y-4">
             <div className="flex flex-wrap justify-between items-center gap-4">
                 <h1 className="text-2xl font-semibold">Quản lý Đơn giá</h1>
-                <Button onClick={() => navigate('/fees/new')} icon={PlusIcon}>Thêm đơn giá</Button>
+                <Button onClick={() => navigate('/fees/new')}>
+                    <div className="flex items-center gap-1">
+                        <PlusIcon className="h-4 w-4" />
+                        <span>Thêm đơn giá</span>
+                    </div>
+                </Button>
             </div>
 
             {/* Filters */}

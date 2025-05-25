@@ -148,10 +148,12 @@ const BuildingForm = () => {
 
     return (
         <div className="space-y-6 max-w-3xl mx-auto">
-            <div>
-                <Button variant="link" onClick={() => navigate('/buildings')} icon={ArrowLeftIcon} className="text-sm mb-4">
-                    Quay lại danh sách
-                </Button>
+            <div>                <Button variant="link" onClick={() => navigate('/buildings')} className="text-sm mb-4">
+                <div className="flex items-center gap-1">
+                    <ArrowLeftIcon className="h-4 w-4" />
+                    <span>Quay lại danh sách</span>
+                </div>
+            </Button>
                 <h1 className="text-2xl font-semibold">
                     {isEditMode ? 'Chỉnh sửa Tòa nhà' : 'Thêm Tòa nhà mới'}
                 </h1>

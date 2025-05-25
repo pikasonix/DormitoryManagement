@@ -299,19 +299,22 @@ const StudentProfile = ({ overrideStudent = null, hideNavigation = false }) => {
         <div className="space-y-6 max-w-5xl mx-auto">
             {!hideNavigation && (
                 <div className="flex flex-wrap justify-between items-center gap-4">
-                    <div>
-                        <Button variant="link" onClick={() => navigate('/students')} icon={ArrowLeftIcon} className="text-sm mb-2">
-                            Quay lại danh sách sinh viên
-                        </Button>
+                    <div>                        <Button variant="link" onClick={() => navigate('/students')} className="text-sm mb-2">
+                        <div className="flex items-center gap-1">
+                            <ArrowLeftIcon className="h-4 w-4" />
+                            <span>Quay lại danh sách sinh viên</span>
+                        </div>
+                    </Button>
                         <h1 className="text-2xl font-semibold">Hồ sơ sinh viên</h1>
                     </div>
-                    <div className="flex gap-2">
-                        <Button
-                            onClick={() => navigate(editUrl)}
-                            icon={PencilSquareIcon}
-                        >
-                            Chỉnh sửa
-                        </Button>
+                    <div className="flex gap-2">                        <Button
+                        onClick={() => navigate(editUrl)}
+                    >
+                        <div className="flex items-center gap-1">
+                            <PencilSquareIcon className="h-4 w-4" />
+                            <span>Chỉnh sửa</span>
+                        </div>
+                    </Button>
                     </div>
                 </div>
             )}

@@ -309,10 +309,12 @@ const VehicleForm = ({ mode = 'create' }) => {
     return (
         <div className="space-y-6 max-w-lg mx-auto">
             <div>
-                {/* Nút quay lại tùy theo ngữ cảnh */}
-                <Button variant="link" onClick={() => navigate(isEditMode ? '/vehicles' : -1)} icon={ArrowLeftIcon} className="text-sm mb-4">
-                    Quay lại
-                </Button>                <h1 className="text-2xl font-semibold">
+                {/* Nút quay lại tùy theo ngữ cảnh */}                <Button variant="link" onClick={() => navigate(isEditMode ? '/vehicles' : -1)} className="text-sm mb-4">
+                    <div className="flex items-center gap-1">
+                        <ArrowLeftIcon className="h-4 w-4" />
+                        <span>Quay lại</span>
+                    </div>
+                </Button><h1 className="text-2xl font-semibold">
                     {isEditMode ? `Chỉnh sửa Xe (${formData.licensePlate})` :
                         isAdmin ? 'Đăng ký Xe cho Sinh viên' : 'Đăng ký Xe mới'}
                 </h1>

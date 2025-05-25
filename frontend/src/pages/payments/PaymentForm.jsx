@@ -574,15 +574,16 @@ const PaymentForm = () => {
                 </div>
             )}
 
-            <div>
-                <Button
-                    variant="link"
-                    onClick={() => navigate(invoiceIdFromQuery ? '/invoices' : '/payments')}
-                    icon={ArrowLeftIcon}
-                    className="text-sm mb-4"
-                >
-                    {invoiceIdFromQuery ? 'Quay lại danh sách hóa đơn' : 'Quay lại lịch sử thanh toán'}
-                </Button>
+            <div>                <Button
+                variant="link"
+                onClick={() => navigate(invoiceIdFromQuery ? '/invoices' : '/payments')}
+                className="text-sm mb-4"
+            >
+                <div className="flex items-center gap-1">
+                    <ArrowLeftIcon className="h-4 w-4" />
+                    <span>{invoiceIdFromQuery ? 'Quay lại danh sách hóa đơn' : 'Quay lại lịch sử thanh toán'}</span>
+                </div>
+            </Button>
                 <h1 className="text-2xl font-semibold">
                     {isEditMode
                         ? 'Chỉnh sửa Giao dịch Thanh toán'

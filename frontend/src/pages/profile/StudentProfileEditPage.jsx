@@ -201,18 +201,19 @@ const StudentProfileEditPage = () => {
     }
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">            <div className="flex items-center gap-4">
-            <Button
-                variant="link"
-                onClick={() => navigate('/profile')}
-            >
-                <div className="flex items-center gap-1">
-                    <ArrowLeftIcon className="h-4 w-4" />
-                    <span>Quay lại</span>
-                </div>
-            </Button>
-            <h1 className="text-2xl font-semibold">Chỉnh sửa hồ sơ sinh viên</h1>
-        </div>            {/* Thông báo cho sinh viên có trạng thái PENDING_APPROVAL */}
+        <div className="space-y-6 max-w-5xl mx-auto">
+            <div className="flex items-center gap-4">
+                <Button
+                    variant="link"
+                    onClick={() => navigate('/profile')}
+                >
+                    <div className="flex items-center gap-1">
+                        <ArrowLeftIcon className="h-4 w-4" />
+                        <span>Quay lại</span>
+                    </div>
+                </Button>
+                <h1 className="text-2xl font-semibold">Chỉnh sửa hồ sơ sinh viên</h1>
+            </div>            {/* Thông báo cho sinh viên có trạng thái PENDING_APPROVAL */}
             {(profile.status === 'PENDING_APPROVAL' || isPendingApproval) && (
                 <div className="bg-red-50 border-l-4 border-red-500 p-5 mb-6 rounded-md shadow-sm">
                     <div className="flex">

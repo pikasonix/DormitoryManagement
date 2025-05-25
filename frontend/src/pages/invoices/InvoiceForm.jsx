@@ -244,14 +244,15 @@ const InvoiceForm = () => {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <Button
-                    onClick={() => navigate('/invoices')}
-                    variant="outline"
-                    icon={ArrowLeftIcon}
-                >
-                    Quay lại
-                </Button>
+            <div className="flex items-center gap-4">                <Button
+                onClick={() => navigate('/invoices')}
+                variant="outline"
+            >
+                <div className="flex items-center gap-1">
+                    <ArrowLeftIcon className="h-4 w-4" />
+                    <span>Quay lại</span>
+                </div>
+            </Button>
                 <h1 className="text-2xl font-semibold">
                     {isEditMode ? 'Chỉnh sửa hóa đơn' : 'Tạo hóa đơn mới'}
                 </h1>
@@ -373,14 +374,15 @@ const InvoiceForm = () => {
                     {/* Các khoản thu */}
                     <div>
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-medium">Các khoản thu</h3>
-                            <Button
+                            <h3 className="text-lg font-medium">Các khoản thu</h3>                            <Button
                                 type="button"
                                 onClick={addItem}
-                                icon={PlusIcon}
                                 size="sm"
                             >
-                                Thêm khoản
+                                <div className="flex items-center gap-1">
+                                    <PlusIcon className="h-4 w-4" />
+                                    <span>Thêm khoản</span>
+                                </div>
                             </Button>
                         </div>
 

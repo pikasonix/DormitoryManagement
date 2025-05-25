@@ -7,7 +7,7 @@ import { Button, Table, Select, Input, Pagination, Badge, Card, Alert } from '..
 import LoadingSpinner from '../../components/shared/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext'; // Lấy thông tin user
 import { toast } from 'react-hot-toast';
-import { EyeIcon, PencilSquareIcon, TrashIcon, PlusCircleIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, PencilSquareIcon, TrashIcon, PlusIcon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -373,8 +373,14 @@ const MaintenanceIndex = () => {
         </div>
 
         <div className="flex justify-end">
-          <Button onClick={() => navigate('/maintenance/request')} variant="primary">
-            Tạo yêu cầu mới
+          <Button
+            variant="link"
+            onClick={() => navigate('/maintenance/request')}
+          >
+            <div className="flex items-center gap-1">
+              <PlusIcon className="h-4 w-4" />
+              <span>Tạo yêu cầu mới</span>
+            </div>
           </Button>
         </div>
 
@@ -422,8 +428,14 @@ const MaintenanceIndex = () => {
       <div className="flex flex-wrap justify-between items-center gap-4">
         <h1 className="text-2xl font-semibold">Yêu cầu Bảo trì / Sửa chữa</h1>
         {showCreateButtonInHeader && (
-          <Button onClick={() => navigate('/maintenance/request')} variant="primary">
-            Tạo yêu cầu mới
+          <Button
+            variant="link"
+            onClick={() => navigate('/maintenance/request')}
+          >
+            <div className="flex items-center gap-1">
+              <PlusIcon className="h-4 w-4" />
+              <span>Tạo yêu cầu mới</span>
+            </div>
           </Button>
         )}
       </div>

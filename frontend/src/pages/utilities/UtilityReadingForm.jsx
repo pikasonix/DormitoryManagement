@@ -169,10 +169,12 @@ const UtilityReadingForm = () => {
 
     return (
         <div className="space-y-6 max-w-3xl mx-auto">
-            <div className="flex items-center space-x-2">
-                <Button onClick={() => navigate('/utilities')} icon={ArrowLeftIcon} variant="outline" className="!p-2">
+            <div className="flex items-center space-x-2">                <Button onClick={() => navigate('/utilities')} variant="outline" className="!p-2">
+                <div className="flex items-center gap-1">
+                    <ArrowLeftIcon className="h-4 w-4" />
                     <span className="sr-only">Quay lại</span>
-                </Button>
+                </div>
+            </Button>
                 <h1 className="text-2xl font-semibold">{isEditMode ? 'Cập nhật chỉ số' : 'Thêm chỉ số mới'}</h1>
             </div>
 

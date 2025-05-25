@@ -99,8 +99,11 @@ const AmenityIndex = () => {
     <div className="space-y-4">
       <div className="flex flex-wrap justify-between items-center gap-4">
         <h1 className="text-2xl font-semibold">Quản lý Tiện nghi</h1>
-        <Button onClick={() => navigate('/amenities/new')} icon={PlusIcon}>
-          Thêm Tiện nghi mới
+        <Button onClick={() => navigate('/amenities/new')}>
+          <div className="flex items-center gap-1">
+            <PlusIcon className="h-4 w-4" />
+            <span>Thêm Tiện nghi mới</span>
+          </div>
         </Button>
       </div>
 

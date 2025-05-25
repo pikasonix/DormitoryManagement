@@ -460,8 +460,11 @@ const RoomIndex = () => {
           {isStudent ? 'Thông tin phòng ký túc xá' : 'Quản lý Phòng ở'}
         </h1>
         {canEditDelete && (
-          <Button onClick={() => navigate('/rooms/new')} icon={PlusIcon}>
-            Thêm phòng mới
+          <Button onClick={() => navigate('/rooms/new')}>
+            <div className="flex items-center gap-1">
+              <PlusIcon className="h-4 w-4" />
+              <span>Thêm phòng mới</span>
+            </div>
           </Button>
         )}
       </div>

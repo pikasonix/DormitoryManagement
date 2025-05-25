@@ -176,15 +176,16 @@ const FeeRateForm = () => {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col space-y-2">
-                <Button
-                    variant="link"
-                    onClick={() => navigate('/fees')}
-                    icon={ArrowLeftIcon}
-                    className="text-sm mb-4 w-fit"
-                >
-                    Quay lại danh sách đơn giá
-                </Button>
+            <div className="flex flex-col space-y-2">                <Button
+                variant="link"
+                onClick={() => navigate('/fees')}
+                className="text-sm mb-4 w-fit"
+            >
+                <div className="flex items-center gap-1">
+                    <ArrowLeftIcon className="h-4 w-4" />
+                    <span>Quay lại danh sách đơn giá</span>
+                </div>
+            </Button>
                 <h1 className="text-2xl font-semibold">
                     {formMode === 'create' ? 'Thêm đơn giá' : 'Chỉnh Sửa Đơn Giá'}
                 </h1>
@@ -296,16 +297,16 @@ const FeeRateForm = () => {
                 />
 
                 {/* Submit Button */}
-                <div className="flex justify-end pt-4">
-                    <Button
-                        type="submit"
-                        variant="primary"
-                        icon={CheckIcon}
-                        isLoading={isSaving}
-                        disabled={isSaving}
-                    >
-                        {formMode === 'create' ? 'Tạo Đơn Giá' : 'Cập Nhật'}
-                    </Button>
+                <div className="flex justify-end pt-4">                    <Button
+                    type="submit"
+                    variant="primary"
+                    isLoading={isSaving}
+                    disabled={isSaving}
+                >
+                    <div className="flex items-center gap-1">
+                        <span>{formMode === 'create' ? 'Tạo Đơn Giá' : 'Cập Nhật'}</span>
+                    </div>
+                </Button>
                 </div>
             </form>
         </div>

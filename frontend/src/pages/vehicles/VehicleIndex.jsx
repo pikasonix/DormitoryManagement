@@ -514,7 +514,12 @@ const VehicleIndex = () => {
                 <div className="flex flex-wrap justify-between items-center gap-4">
                     <h1 className="text-2xl font-semibold">Quản lý Xe đăng ký</h1>
                     {/* Nút đăng ký xe cho sinh viên (dành cho Admin/Staff) */}
-                    <Button onClick={() => navigate('/vehicles/new')} icon={PlusIcon}>Đăng ký xe cho sinh viên</Button>
+                    <Button onClick={() => navigate('/vehicles/new')}>
+                        <div className="flex items-center gap-1">
+                            <PlusIcon className="h-4 w-4" />
+                            <span>Đăng ký xe cho sinh viên</span>
+                        </div>
+                    </Button>
                 </div>
 
                 {/* Tab switcher */}

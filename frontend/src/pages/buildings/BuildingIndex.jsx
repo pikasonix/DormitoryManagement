@@ -113,13 +113,15 @@ const BuildingIndex = () => {
     if (error) return <div className="text-red-600 bg-red-100 p-4 rounded">Lỗi: {error}</div>;
 
     return (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-semibold">Quản lý Tòa nhà</h1>
-                <Button onClick={() => navigate('/buildings/new')} icon={PlusIcon}>
-                    Thêm Tòa nhà mới
-                </Button>
-            </div>
+        <div className="space-y-4">            <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-semibold">Quản lý Tòa nhà</h1>
+            <Button onClick={() => navigate('/buildings/new')}>
+                <div className="flex items-center gap-1">
+                    <PlusIcon className="h-4 w-4" />
+                    <span>Thêm Tòa nhà mới</span>
+                </div>
+            </Button>
+        </div>
 
             {/* Thanh tìm kiếm */}
             <div className="flex flex-col space-y-4">

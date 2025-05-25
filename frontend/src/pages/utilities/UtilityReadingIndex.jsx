@@ -344,7 +344,7 @@ const UtilityReadingIndex = () => {
     return (
         <div className="space-y-4">
             <div className="flex flex-wrap justify-between items-center gap-4">
-                <h1 className="text-2xl font-semibold">Quản lý chỉ số tiện ích</h1>
+                <h1 className="text-2xl font-semibold">Quản lý chỉ số Điện nước</h1>
                 <Button variant="primary" onClick={() => navigate('/utilities/create')}>
                     <PlusIcon className="h-5 w-5 mr-1 inline-block" />
                     <span className="inline-block">Thêm chỉ số mới</span>

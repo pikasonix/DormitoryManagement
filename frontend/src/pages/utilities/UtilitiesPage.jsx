@@ -160,22 +160,27 @@ const UtilitiesPage = () => {
             header: 'Hành động',
             accessor: 'actions',
             cell: ({ row }) => (
-                <div className="flex items-center space-x-2">
-                    <Button
-                        onClick={() => navigate(`/utilities/edit/${row.id}`)}
-                        icon={PencilIcon}
-                        variant="outline"
-                        size="sm"
-                        title="Chỉnh sửa"
-                    />
+                <div className="flex items-center space-x-2">                    <Button
+                    onClick={() => navigate(`/utilities/edit/${row.id}`)}
+                    variant="outline"
+                    size="sm"
+                    title="Chỉnh sửa"
+                >
+                    <div className="flex items-center gap-1">
+                        <PencilIcon className="h-4 w-4" />
+                    </div>
+                </Button>
                     <Button
                         onClick={() => handleDelete(row.id)}
-                        icon={TrashIcon}
                         variant="outline"
                         size="sm"
                         title="Xóa"
                         className="!text-red-500 hover:!bg-red-50"
-                    />
+                    >
+                        <div className="flex items-center gap-1">
+                            <TrashIcon className="h-4 w-4" />
+                        </div>
+                    </Button>
                 </div>
             )
         }
@@ -298,19 +303,22 @@ const UtilitiesPage = () => {
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-semibold">Quản lý tiện ích</h1>
-                <div className="flex space-x-2">
+                <div className="flex space-x-2">                    <Button
+                    variant={filtersVisible ? "default" : "outline"}
+                    onClick={() => setFiltersVisible(!filtersVisible)}
+                >
+                    <div className="flex items-center gap-1">
+                        <FilterIcon className="h-4 w-4" />
+                        <span>Bộ lọc</span>
+                    </div>
+                </Button>
                     <Button
-                        icon={FilterIcon}
-                        variant={filtersVisible ? "default" : "outline"}
-                        onClick={() => setFiltersVisible(!filtersVisible)}
-                    >
-                        Bộ lọc
-                    </Button>
-                    <Button
-                        icon={PlusIcon}
                         onClick={() => navigate('/utilities/add')}
                     >
-                        Thêm chỉ số
+                        <div className="flex items-center gap-1">
+                            <PlusIcon className="h-4 w-4" />
+                            <span>Thêm chỉ số</span>
+                        </div>
                     </Button>
                 </div>
             </div>

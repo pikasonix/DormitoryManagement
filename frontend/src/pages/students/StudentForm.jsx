@@ -253,10 +253,12 @@ const StudentForm = () => {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div>
-        <Button variant="link" onClick={() => navigate('/students')} icon={ArrowLeftIcon} className="text-sm mb-4">
-          Quay lại danh sách sinh viên
-        </Button>
+      <div>        <Button variant="link" onClick={() => navigate('/students')} className="text-sm mb-4">
+        <div className="flex items-center gap-1">
+          <ArrowLeftIcon className="h-4 w-4" />
+          <span>Quay lại danh sách sinh viên</span>
+        </div>
+      </Button>
         <h1 className="text-2xl font-semibold">
           {isEditMode ? 'Chỉnh sửa Hồ sơ Sinh viên' : 'Thêm Tài khoản Sinh viên Mới'}
         </h1>

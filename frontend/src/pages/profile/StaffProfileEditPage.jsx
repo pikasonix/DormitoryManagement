@@ -121,15 +121,16 @@ const StaffProfileEditPage = () => {
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
-            <div className="flex items-center gap-2">
-                <Button
-                    variant="link"
-                    icon={ArrowLeftIcon}
-                    className="text-sm"
-                    onClick={() => navigate('/profile')}
-                >
-                    Quay lại hồ sơ
-                </Button>
+            <div className="flex items-center gap-2">                <Button
+                variant="link"
+                className="text-sm"
+                onClick={() => navigate('/profile')}
+            >
+                <div className="flex items-center gap-1">
+                    <ArrowLeftIcon className="h-4 w-4" />
+                    <span>Quay lại hồ sơ</span>
+                </div>
+            </Button>
                 <h1 className="text-2xl font-semibold">Chỉnh sửa hồ sơ nhân viên</h1>
             </div>
 

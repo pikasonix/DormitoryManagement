@@ -113,12 +113,13 @@ const StaffProfilePage = () => {
     return (
         <div className="space-y-6 max-w-5xl mx-auto">
             <div className="flex flex-wrap justify-between items-center gap-4">
-                <h1 className="text-2xl font-semibold">Hồ sơ {userRole === 'ADMIN' ? 'Quản trị viên' : 'Nhân viên'}</h1>
-                <Button
+                <h1 className="text-2xl font-semibold">Hồ sơ {userRole === 'ADMIN' ? 'Quản trị viên' : 'Nhân viên'}</h1>                <Button
                     onClick={() => navigate('/profile/edit')}
-                    icon={PencilSquareIcon}
                 >
-                    Chỉnh sửa
+                    <div className="flex items-center gap-1">
+                        <PencilSquareIcon className="h-4 w-4" />
+                        <span>Chỉnh sửa</span>
+                    </div>
                 </Button>
             </div>
 
