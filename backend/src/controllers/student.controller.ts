@@ -328,7 +328,13 @@ export class StudentController {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           const fields = (error.meta?.target as string[])?.join(', ');
-          return next(new Error(`Lỗi trùng lặp dữ liệu. Trường(s): ${fields} đã tồn tại.`));
+          if (fields.includes('email')) {
+            return next(new Error(`Email đã tồn tại trong hệ thống`));
+          } else if (fields.includes('studentId')) {
+            return next(new Error(`Mã sinh viên đã tồn tại trong hệ thống`));
+          } else {
+            return next(new Error(`Lỗi trùng lặp dữ liệu. Trường(s): ${fields} đã tồn tại.`));
+          }
         }
       }
       next(error);

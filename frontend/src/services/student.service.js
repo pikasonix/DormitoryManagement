@@ -122,18 +122,38 @@ const createStudent = async (studentData) => {
     // Nếu cần tạo user riêng, thì luồng sẽ phức tạp hơn.
     // Giả sử gửi thẳng data profile lên /students
     const response = await apiClient.post('/students', studentData);
-    // API doc: { success: true, data: { new_student_profile_object } }
+    
+    // Handle success cases
     if (response.data?.success && response.data?.data) {
       return response.data.data;
-    } else {
-      throw new Error(response.data?.message || 'Tạo hồ sơ sinh viên thất bại.');
     }
+    
+    // Check for success message even if success flag is missing
+    if (response.data?.message && 
+        (response.data.message.includes('thành công') || 
+         response.data.message.includes('successfully'))) {
+      // If message indicates success but no data field, return the full response
+      return response.data.data || response.data || { message: response.data.message };
+    }
+    
+    // If we get here, it's actually an error
+    throw new Error(response.data?.message || 'Tạo hồ sơ sinh viên thất bại.');
   } catch (error) {
     console.error('Lỗi service createStudent:', error.response?.data || error.message);
-    if (error.response?.data?.errors) {
-      throw error.response.data;
+
+    // Preserve the error structure from backend
+    if (error.response?.data) {
+      // If backend sends structured error, throw it as is
+      const errorData = error.response.data;
+      if (errorData.message) {
+        const customError = new Error(errorData.message);
+        customError.errors = errorData.errors;
+        throw customError;
+      }
+      throw errorData;
     }
-    throw error.response?.data || error;
+
+    throw error;
   }
 };
 

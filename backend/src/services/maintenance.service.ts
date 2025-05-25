@@ -117,37 +117,45 @@ export class MaintenanceService {
             if (data.assignedToId) {
                 const assigneeExists = await prisma.staffProfile.findUnique({ where: { id: data.assignedToId } });
                 if (!assigneeExists) throw new Error(`Nhân viên được giao (StaffProfile) với ID ${data.assignedToId} không tồn tại.`);
-            }            // Xác định reportedBy connect dựa trên loại user
+            }            // Xác định người báo cáo dựa trên loại user
+            // Theo schema, reportedBy phải là StudentProfile
             let reportedByUserId;
+
             if (userExists.studentProfile) {
-                reportedByUserId = data.reportedById;
-            } else if (userExists.staffProfile) {
+                // Nếu là student, sử dụng chính sinh viên đó
                 reportedByUserId = data.reportedById;
             } else {
-                // Nếu user không có profile (như admin), sử dụng nhân viên kỹ thuật mặc định (ID 3)
-                const defaultTechnician = await prisma.staffProfile.findUnique({
-                    where: { id: 3 },
-                    include: { user: true }
+                // Nếu là staff/admin, tìm một sinh viên đầu tiên làm người báo cáo danh nghĩa
+                // Hoặc có thể sử dụng một sinh viên mặc định
+                const firstStudent = await prisma.studentProfile.findFirst({
+                    include: { user: true },
+                    where: { user: { isActive: true } }
                 });
 
-                if (!defaultTechnician) {
-                    throw new Error(`Không tìm thấy nhân viên kỹ thuật mặc định (ID 3).`);
+                if (!firstStudent) {
+                    throw new Error(`Không tìm thấy sinh viên nào trong hệ thống để làm người báo cáo.`);
                 }
 
-                reportedByUserId = defaultTechnician.userId;
+                reportedByUserId = firstStudent.userId;
+
+                // Cập nhật notes để ghi rõ ai thực sự tạo request
+                data.notes = `${data.notes || ''}\n[Tạo bởi ${userExists.role === 'ADMIN' ? 'Admin' : 'Staff'}: ${userExists.staffProfile?.fullName || userExists.email}]`.trim();
             }
 
-            // Kiểm tra một lần nữa để đảm bảo reportedByUserId tồn tại
-            const reportedByUser = await prisma.user.findUnique({
-                where: { id: reportedByUserId }
+            // Kiểm tra StudentProfile với userId này có tồn tại không
+            const studentProfile = await prisma.studentProfile.findUnique({
+                where: { userId: reportedByUserId },
+                include: { user: true }
             });
 
-            if (!reportedByUser) {
-                throw new Error(`User với ID ${reportedByUserId} không tồn tại để làm người báo cáo.`);
-            } const newMaintenance = await prisma.maintenance.create({
+            if (!studentProfile) {
+                throw new Error(`Không tìm thấy StudentProfile với userId ${reportedByUserId}.`);
+            }
+
+            const newMaintenance = await prisma.maintenance.create({
                 data: {
                     room: { connect: { id: data.roomId } },
-                    reportedBy: { connect: { id: reportedByUserId } }, // Sử dụng reportedByUserId đã được xác định
+                    reportedBy: { connect: { userId: reportedByUserId } }, // Connect đến StudentProfile qua userId
                     issue: data.issue,
                     notes: data.notes,
                     status: data.status || MaintenanceStatus.PENDING,
