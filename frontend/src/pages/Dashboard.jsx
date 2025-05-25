@@ -51,11 +51,9 @@ const Dashboard = () => {
           const isStaffWithBuilding = user.role === 'STAFF' && managedBuildingId;
 
           // Tạo query params cho API calls dựa trên role và buildingId
-          const buildingQueryParam = isStaffWithBuilding ? `?buildingId=${managedBuildingId}` : '';
-
-          const [
+          const buildingQueryParam = isStaffWithBuilding ? `?buildingId=${managedBuildingId}` : ''; const [
             dashboardRes,
-            roomRes,
+            roomStatsRes,
             maintenanceRes,
             invoiceRes
           ] = await Promise.allSettled([
@@ -63,8 +61,8 @@ const Dashboard = () => {
             // Nếu là Staff, chỉ lấy thông tin của tòa nhà đang quản lý
             apiClient.get(`/dashboard/stats${buildingQueryParam}`),
 
-            // Chỉ lấy phòng trong tòa nhà quản lý nếu là Staff
-            apiClient.get(`/rooms${buildingQueryParam}`),
+            // Use the new room statistics API endpoint
+            apiClient.get(`/dashboard/room-statistics${buildingQueryParam}`),
 
             // Lấy yêu cầu bảo trì PENDING, lọc theo tòa nhà nếu là Staff
             apiClient.get(`/maintenance?status=PENDING&limit=1${isStaffWithBuilding ? `&buildingId=${managedBuildingId}` : ''}`),
@@ -78,20 +76,18 @@ const Dashboard = () => {
 
           // Extract stats from dashboard API response
           const totalStudents = dashboardData?.totalStudents ?? 0;
-          const availableRooms = dashboardData?.availableRooms ?? 0;
           const pendingMaintenance = dashboardData?.pendingMaintenance ?? 0;
           const pendingInvoices = dashboardData?.unpaidInvoices ?? 0;
 
-          // Xử lý kết quả room
-          let roomStats = { total: 0, available: availableRooms, occupied: 0, maintenance: 0 };
-          if (roomRes.status === 'fulfilled' && roomRes.value.data?.data) {
-            const rooms = roomRes.value.data.data;
-            roomStats.total = rooms.length;
-            rooms.forEach(room => {
-              // Giả sử status là 'AVAILABLE', 'OCCUPIED', 'UNDER_MAINTENANCE', 'FULL'
-              if (room.status === 'OCCUPIED' || room.status === 'FULL') roomStats.occupied++;
-              else if (room.status === 'UNDER_MAINTENANCE') roomStats.maintenance++;
-            });
+          // Get room statistics from the new API endpoint
+          let roomStats = { available: 0, full: 0, maintenance: 0 };
+          if (roomStatsRes.status === 'fulfilled' && roomStatsRes.value.data?.data) {
+            const roomStatsData = roomStatsRes.value.data.data;
+            roomStats = {
+              available: roomStatsData.available ?? 0,
+              full: roomStatsData.full ?? 0,
+              maintenance: roomStatsData.maintenance ?? 0
+            };
           }
 
           setStats({
@@ -162,11 +158,11 @@ const Dashboard = () => {
   // --- Dữ liệu và Tùy chọn cho Biểu đồ (Admin/Staff) ---
   const roomChartData = useMemo(() => {
     if (!stats?.roomStats) return null;
-    const { available, occupied, maintenance } = stats.roomStats;
+    const { available, full, maintenance } = stats.roomStats;
     return {
-      labels: ['Phòng trống', 'Đang ở/Đầy', 'Đang bảo trì'],
+      labels: ['Phòng còn trống', 'Phòng đầy', 'Phòng đang bảo trì'],
       datasets: [{
-        data: [available, occupied, maintenance],
+        data: [available, full, maintenance],
         backgroundColor: [
           'rgba(52, 211, 153, 0.7)', // emerald-400
           'rgba(59, 130, 246, 0.7)', // blue-500
@@ -273,7 +269,7 @@ const Dashboard = () => {
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Phòng Trống</dt>
+                    <dt className="text-sm font-medium text-gray-500 truncate">Phòng còn trống</dt>
                     <dd className="text-2xl font-semibold text-gray-900">{stats.roomStats.available}</dd>
                   </dl>
                 </div>
