@@ -98,20 +98,56 @@ export class MaintenanceService {
     }): Promise<Maintenance> {
         try {
             const roomExists = await prisma.room.findUnique({ where: { id: data.roomId } });
-            // Kiểm tra người báo cáo theo userId thay vì id
-            const reporterExists = await prisma.studentProfile.findUnique({ where: { userId: data.reportedById } });
-
             if (!roomExists) throw new Error(`Phòng với ID ${data.roomId} không tồn tại.`);
-            if (!reporterExists) throw new Error(`Người báo cáo (StudentProfile) với ID người dùng ${data.reportedById} không tồn tại.`);
+
+            // Kiểm tra người báo cáo tồn tại (có thể là student hoặc staff)
+            const userExists = await prisma.user.findUnique({
+                where: { id: data.reportedById },
+                include: {
+                    studentProfile: true,
+                    staffProfile: true
+                }
+            });
+
+            if (!userExists) {
+                throw new Error(`Người dùng với ID ${data.reportedById} không tồn tại.`);
+            }
+
+            // Nếu có assignedToId, kiểm tra staff tồn tại
             if (data.assignedToId) {
                 const assigneeExists = await prisma.staffProfile.findUnique({ where: { id: data.assignedToId } });
                 if (!assigneeExists) throw new Error(`Nhân viên được giao (StaffProfile) với ID ${data.assignedToId} không tồn tại.`);
+            }            // Xác định reportedBy connect dựa trên loại user
+            let reportedByUserId;
+            if (userExists.studentProfile) {
+                reportedByUserId = data.reportedById;
+            } else if (userExists.staffProfile) {
+                reportedByUserId = data.reportedById;
+            } else {
+                // Nếu user không có profile (như admin), sử dụng nhân viên kỹ thuật mặc định (ID 3)
+                const defaultTechnician = await prisma.staffProfile.findUnique({
+                    where: { id: 3 },
+                    include: { user: true }
+                });
+
+                if (!defaultTechnician) {
+                    throw new Error(`Không tìm thấy nhân viên kỹ thuật mặc định (ID 3).`);
+                }
+
+                reportedByUserId = defaultTechnician.userId;
             }
 
-            const newMaintenance = await prisma.maintenance.create({
+            // Kiểm tra một lần nữa để đảm bảo reportedByUserId tồn tại
+            const reportedByUser = await prisma.user.findUnique({
+                where: { id: reportedByUserId }
+            });
+
+            if (!reportedByUser) {
+                throw new Error(`User với ID ${reportedByUserId} không tồn tại để làm người báo cáo.`);
+            } const newMaintenance = await prisma.maintenance.create({
                 data: {
                     room: { connect: { id: data.roomId } },
-                    reportedBy: { connect: { userId: data.reportedById } }, // Sửa thành userId
+                    reportedBy: { connect: { id: reportedByUserId } }, // Sử dụng reportedByUserId đã được xác định
                     issue: data.issue,
                     notes: data.notes,
                     status: data.status || MaintenanceStatus.PENDING,

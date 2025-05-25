@@ -26,6 +26,7 @@ import AmenityForm from './pages/amenities/AmenityForm';
 import MaintenanceIndex from './pages/maintenance/MaintenanceIndex';
 import MaintenanceForm from './pages/maintenance/MaintenanceForm';
 import MaintenanceRequestForm from './pages/maintenance/MaintenanceRequestForm';
+import AdminMaintenanceRequestForm from './pages/maintenance/AdminMaintenanceRequestForm';
 import InvoiceIndex from './pages/invoices/InvoiceIndex';
 import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import InvoiceStudentView from './pages/invoices/InvoiceStudentView';
@@ -117,12 +118,13 @@ function App() {
           <Route index element={<AmenityIndex />} />
           <Route path="new" element={<AmenityForm />} />
           <Route path=":id/edit" element={<AmenityForm />} />
-        </Route>{/* --- MAINTENANCE ROUTES --- */}
+        </Route>        {/* --- MAINTENANCE ROUTES --- */}
         <Route path="/maintenance">
           <Route index element={<StudentOrStaffRoute><MaintenanceIndex /></StudentOrStaffRoute>} />
           <Route path="request" element={<StudentOrStaffRoute><MaintenanceRequestForm /></StudentOrStaffRoute>} />
+          <Route path="admin/request" element={<StaffRoute><AdminMaintenanceRequestForm /></StaffRoute>} />
           <Route path=":id/edit" element={<StaffRoute><MaintenanceForm /></StaffRoute>} />
-        </Route>        {/* --- INVOICE & PAYMENT ROUTES --- */}
+        </Route>{/* --- INVOICE & PAYMENT ROUTES --- */}
         <Route path="/invoices">
           <Route index element={
             <ProfileRouter

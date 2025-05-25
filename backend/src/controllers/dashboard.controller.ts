@@ -247,4 +247,42 @@ export class DashboardController {
       next(error);
     }
   }
+
+  // Lấy thống kê phòng theo trạng thái
+  async getRoomStatistics(req: Request, res: Response, next: NextFunction) {
+    try {
+      // Kiểm tra xem có yêu cầu lọc theo buildingId hay không
+      const buildingId = req.query.buildingId ? parseInt(req.query.buildingId as string) : undefined;
+
+      // Xây dựng filter dựa trên buildingId
+      const roomFilter: any = {};
+      if (buildingId) {
+        roomFilter.buildingId = buildingId;
+      }
+
+      // Đếm phòng theo từng trạng thái
+      const [available, full, underMaintenance] = await Promise.all([
+        prisma.room.count({
+          where: { ...roomFilter, status: 'AVAILABLE' }
+        }),
+        prisma.room.count({
+          where: { ...roomFilter, status: 'FULL' }
+        }),
+        prisma.room.count({
+          where: { ...roomFilter, status: 'UNDER_MAINTENANCE' }
+        })
+      ]);
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          available,
+          full,
+          maintenance: underMaintenance
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }

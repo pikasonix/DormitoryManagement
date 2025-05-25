@@ -275,23 +275,44 @@ export class MaintenanceController {
             }
             if (!roomId || !issue) {
                 return next(new Error('Thiếu thông tin bắt buộc: roomId, issue.')); // Hoặc AppError 400
-            }
+            }            // Kiểm tra vai trò người dùng
+            const userRole = req.user?.role;
 
-            // Kiểm tra xem có phải sinh viên không (cần thiết vì reportedById giờ là userId)
-            const reporterProfile = await prisma.studentProfile.findUnique({
-                where: { userId: reporterUserId },
-                select: { id: true }
-            });
+            let reportedByUserId = reporterUserId;
 
-            if (!reporterProfile) {
-                // Có thể là Staff/Admin báo cáo? Hoặc lỗi? Cần xác định logic.
-                // Tạm thời báo lỗi nếu không phải sinh viên
-                return next(new Error('Chỉ sinh viên mới có thể tạo báo cáo bảo trì qua API này.')); // Hoặc AppError 403
-            }
+            if (userRole === Role.STUDENT) {
+                // Sinh viên chỉ có thể tạo yêu cầu cho phòng của mình
+                const reporterProfile = await prisma.studentProfile.findUnique({
+                    where: { userId: reporterUserId },
+                    select: { id: true, roomId: true }
+                });
 
-            const createData = {
+                if (!reporterProfile) {
+                    return next(new Error('Không tìm thấy thông tin sinh viên.'));
+                }
+
+                // Kiểm tra xem sinh viên có đang ở phòng được yêu cầu không
+                if (reporterProfile.roomId !== parseInt(roomId)) {
+                    return next(new Error('Sinh viên chỉ có thể tạo yêu cầu bảo trì cho phòng của mình.'));
+                }
+            } else if (userRole === Role.ADMIN || userRole === Role.STAFF) {
+                // Admin/Staff có thể tạo yêu cầu cho bất kỳ phòng nào
+                // Kiểm tra phòng có tồn tại không
+                const roomExists = await prisma.room.findUnique({
+                    where: { id: parseInt(roomId) }
+                });
+
+                if (!roomExists) {
+                    return next(new Error('Phòng không tồn tại.'));
+                }
+
+                // Admin/Staff tạo yêu cầu thay mặt cho hệ thống
+                reportedByUserId = reporterUserId;
+            } else {
+                return next(new Error('Không có quyền tạo yêu cầu bảo trì.'));
+            } const createData = {
                 roomId: parseInt(roomId),
-                reportedById: reporterUserId, // Sử dụng userId trực tiếp thay vì profile.id
+                reportedById: reportedByUserId, // Sử dụng userId đã được xác định theo role
                 issue,
                 notes,
                 imageIds: imageIds ? (Array.isArray(imageIds) ? imageIds.map(Number) : [Number(imageIds)]) : undefined,

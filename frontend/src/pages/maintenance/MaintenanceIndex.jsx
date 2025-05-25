@@ -430,7 +430,7 @@ const MaintenanceIndex = () => {
         {showCreateButtonInHeader && (
           <Button
             variant="link"
-            onClick={() => navigate('/maintenance/request')}
+            onClick={() => navigate('/maintenance/admin/request')}
           >
             <div className="flex items-center gap-1">
               <PlusIcon className="h-4 w-4" />
