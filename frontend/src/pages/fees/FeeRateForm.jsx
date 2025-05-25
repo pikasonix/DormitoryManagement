@@ -186,7 +186,7 @@ const FeeRateForm = () => {
                     Quay lại danh sách đơn giá
                 </Button>
                 <h1 className="text-2xl font-semibold">
-                    {formMode === 'create' ? 'Thêm Đơn Giá Mới' : 'Chỉnh Sửa Đơn Giá'}
+                    {formMode === 'create' ? 'Thêm đơn giá' : 'Chỉnh Sửa Đơn Giá'}
                 </h1>
             </div>
 

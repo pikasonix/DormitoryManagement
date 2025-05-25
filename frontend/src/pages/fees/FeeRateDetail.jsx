@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import { ArrowLeftIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Format date
 const formatDate = (dateString) => {
@@ -46,6 +47,7 @@ const getVehicleTypeLabel = (vehicleType) => {
 }
 
 const FeeRateDetail = () => {
+    const { user } = useAuth(); // Lấy thông tin user để kiểm tra role
     const { id } = useParams();
     const navigate = useNavigate();
     const [feeRate, setFeeRate] = useState(null);
@@ -116,24 +118,26 @@ const FeeRateDetail = () => {
                         <p className="mt-1 text-sm text-gray-500">
                             ID: {id} | Cập nhật: {formatDate(feeRate.updatedAt)}
                         </p>
-                    </div>
-
-                    {/* Action buttons */}
+                    </div>                    {/* Action buttons */}
                     <div className="flex items-center space-x-3 mt-2 sm:mt-0">
-                        <Button
-                            variant="primary"
-                            icon={PencilIcon}
-                            onClick={() => navigate(`/fees/${id}/edit`)}
-                        >
-                            Chỉnh sửa
-                        </Button>
-                        <Button
-                            variant="danger"
-                            icon={TrashIcon}
-                            onClick={handleDelete}
-                        >
-                            Xóa
-                        </Button>
+                        {user?.role !== 'STAFF' && (
+                            <>
+                                <Button
+                                    variant="primary"
+                                    icon={PencilIcon}
+                                    onClick={() => navigate(`/fees/${id}/edit`)}
+                                >
+                                    Chỉnh sửa
+                                </Button>
+                                <Button
+                                    variant="danger"
+                                    icon={TrashIcon}
+                                    onClick={handleDelete}
+                                >
+                                    Xóa
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

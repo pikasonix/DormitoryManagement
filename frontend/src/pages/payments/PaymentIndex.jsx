@@ -170,31 +170,43 @@ const PaymentIndex = () => {
       accessor: 'transactionCode',
       Cell: ({ value }) => value ? <span className="text-xs font-mono text-center">{value}</span> : '-',
       className: 'text-center'
-    },
-    {
+    }, {
       Header: 'Hành động',
       accessor: 'actions',
-      Cell: ({ row }) => (
-        <div className="flex space-x-2 justify-center">
-          <Button
-            variant="icon"
-            onClick={() => navigate(`/payments/${row.original.id}/edit`)}
-            tooltip="Chỉnh sửa"
-          >
-            <PencilSquareIcon className="h-5 w-5 text-indigo-600 hover:text-indigo-800" />
-          </Button>
-          <Button
-            variant="icon"
-            onClick={() => handleDelete(row.original.id)}
-            tooltip="Xóa giao dịch"
-          >
-            <TrashIcon className="h-5 w-5 text-red-500 hover:text-red-700" />
-          </Button>
-        </div>
-      ),
+      Cell: ({ row }) => {
+        const payment = row.original;
+        const isStaff = user?.role === 'STAFF';
+        const isCashPayment = payment.paymentMethod === 'Tiền mặt';
+
+        return (
+          <div className="flex space-x-2 justify-center">
+            {/* Edit button: Always show for non-STAFF, only show for cash payments if STAFF */}
+            {(!isStaff || (isStaff && isCashPayment)) && (
+              <Button
+                variant="icon"
+                onClick={() => navigate(`/payments/${payment.id}/edit`)}
+                tooltip="Chỉnh sửa"
+              >
+                <PencilSquareIcon className="h-5 w-5 text-indigo-600 hover:text-indigo-800" />
+              </Button>
+            )}
+
+            {/* Delete button: Hide for STAFF users */}
+            {!isStaff && (
+              <Button
+                variant="icon"
+                onClick={() => handleDelete(payment.id)}
+                tooltip="Xóa giao dịch"
+              >
+                <TrashIcon className="h-5 w-5 text-red-500 hover:text-red-700" />
+              </Button>
+            )}
+          </div>
+        );
+      },
       className: 'text-center'
     },
-  ], []);
+  ], [navigate, user?.role]);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap justify-between items-center gap-4">

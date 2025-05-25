@@ -228,21 +228,22 @@ const InvoiceStudentView = () => {
                             tooltip="Xem chi tiết"
                         >
                             <EyeIcon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
-                        </Button>
-                        {canPay && (
+                        </Button>                        {canPay && (
                             <VNPayButton
                                 invoiceId={invoice.id}
                                 size="sm"
                                 tooltip="Thanh toán VNPay"
                             />
                         )}
-                        <Button
-                            variant="icon"
-                            onClick={() => handleDelete(invoice.id, invoice.invoiceNumber)}
-                            tooltip="Xóa/Hủy hóa đơn"
-                        >
-                            <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
-                        </Button>
+                        {user?.role !== 'STUDENT' && (
+                            <Button
+                                variant="icon"
+                                onClick={() => handleDelete(invoice.id, invoice.invoiceNumber)}
+                                tooltip="Xóa/Hủy hóa đơn"
+                            >
+                                <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
+                            </Button>
+                        )}
                     </div>
                 );
             },

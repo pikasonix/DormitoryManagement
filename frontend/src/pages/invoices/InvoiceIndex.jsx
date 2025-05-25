@@ -372,47 +372,50 @@ const InvoiceIndex = () => {
                 className="bg-blue-600 hover:bg-blue-700 text-sm"
             >
                 Thêm hoá đơn
-            </Button>
+            </Button>            {/* Các nút tạo hóa đơn - chỉ hiển thị cho role khác STAFF */}
+            {user?.role !== 'STAFF' && (
+                <>
+                    {/* Nút tạo hóa đơn tiền phòng */}
+                    <Button
+                        onClick={handleCreateRoomFeeInvoices}
+                        icon={PlusIcon}
+                        disabled={isBulkCreating}
+                        className="bg-green-600 hover:bg-green-700 text-sm"
+                    >
+                        {isBulkCreating ? 'Đang tạo...' : `Tiền phòng T${new Date().getMonth() + 1}`}
+                    </Button>
 
-            {/* Nút tạo hóa đơn tiền phòng */}
-            <Button
-                onClick={handleCreateRoomFeeInvoices}
-                icon={PlusIcon}
-                disabled={isBulkCreating}
-                className="bg-green-600 hover:bg-green-700 text-sm"
-            >
-                {isBulkCreating ? 'Đang tạo...' : `Tiền phòng T${new Date().getMonth() + 1}`}
-            </Button>
+                    {/* Nút tạo hóa đơn phí gửi xe */}
+                    <Button
+                        onClick={handleCreateParkingFeeInvoices}
+                        icon={PlusIcon}
+                        disabled={isBulkCreating}
+                        className="bg-orange-600 hover:bg-orange-700 text-sm"
+                    >
+                        {isBulkCreating ? 'Đang tạo...' : `Gửi xe T${new Date().getMonth() + 1}`}
+                    </Button>
 
-            {/* Nút tạo hóa đơn phí gửi xe */}
-            <Button
-                onClick={handleCreateParkingFeeInvoices}
-                icon={PlusIcon}
-                disabled={isBulkCreating}
-                className="bg-orange-600 hover:bg-orange-700 text-sm"
-            >
-                {isBulkCreating ? 'Đang tạo...' : `Gửi xe T${new Date().getMonth() + 1}`}
-            </Button>
+                    {/* Nút tạo hóa đơn tiện ích */}
+                    <Button
+                        onClick={handleCreateUtilityInvoices}
+                        icon={PlusIcon}
+                        disabled={isBulkCreating}
+                        className="bg-purple-600 hover:bg-purple-700 text-sm"
+                    >
+                        {isBulkCreating ? 'Đang tạo...' : `Điện nước T${new Date().getMonth() + 1}`}
+                    </Button>
 
-            {/* Nút tạo hóa đơn tiện ích */}
-            <Button
-                onClick={handleCreateUtilityInvoices}
-                icon={PlusIcon}
-                disabled={isBulkCreating}
-                className="bg-purple-600 hover:bg-purple-700 text-sm"
-            >
-                {isBulkCreating ? 'Đang tạo...' : `Điện nước T${new Date().getMonth() + 1}`}
-            </Button>
-
-            {/* Nút tạo tất cả hóa đơn */}
-            <Button
-                onClick={handleBulkCreateInvoices}
-                icon={PlusIcon}
-                disabled={isBulkCreating}
-                className="bg-blue-600 hover:bg-blue-700 text-sm"
-            >
-                {isBulkCreating ? 'Đang tạo...' : `Tất cả T${new Date().getMonth() + 1}`}
-            </Button>
+                    {/* Nút tạo tất cả hóa đơn */}
+                    <Button
+                        onClick={handleBulkCreateInvoices}
+                        icon={PlusIcon}
+                        disabled={isBulkCreating}
+                        className="bg-blue-600 hover:bg-blue-700 text-sm"
+                    >
+                        {isBulkCreating ? 'Đang tạo...' : `Tất cả T${new Date().getMonth() + 1}`}
+                    </Button>
+                </>
+            )}
 
             {/* Nút tạo hóa đơn mới nếu cần */}
             {/* <Button onClick={() => navigate('/invoices/new')} icon={PlusIcon}>Tạo Hóa đơn</Button> */}        </div>

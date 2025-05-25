@@ -235,7 +235,7 @@ model RoomAmenity {
   @@map("room_amenities")
 }
 
-// --- Bảng quản lý đơn giá các loại phí ---
+// --- Bảng Quản lý Đơn giá các loại phí ---
 // Bảng này giúp lưu trữ lịch sử giá và quản lý tập trung mọi loại phí
 
 model FeeRate {

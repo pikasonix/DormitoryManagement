@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { feeService } from '../../services/fee.service';
 import { Button, Select, Input, Badge } from '../../components/shared';
@@ -9,6 +9,7 @@ import { EyeIcon, PencilSquareIcon, TrashIcon, PlusIcon } from '@heroicons/react
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Format date
 const formatDate = (dateString) => {
@@ -41,6 +42,7 @@ const statusOptions = [
 ];
 
 const FeeRateIndex = () => {
+    const { user } = useAuth(); // Lấy thông tin user để kiểm tra role
     const [feeRates, setFeeRates] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -109,10 +111,8 @@ const FeeRateIndex = () => {
             setCurrentPage(page);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
-    };
-
-    // Table columns
-    const columns = [
+    };    // Table columns
+    const columns = useMemo(() => [
         {
             Header: 'Tên đơn giá',
             accessor: 'name',
@@ -147,8 +147,7 @@ const FeeRateIndex = () => {
                     {value ? 'Đang áp dụng' : 'Không áp dụng'}
                 </Badge>
             )
-        },
-        {
+        }, {
             Header: 'Hành động',
             accessor: 'actions',
             Cell: ({ row }) => {
@@ -162,31 +161,35 @@ const FeeRateIndex = () => {
                         >
                             <EyeIcon className="h-5 w-5 text-gray-500 hover:text-gray-700" />
                         </Button>
-                        <Button
-                            variant="icon"
-                            onClick={() => navigate(`/fees/${fee.id}/edit`)}
-                            tooltip="Chỉnh sửa"
-                        >
-                            <PencilSquareIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
-                        </Button>
-                        <Button
-                            variant="icon"
-                            onClick={() => handleDelete(fee.id, fee.name)}
-                            tooltip="Xóa"
-                        >
-                            <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
-                        </Button>
+                        {user?.role !== 'STAFF' && (
+                            <>
+                                <Button
+                                    variant="icon"
+                                    onClick={() => navigate(`/fees/${fee.id}/edit`)}
+                                    tooltip="Chỉnh sửa"
+                                >
+                                    <PencilSquareIcon className="h-5 w-5 text-blue-600 hover:text-blue-800" />
+                                </Button>
+                                <Button
+                                    variant="icon"
+                                    onClick={() => handleDelete(fee.id, fee.name)}
+                                    tooltip="Xóa"
+                                >
+                                    <TrashIcon className="h-5 w-5 text-red-600 hover:text-red-800" />
+                                </Button>
+                            </>
+                        )}
                     </div>
                 );
             },
         },
-    ];
+    ], [navigate, user?.role]);
 
     return (
         <div className="space-y-4">
             <div className="flex flex-wrap justify-between items-center gap-4">
-                <h1 className="text-2xl font-semibold">Quản lý Đơn Giá</h1>
-                <Button onClick={() => navigate('/fees/new')} icon={PlusIcon}>Thêm Đơn Giá Mới</Button>
+                <h1 className="text-2xl font-semibold">Quản lý Đơn giá</h1>
+                <Button onClick={() => navigate('/fees/new')} icon={PlusIcon}>Thêm đơn giá</Button>
             </div>
 
             {/* Filters */}
