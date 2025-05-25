@@ -552,7 +552,7 @@ const Dashboard = () => {
                 Thông tin phòng ở
               </h3>
               <p className="text-gray-600 mb-3">Xem thông tin chi tiết về phòng ở, các tiện ích và danh sách sinh viên phòng</p>
-              <Link to="/buildings" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
+              <Link to="/rooms" className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700">
                 Xem phòng ở
               </Link>
             </div>
