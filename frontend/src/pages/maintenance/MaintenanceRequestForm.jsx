@@ -164,10 +164,8 @@ const MaintenanceRequestForm = () => {
               `Phòng ${user.studentProfile.room.number} (${user.studentProfile.room.building?.name || 'Chưa xác định tòa nhà'})` :
               'Chưa xác định phòng'}
           </p>
-        </div>
-
-        <Textarea
-          label="Mô tả chi tiết *"
+        </div>        <Textarea
+          label="Mô tả chi tiết"
           id="description"
           name="description"
           rows={5}

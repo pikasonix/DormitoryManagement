@@ -239,7 +239,7 @@ const TransferIndex = () => {
         <div className="space-y-4">
             <div className="flex flex-wrap justify-between items-center gap-4">                <h1 className="text-2xl font-semibold">
                 {isStudent ? 'Yêu cầu chuyển phòng của bạn' :
-                    isStaff ? 'Quản lý yêu cầu chuyển phòng (Tòa nhà được phân công)' :
+                    isStaff ? 'Quản lý yêu cầu chuyển phòng' :
                         'Quản lý Yêu cầu Chuyển phòng'}
             </h1>{isStudent && (
                 <Button

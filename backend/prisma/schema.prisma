@@ -132,15 +132,13 @@ model StudentProfile {
 enum Gender {
   MALE
   FEMALE
-  // OTHER // Cân nhắc thêm nếu cần
 }
 
 enum StudentStatus {
   PENDING_APPROVAL // Chờ duyệt hồ sơ (mới đăng ký)
   RENTING          // Đang thuê/ở
-  EVICTED          // Bị buộc thôi ở/đuổi
+  EVICTED          // Bị buộc thôi ở
   CHECKED_OUT      // Đã trả phòng/rời đi
-  // TEMPORARY_LEAVE // Tạm vắng (nếu cần)
 }
 
 // --- Building and Room Management ---

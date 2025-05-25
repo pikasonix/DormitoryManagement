@@ -237,25 +237,10 @@ const Dashboard = () => {
       <div className="space-y-6">
         <h1 className="text-2xl font-semibold text-gray-900">
           {isStaffWithBuilding
-            ? `Bảng điều khiển - Tòa nhà ${stats.managedBuilding.name}`
-            : 'Bảng điều khiển'}
+            ? `Dashboard - Tòa nhà ${stats.managedBuilding.name}`
+            : 'Dashboard'}
         </h1>
 
-        {/* Hiển thị thông báo cho staff để biết họ đang xem dữ liệu của tòa nhà họ quản lý */}
-        {isStaffWithBuilding && (
-          <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <BuildingOffice2Icon className="h-5 w-5 text-blue-400" aria-hidden="true" />
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-blue-700">
-                  Bạn đang xem dữ liệu của tòa nhà {stats.managedBuilding.name} mà bạn được phân công quản lý.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Các thẻ thống kê nhanh */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">

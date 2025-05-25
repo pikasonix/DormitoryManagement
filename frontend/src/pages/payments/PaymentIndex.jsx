@@ -201,19 +201,6 @@ const PaymentIndex = () => {
         <h1 className="text-2xl font-semibold">Lịch sử Thanh toán</h1>
       </div>
 
-      {/* Building Notification for STAFF users */}
-      {user?.role === 'STAFF' && user?.staffProfile?.managedBuilding && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
-          <BuildingOffice2Icon className="h-5 w-5 text-blue-600 flex-shrink-0" />
-          <div className="text-sm text-blue-800">
-            <span className="font-medium">Đang quản lý tòa:</span> {user.staffProfile.managedBuilding.name}
-            <div className="text-blue-600 mt-1">
-              Bạn chỉ có thể xem thanh toán của sinh viên/phòng thuộc tòa nhà này.
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Bộ lọc */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">
         <Input

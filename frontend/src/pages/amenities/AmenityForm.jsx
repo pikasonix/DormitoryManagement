@@ -110,7 +110,7 @@ const AmenityForm = () => {
 
       <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">
         <Input
-          label="Tên Tiện nghi *"
+          label="Tên Tiện nghi"
           id="name"
           name="name"
           value={formData.name}

@@ -566,7 +566,7 @@ const TransferRequestForm = () => {
                         </div>
                     </div>
                 )}                {/* Chọn tòa nhà */}                <Select
-                    label="Tòa nhà muốn chuyển đến *"
+                    label="Tòa nhà muốn chuyển đến"
                     id="buildingId"
                     name="buildingId"
                     required
@@ -578,18 +578,17 @@ const TransferRequestForm = () => {
                     loading={isLoadingBuildings}
                 />
 
-                {/* Nhập số phòng */}                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">                    <div className="md:col-span-2">
-                    <Input
-                        label="Số phòng muốn chuyển đến *"
-                        id="roomNumber"
-                        name="roomNumber"
-                        required
-                        value={formData.roomNumber}
-                        onChange={handleChange}
-                        disabled={isSubmitting || isCheckingRoom}
-                        error={errors.roomNumber}
-                        placeholder="VD: 101, A101, ..."
-                    />
+                {/* Nhập số phòng */}                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">                    <div className="md:col-span-2">                    <Input
+                    label="Số phòng muốn chuyển đến"
+                    id="roomNumber"
+                    name="roomNumber"
+                    required
+                    value={formData.roomNumber}
+                    onChange={handleChange}
+                    disabled={isSubmitting || isCheckingRoom}
+                    error={errors.roomNumber}
+                    placeholder="VD: 101, A101, ..."
+                />
                 </div><div className="md:col-span-1 flex items-end">
                         {/* Luôn hiển thị nút Kiểm tra phòng */}
                         <Button
@@ -629,9 +628,8 @@ const TransferRequestForm = () => {
                     <div className="text-sm text-red-600 mt-1">{errors.roomCheck}</div>
                 )}
 
-                {/* Ngày chuyển phòng */}
-                <Input
-                    label="Ngày dự kiến chuyển phòng *"
+                {/* Ngày chuyển phòng */}                <Input
+                    label="Ngày dự kiến chuyển phòng"
                     type="date"
                     id="transferDate"
                     name="transferDate"
@@ -641,9 +639,8 @@ const TransferRequestForm = () => {
                     disabled={isSubmitting}
                     error={errors.transferDate}
                     min={new Date().toISOString().split('T')[0]} // Không cho chọn ngày trong quá khứ
-                />                {/* Lý do chuyển phòng hoặc đăng ký mới */}
-                <Textarea
-                    label={isNewRegistration ? "Lý do đăng ký phòng này *" : "Lý do chuyển phòng *"}
+                />{/* Lý do chuyển phòng hoặc đăng ký mới */}                <Textarea
+                    label={isNewRegistration ? "Lý do đăng ký phòng này" : "Lý do chuyển phòng"}
                     id="reason"
                     name="reason"
                     rows={4}

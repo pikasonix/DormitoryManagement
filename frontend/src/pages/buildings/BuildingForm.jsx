@@ -157,19 +157,18 @@ const BuildingForm = () => {
                 </h1>
             </div>
 
-            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">                <Input
+                label="Tên Tòa nhà"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
+                disabled={isSaving}
+                error={errors.name}
+            />
                 <Input
-                    label="Tên Tòa nhà *"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                    disabled={isSaving}
-                    error={errors.name}
-                />
-                <Input
-                    label="Địa chỉ *"
+                    label="Địa chỉ"
                     id="address"
                     name="address"
                     value={formData.address}

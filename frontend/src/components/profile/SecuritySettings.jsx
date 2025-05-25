@@ -120,9 +120,8 @@ const SecuritySettings = () => {
                                 <p className="text-sm text-red-700">{errors.general}</p>
                             </div>
                         )}
-                        {/* Sử dụng component Input */}
-                        <Input
-                            label="Mật khẩu hiện tại *"
+                        {/* Sử dụng component Input */}                        <Input
+                            label="Mật khẩu hiện tại"
                             id="currentPassword"
                             name="currentPassword"
                             type="password"
@@ -134,7 +133,7 @@ const SecuritySettings = () => {
                             error={errors.currentPassword} // Truyền lỗi vào Input component
                         />
                         <Input
-                            label="Mật khẩu mới *"
+                            label="Mật khẩu mới"
                             id="newPassword"
                             name="newPassword"
                             type="password"
@@ -150,7 +149,7 @@ const SecuritySettings = () => {
                             Phải có ít nhất 6 ký tự. Nên sử dụng kết hợp chữ hoa, chữ thường, số và ký tự đặc biệt.
                         </p>
                         <Input
-                            label="Xác nhận mật khẩu mới *"
+                            label="Xác nhận mật khẩu mới"
                             id="confirmPassword"
                             name="confirmPassword"
                             type="password"

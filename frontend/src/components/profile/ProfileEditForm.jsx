@@ -333,9 +333,8 @@ const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
                     <div className="pt-8">
                         <h3 className="text-base font-semibold leading-7 text-gray-900">Thông tin Sinh viên</h3>
                         <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                            {/* --- BỔ SUNG CÁC TRƯỜNG INPUT/SELECT/TEXTAREA CHO STUDENT TẠI ĐÂY --- */}
-                            <div className="sm:col-span-2">
-                                <Input label="Mã Sinh viên *" id="studentId" name="studentId" required value={formData.studentId} onChange={handleChange} disabled={isSaving} />
+                            {/* --- BỔ SUNG CÁC TRƯỜNG INPUT/SELECT/TEXTAREA CHO STUDENT TẠI ĐÂY --- */}                            <div className="sm:col-span-2">
+                                <Input label="Mã Sinh viên" id="studentId" name="studentId" required value={formData.studentId} onChange={handleChange} disabled={isSaving} />
                             </div>
                             <div className="sm:col-span-2">
                                 <Input label="Lớp" id="className" name="className" value={formData.className} onChange={handleChange} disabled={isSaving} />

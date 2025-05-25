@@ -337,27 +337,26 @@ const RoomForm = () => {
                     {/* --- Phần Thông tin cơ bản --- */}
                     <div className="pt-0"> {/* Bỏ pt-8 ở section đầu */}
                         <h3 className="text-base font-semibold leading-7 text-gray-900">Thông tin cơ bản</h3>
-                        <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
+                        <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">                            <div className="sm:col-span-3">
+                            <Select label="Tòa nhà" id="buildingId" name="buildingId" required value={formData.buildingId} onChange={handleChange} options={[{ value: '', label: '-- Chọn tòa nhà --' }, ...buildingOptions]} disabled={isSaving} error={errors.buildingId} />
+                        </div>
                             <div className="sm:col-span-3">
-                                <Select label="Tòa nhà *" id="buildingId" name="buildingId" required value={formData.buildingId} onChange={handleChange} options={[{ value: '', label: '-- Chọn tòa nhà --' }, ...buildingOptions]} disabled={isSaving} error={errors.buildingId} />
-                            </div>
-                            <div className="sm:col-span-3">
-                                <Input label="Số phòng *" id="number" name="number" required value={formData.number} onChange={handleChange} disabled={isSaving} error={errors.number} placeholder="Ví dụ: A101" />
+                                <Input label="Số phòng" id="number" name="number" required value={formData.number} onChange={handleChange} disabled={isSaving} error={errors.number} placeholder="Ví dụ: A101" />
                             </div>
                             <div className="sm:col-span-2">
-                                <Select label="Loại phòng *" id="type" name="type" required value={formData.type} onChange={handleChange} options={roomTypeOptions} disabled={isSaving} error={errors.type} />
+                                <Select label="Loại phòng" id="type" name="type" required value={formData.type} onChange={handleChange} options={roomTypeOptions} disabled={isSaving} error={errors.type} />
                             </div>
                             <div className="sm:col-span-2">
-                                <Input label="Sức chứa (người) *" id="capacity" name="capacity" type="number" min="1" required value={formData.capacity} onChange={handleChange} disabled={isSaving} error={errors.capacity} />
+                                <Input label="Sức chứa (người)" id="capacity" name="capacity" type="number" min="1" required value={formData.capacity} onChange={handleChange} disabled={isSaving} error={errors.capacity} />
                             </div>
                             <div className="sm:col-span-2">
-                                <Input label="Tầng *" id="floor" name="floor" type="number" min="1" required value={formData.floor} onChange={handleChange} disabled={isSaving} error={errors.floor} />
+                                <Input label="Tầng" id="floor" name="floor" type="number" min="1" required value={formData.floor} onChange={handleChange} disabled={isSaving} error={errors.floor} />
                             </div>
                             <div className="sm:col-span-3">
-                                <Input label="Giá phòng (VND/tháng) *" id="roomFee" name="roomFee" type="number" min="0" step="1000" required value={formData.roomFee} onChange={handleChange} disabled={isSaving} error={errors.roomFee} /> {/* Changed from price to roomFee */}
+                                <Input label="Giá phòng (VND/tháng)" id="roomFee" name="roomFee" type="number" min="0" step="1000" required value={formData.roomFee} onChange={handleChange} disabled={isSaving} error={errors.roomFee} /> {/* Changed from price to roomFee */}
                             </div>
                             <div className="sm:col-span-3">
-                                <Select label="Trạng thái *" id="status" name="status" required value={formData.status} onChange={handleChange} options={roomStatusOptions} disabled={isSaving} error={errors.status} />
+                                <Select label="Trạng thái" id="status" name="status" required value={formData.status} onChange={handleChange} options={roomStatusOptions} disabled={isSaving} error={errors.status} />
                             </div>
                             <div className="sm:col-span-full">
                                 <Textarea label="Mô tả thêm" id="description" name="description" rows={3} value={formData.description} onChange={handleChange} disabled={isSaving} error={errors.description} />

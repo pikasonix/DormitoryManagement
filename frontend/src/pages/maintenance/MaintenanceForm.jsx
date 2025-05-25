@@ -249,18 +249,17 @@ const MaintenanceForm = () => {
                 <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
                     <h3 className="text-base font-semibold leading-6 text-gray-900">Cập nhật Trạng thái & Ghi chú</h3>
                 </div>
-                <div className="px-4 py-5 sm:p-6 space-y-4">
-                    <Select
-                        label="Trạng thái mới *"
-                        id="status"
-                        name="status"
-                        value={updateData.status}
-                        onChange={handleUpdateChange}
-                        options={maintenanceStatusOptions}
-                        disabled={isUpdating}
-                        required
-                        placeholder={updateData.status ? undefined : '-- Chọn --'} // Nếu đã có trạng thái thì không hiển thị placeholder
-                    />
+                <div className="px-4 py-5 sm:p-6 space-y-4">                    <Select
+                    label="Trạng thái mới"
+                    id="status"
+                    name="status"
+                    value={updateData.status}
+                    onChange={handleUpdateChange}
+                    options={maintenanceStatusOptions}
+                    disabled={isUpdating}
+                    required
+                    placeholder={updateData.status ? undefined : '-- Chọn --'} // Nếu đã có trạng thái thì không hiển thị placeholder
+                />
                     {/* (Tùy chọn) Select gán việc */}
                     {/* <Select
                            label="Gán cho nhân viên"

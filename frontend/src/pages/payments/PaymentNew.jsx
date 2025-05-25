@@ -422,31 +422,28 @@ const PaymentNew = () => {
             )}
 
             {/* Form thanh toán */}
-            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">
-                <Input
-                    label="Số tiền thanh toán *"
-                    id="amount"
-                    name="amount"
-                    type="number"
-                    min="0"
-                    step="1000"
-                    required
-                    value={formData.amount}
-                    onChange={handleChange}
-                    disabled={isLoading || isSaving}
-                    error={errors.amount}
-                    hint={
-                        (() => {
-                            const remain = getRemainingAmount();
-                            return remain !== null
-                                ? `Thanh toán số tiền còn lại: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(remain)}`
-                                : undefined;
-                        })()
-                    }
-                />
-
-                <Select
-                    label="Phương thức thanh toán *"
+            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">                <Input
+                label="Số tiền thanh toán"
+                id="amount"
+                name="amount"
+                type="number"
+                min="0"
+                step="1000"
+                required
+                value={formData.amount}
+                onChange={handleChange}
+                disabled={isLoading || isSaving}
+                error={errors.amount}
+                hint={
+                    (() => {
+                        const remain = getRemainingAmount();
+                        return remain !== null
+                            ? `Thanh toán số tiền còn lại: ${new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(remain)}`
+                            : undefined;
+                    })()
+                }
+            />                <Select
+                    label="Phương thức thanh toán"
                     id="method"
                     name="method"
                     required
@@ -455,10 +452,8 @@ const PaymentNew = () => {
                     options={paymentMethodOptions}
                     disabled={isLoading || isSaving}
                     error={errors.method}
-                />
-
-                <Input
-                    label="Ngày thanh toán *"
+                />                <Input
+                    label="Ngày thanh toán"
                     id="transactionDate"
                     name="transactionDate"
                     type="date"

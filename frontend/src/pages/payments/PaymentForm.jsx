@@ -596,18 +596,17 @@ const PaymentForm = () => {
                     <p className="text-gray-500 mt-1">Hóa đơn ID: {invoiceIdFromQuery}</p>
                 )}
             </div>
-            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">                <div>
-                <Input
-                    label="Mã số Sinh viên *"
-                    id="studentId"
-                    name="studentId"
-                    value={formData.studentId}
-                    onChange={handleChange}
-                    required
-                    disabled={isLoading || isSaving || Boolean(invoiceIdFromQuery)}
-                    error={errors.studentId}
-                    autoComplete="off"
-                />
+            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">                <div>                <Input
+                label="Mã số Sinh viên"
+                id="studentId"
+                name="studentId"
+                value={formData.studentId}
+                onChange={handleChange}
+                required
+                disabled={isLoading || isSaving || Boolean(invoiceIdFromQuery)}
+                error={errors.studentId}
+                autoComplete="off"
+            />
                 {formData.studentId.trim().length >= 3 && searching && (
                     <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
                         <p className="text-sm text-blue-800 flex items-center">
@@ -642,18 +641,17 @@ const PaymentForm = () => {
             </div>
                 {foundStudent && (
                     <div className="space-y-2">                        <div className="flex items-end gap-2">
-                        <div className="flex-grow">
-                            <Input
-                                label="ID Hóa đơn cần thanh toán *"
-                                id="invoiceId"
-                                name="invoiceId"
-                                value={formData.invoiceId}
-                                onChange={handleChange}
-                                required
-                                disabled={isLoading || isSaving || Boolean(invoiceIdFromQuery)}
-                                error={errors.invoiceId}
-                                placeholder="Nhập ID hoặc chọn hóa đơn bên dưới"
-                            />
+                        <div className="flex-grow">                            <Input
+                            label="ID Hóa đơn cần thanh toán"
+                            id="invoiceId"
+                            name="invoiceId"
+                            value={formData.invoiceId}
+                            onChange={handleChange}
+                            required
+                            disabled={isLoading || isSaving || Boolean(invoiceIdFromQuery)}
+                            error={errors.invoiceId}
+                            placeholder="Nhập ID hoặc chọn hóa đơn bên dưới"
+                        />
                         </div>
                         {formData.invoiceId && (
                             <Button
@@ -694,10 +692,9 @@ const PaymentForm = () => {
                             </div>
                         )}
                     </div>
-                )}
-                <Input label="Số tiền thanh toán *" id="amount" name="amount" type="number" min="0" step="1000" required value={formData.amount} onChange={handleChange} disabled={isLoading || isSaving} error={errors.amount} />
-                <Select label="Phương thức thanh toán *" id="method" name="method" required value={formData.method} onChange={handleChange} options={manualMethodOptions} disabled={isLoading || isSaving} error={errors.method} />
-                <Input label="Ngày thanh toán *" id="transactionDate" name="transactionDate" type="date" required value={formData.transactionDate} onChange={handleChange} disabled={isLoading || isSaving} error={errors.transactionDate} />
+                )}                <Input label="Số tiền thanh toán" id="amount" name="amount" type="number" min="0" step="1000" required value={formData.amount} onChange={handleChange} disabled={isLoading || isSaving} error={errors.amount} />
+                <Select label="Phương thức thanh toán" id="method" name="method" required value={formData.method} onChange={handleChange} options={manualMethodOptions} disabled={isLoading || isSaving} error={errors.method} />
+                <Input label="Ngày thanh toán" id="transactionDate" name="transactionDate" type="date" required value={formData.transactionDate} onChange={handleChange} disabled={isLoading || isSaving} error={errors.transactionDate} />
                 <Textarea label="Ghi chú (Tùy chọn)" id="details" name="details" rows={3} value={formData.details} onChange={handleChange} disabled={isLoading || isSaving} error={errors.details} />                <div className="flex justify-end gap-3 pt-5 border-t border-gray-200">
                     <Button variant="secondary" onClick={() => navigate('/payments')} disabled={isLoading || isSaving}>
                         Hủy

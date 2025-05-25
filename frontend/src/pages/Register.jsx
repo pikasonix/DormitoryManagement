@@ -147,7 +147,7 @@ const Register = () => {
           <form className="space-y-5" onSubmit={handleSubmit}>
             {/* Sử dụng component Input */}
             <Input
-              label="Họ và tên *"
+              label="Họ và tên"
               id="fullName"
               name="fullName"
               type="text"
@@ -159,7 +159,7 @@ const Register = () => {
               autoComplete="name"
             />
             <Input
-              label="Địa chỉ Email *"
+              label="Địa chỉ Email"
               id="email"
               name="email"
               type="email"
@@ -194,7 +194,7 @@ const Register = () => {
               autoComplete="tel"
             />
             <Input
-              label="Mật khẩu *"
+              label="Mật khẩu"
               id="password"
               name="password"
               type="password"
@@ -210,7 +210,7 @@ const Register = () => {
               Ít nhất 6 ký tự.
             </p>
             <Input
-              label="Xác nhận mật khẩu *"
+              label="Xác nhận mật khẩu"
               id="confirmPassword"
               name="confirmPassword"
               type="password"

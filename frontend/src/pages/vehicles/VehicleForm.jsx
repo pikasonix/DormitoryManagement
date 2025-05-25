@@ -323,18 +323,17 @@ const VehicleForm = ({ mode = 'create' }) => {
             <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">
                 {/* Trường nhập mã sinh viên chỉ hiển thị khi Admin/Staff tạo mới (đặt lên đầu) */}
                 {!isEditMode && isAdmin && (
-                    <div>
-                        <Input
-                            label="Mã số sinh viên *"
-                            id="studentId"
-                            name="studentId"
-                            required
-                            value={formData.studentId}
-                            onChange={handleChange}
-                            disabled={isSaving}
-                            error={errors.studentId}
-                            placeholder="Nhập mã số sinh viên để đăng ký xe"
-                        />
+                    <div>                        <Input
+                        label="Mã số sinh viên"
+                        id="studentId"
+                        name="studentId"
+                        required
+                        value={formData.studentId}
+                        onChange={handleChange}
+                        disabled={isSaving}
+                        error={errors.studentId}
+                        placeholder="Nhập mã số sinh viên để đăng ký xe"
+                    />
                         {formData.studentId.trim().length >= 3 && !foundStudent && !errors.studentId && (
                             <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
                                 <p className="text-sm text-blue-800 flex items-center">
@@ -370,22 +369,20 @@ const VehicleForm = ({ mode = 'create' }) => {
                 )}
 
                 {/* Trường Biển số chỉ hiển thị/nhập khi tạo mới */}
-                {!isEditMode && (
-                    <Input
-                        label="Biển số xe *"
-                        id="licensePlate"
-                        name="licensePlate"
-                        required
-                        value={formData.licensePlate}
-                        onChange={handleChange}
-                        disabled={isSaving}
-                        error={errors.licensePlate}
-                        placeholder="Ví dụ: 29A-12345"
-                        uppercase={true} // Tự động viết hoa?
-                    />
-                )}
-                <Select
-                    label="Loại xe *"
+                {!isEditMode && (<Input
+                    label="Biển số xe"
+                    id="licensePlate"
+                    name="licensePlate"
+                    required
+                    value={formData.licensePlate}
+                    onChange={handleChange}
+                    disabled={isSaving}
+                    error={errors.licensePlate}
+                    placeholder="Ví dụ: 29A-12345"
+                    uppercase={true} // Tự động viết hoa?
+                />
+                )}                <Select
+                    label="Loại xe"
                     id="type"
                     name="type"
                     required
@@ -394,9 +391,8 @@ const VehicleForm = ({ mode = 'create' }) => {
                     options={vehicleTypeOptions}
                     disabled={isSaving}
                     error={errors.type}
-                />
-                <Input
-                    label="Hãng xe *"
+                />                <Input
+                    label="Hãng xe"
                     id="brand"
                     name="brand"
                     required
@@ -405,9 +401,8 @@ const VehicleForm = ({ mode = 'create' }) => {
                     disabled={isSaving}
                     error={errors.brand}
                     placeholder="Ví dụ: Honda, Yamaha, Toyota, Vinfast..."
-                />
-                <Input
-                    label="Model xe *"
+                />                <Input
+                    label="Model xe"
                     id="model"
                     name="model"
                     required
@@ -416,9 +411,8 @@ const VehicleForm = ({ mode = 'create' }) => {
                     disabled={isSaving}
                     error={errors.model}
                     placeholder="Ví dụ: Wave Alpha, Fadil, Vios..."
-                />
-                <Input
-                    label="Màu sắc *"
+                />                <Input
+                    label="Màu sắc"
                     id="color"
                     name="color"
                     required

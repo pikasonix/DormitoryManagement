@@ -111,7 +111,8 @@ const InvoiceIndex = () => {
                 });
             }
         } catch (err) {
-            setError('Không thể tải danh sách hóa đơn.');        } finally {
+            setError('Không thể tải danh sách hóa đơn.');
+        } finally {
             setIsLoading(false);
         }
     }, [meta.limit, rooms, debouncedSearch, debouncedIdentifier, user]); // Thêm user vào dependencies
@@ -416,18 +417,6 @@ const InvoiceIndex = () => {
             {/* Nút tạo hóa đơn mới nếu cần */}
             {/* <Button onClick={() => navigate('/invoices/new')} icon={PlusIcon}>Tạo Hóa đơn</Button> */}        </div>
     </div>
-
-        {/* Thông báo cho STAFF về tòa nhà được quản lý */}
-        {user?.role === 'STAFF' && user?.staffProfile?.managedBuildingId && (
-            <div className="p-4 bg-blue-50 rounded-md border border-blue-200">
-                <p className="font-medium text-blue-800">
-                    Hiển thị hóa đơn cho tòa nhà: {user?.staffProfile?.managedBuilding?.name || `ID: ${user?.staffProfile?.managedBuildingId}`}
-                </p>
-                <p className="text-sm text-blue-600 mt-1">
-                    Bạn chỉ có thể xem và quản lý các hóa đơn liên quan đến tòa nhà mình được phân công quản lý.
-                </p>
-            </div>
-        )}
 
         {/* Bộ lọc */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">

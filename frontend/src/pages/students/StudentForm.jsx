@@ -267,23 +267,20 @@ const StudentForm = () => {
         <div className="pt-0">
           <h3 className="text-base font-semibold leading-7 text-gray-900">1. Thông tin cơ bản</h3>
           {errors.general && <p className='text-sm text-red-600 mt-1'>{errors.general}</p>}
-          <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-            <div className="sm:col-span-2">
+          <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">            <div className="sm:col-span-2">
+            <Input
+              label="Mã Sinh viên"
+              id="studentId"
+              name="studentId"
+              required
+              value={formData.studentId}
+              onChange={handleChange}
+              disabled={isSaving || isEditMode}
+              error={errors.studentId}
+            />
+          </div>            <div className="sm:col-span-4">
               <Input
-                label="Mã Sinh viên *"
-                id="studentId"
-                name="studentId"
-                required
-                value={formData.studentId}
-                onChange={handleChange}
-                disabled={isSaving || isEditMode}
-                error={errors.studentId}
-              />
-            </div>
-
-            <div className="sm:col-span-4">
-              <Input
-                label="Họ và tên *"
+                label="Họ và tên"
                 id="fullName"
                 name="fullName"
                 required
@@ -292,11 +289,9 @@ const StudentForm = () => {
                 disabled={isSaving}
                 error={errors.fullName}
               />
-            </div>
-
-            <div className="sm:col-span-3">
+            </div>            <div className="sm:col-span-3">
               <Input
-                label="Email liên hệ *"
+                label="Email liên hệ"
                 id="email"
                 name="email"
                 type="email"
@@ -307,11 +302,9 @@ const StudentForm = () => {
                 error={errors.email}
                 hint={isEditMode ? "Email liên kết với tài khoản, không thể sửa." : ""}
               />
-            </div>
-
-            <div className="sm:col-span-3">
+            </div>            <div className="sm:col-span-3">
               <Input
-                label="Số điện thoại *"
+                label="Số điện thoại"
                 id="phoneNumber"
                 name="phoneNumber"
                 type="tel"
@@ -324,25 +317,22 @@ const StudentForm = () => {
             </div>
 
             {!isEditMode && (
-              <>
-                <div className="sm:col-span-3">
+              <>                <div className="sm:col-span-3">
+                <Input
+                  label="Mật khẩu"
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  disabled={isSaving}
+                  error={errors.password}
+                  hint="Mật khẩu phải có ít nhất 6 ký tự"
+                />
+              </div>                <div className="sm:col-span-3">
                   <Input
-                    label="Mật khẩu *"
-                    id="password"
-                    name="password"
-                    type="password"
-                    required
-                    value={formData.password}
-                    onChange={handleChange}
-                    disabled={isSaving}
-                    error={errors.password}
-                    hint="Mật khẩu phải có ít nhất 6 ký tự"
-                  />
-                </div>
-
-                <div className="sm:col-span-3">
-                  <Input
-                    label="Xác nhận mật khẩu *"
+                    label="Xác nhận mật khẩu"
                     id="confirmPassword"
                     name="confirmPassword"
                     type="password"
@@ -354,11 +344,9 @@ const StudentForm = () => {
                   />
                 </div>
               </>
-            )}
-
-            <div className="sm:col-span-3">
+            )}            <div className="sm:col-span-3">
               <Input
-                label="Ngày sinh *"
+                label="Ngày sinh"
                 id="birthDate"
                 name="birthDate"
                 type="date"
@@ -368,11 +356,9 @@ const StudentForm = () => {
                 disabled={isSaving}
                 error={errors.birthDate}
               />
-            </div>
-
-            <div className="sm:col-span-3">
+            </div>            <div className="sm:col-span-3">
               <Select
-                label="Giới tính *"
+                label="Giới tính"
                 id="gender"
                 name="gender"
                 required
@@ -382,11 +368,9 @@ const StudentForm = () => {
                 disabled={isSaving}
                 error={errors.gender}
               />
-            </div>
-
-            <div className="sm:col-span-3">
+            </div>            <div className="sm:col-span-3">
               <Input
-                label="Số CCCD/CMND *"
+                label="Số CCCD/CMND"
                 id="identityCardNumber"
                 name="identityCardNumber"
                 required
@@ -395,11 +379,9 @@ const StudentForm = () => {
                 disabled={isSaving}
                 error={errors.identityCardNumber}
               />
-            </div>
-
-            <div className="sm:col-span-3">
+            </div>            <div className="sm:col-span-3">
               <Select
-                label="Trạng thái *"
+                label="Trạng thái"
                 id="status"
                 name="status"
                 required
@@ -416,23 +398,20 @@ const StudentForm = () => {
         {/* Academic Information */}
         <div className="pt-8">
           <h3 className="text-base font-semibold leading-7 text-gray-900">2. Thông tin học tập</h3>
-          <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-            <div className="sm:col-span-2">
+          <div className="mt-6 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">            <div className="sm:col-span-2">
+            <Input
+              label="Khoa/Viện"
+              id="faculty"
+              name="faculty"
+              required
+              value={formData.faculty}
+              onChange={handleChange}
+              disabled={isSaving}
+              error={errors.faculty}
+            />
+          </div>            <div className="sm:col-span-2">
               <Input
-                label="Khoa/Viện *"
-                id="faculty"
-                name="faculty"
-                required
-                value={formData.faculty}
-                onChange={handleChange}
-                disabled={isSaving}
-                error={errors.faculty}
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <Input
-                label="Khóa học *"
+                label="Khóa học"
                 id="courseYear"
                 name="courseYear"
                 type="number"
@@ -498,11 +477,9 @@ const StudentForm = () => {
                 disabled={isSaving}
                 error={errors.roomId}
               />
-            </div>
-
-            <div className="sm:col-span-3">
+            </div>            <div className="sm:col-span-3">
               <Input
-                label="Ngày bắt đầu ở *"
+                label="Ngày bắt đầu ở"
                 id="startDate"
                 name="startDate"
                 type="date"
@@ -512,11 +489,9 @@ const StudentForm = () => {
                 disabled={isSaving}
                 error={errors.startDate}
               />
-            </div>
-
-            <div className="sm:col-span-3">
+            </div>            <div className="sm:col-span-3">
               <Input
-                label="Ngày kết thúc hợp đồng *"
+                label="Ngày kết thúc hợp đồng"
                 id="contractEndDate"
                 name="contractEndDate"
                 type="date"

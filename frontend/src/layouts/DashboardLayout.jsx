@@ -195,21 +195,120 @@ const DashboardLayout = () => {
               <span className="sr-only">Mở thanh bên</span>
               <Bars3Icon className="h-6 w-6" aria-hidden="true" />
             </button>            {/* Thêm trạng thái sinh viên PENDING_APPROVAL */}            <div className="flex flex-1 items-center justify-between gap-x-4 self-stretch lg:gap-x-6">
-              {/* Hiển thị thông báo trạng thái PENDING_APPROVAL nếu sinh viên cần cập nhật hồ sơ */}
+              {/* Hiển thị thông báo trạng thái theo role */}
               <div className="flex-1">
-                {user?.role === 'STUDENT' &&
-                  (user?.profile?.status === 'PENDING_APPROVAL' ||
-                    user?.studentProfile?.status === 'PENDING_APPROVAL' ||
-                    user?.status === 'PENDING_APPROVAL') && (
-                    <div className="flex items-center">
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-full">
-                        <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
-                        <span className="text-xs font-medium">
-                          Tài khoản đang chờ phê duyệt - Hãy cập nhật hồ sơ
-                        </span>
+                {(() => {
+                  // Admin Status
+                  if (user?.role === 'ADMIN') {
+                    return (
+                      <div className="flex items-center">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 border border-purple-200 rounded-full">
+                          <div className="h-2 w-2 bg-purple-500 rounded-full"></div>
+                          <span className="text-xs font-medium">
+                            Quản trị viên hệ thống
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  }
+
+                  // Staff Status
+                  if (user?.role === 'STAFF') {
+                    const managedBuilding = user?.staffProfile?.managedBuilding?.name ||
+                      user?.profile?.managedBuilding?.name;
+
+                    return (
+                      <div className="flex items-center">
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
+                          <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                          <span className="text-xs font-medium">
+                            {managedBuilding
+                              ? `Quản lý tòa nhà: ${managedBuilding}`
+                              : 'Nhân viên - Chưa được phân công tòa nhà'
+                            }
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Student Status
+                  if (user?.role === 'STUDENT') {
+                    const studentStatus = user?.profile?.status ||
+                      user?.studentProfile?.status ||
+                      user?.status;
+
+                    const roomInfo = user?.studentProfile?.room?.number ||
+                      user?.profile?.room?.number;
+                    // Different colors and messages based on student status
+                    switch (studentStatus) {
+                      case 'PENDING_APPROVAL':
+                        return (
+                          <div className="flex items-center">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-700 border border-red-200 rounded-full">
+                              <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
+                              <span className="text-xs font-medium">
+                                Tài khoản đang chờ phê duyệt - Hãy cập nhật hồ sơ
+                              </span>
+                            </div>
+                          </div>
+                        );
+
+                      case 'RENTING':
+                        return (
+                          <div className="flex items-center">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-full">
+                              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+                              <span className="text-xs font-medium">
+                                {roomInfo
+                                  ? `Sinh viên đang ở phòng ${roomInfo}`
+                                  : 'Tài khoản đã được duyệt - Chưa chọn phòng'
+                                }
+                              </span>
+                            </div>
+                          </div>
+                        );
+
+                      case 'EVICTED':
+                        return (
+                          <div className="flex items-center">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 text-orange-700 border border-orange-200 rounded-full">
+                              <div className="h-2 w-2 bg-orange-500 rounded-full animate-pulse"></div>
+                              <span className="text-xs font-medium">
+                                Tài khoản bị đình chỉ
+                              </span>
+                            </div>
+                          </div>
+                        );
+
+                      case 'CHECKED_OUT':
+                        return (
+                          <div className="flex items-center">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full">
+                              <div className="h-2 w-2 bg-indigo-500 rounded-full animate-pulse"></div>
+                              <span className="text-xs font-medium">
+                                Sinh viên đã chuyển ra khỏi KTX
+                              </span>
+                            </div>
+                          </div>
+                        );
+
+                      default:
+                        return (
+                          <div className="flex items-center">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-full">
+                              <div className="h-2 w-2 bg-yellow-500 rounded-full"></div>
+                              <span className="text-xs font-medium">
+                                Trạng thái chưa xác định
+                              </span>
+                            </div>
+                          </div>
+                        );
+                    }
+                  }
+
+                  return null;
+                })()}
               </div>
 
               <div className="flex items-center gap-x-4 lg:gap-x-6 justify-end">

@@ -433,17 +433,6 @@ const MaintenanceIndex = () => {
         renderStudentView()
       ) : (
         <>
-          {/* Thông báo cho STAFF về tòa nhà được quản lý */}
-          {isStaff && user?.staffProfile?.managedBuildingId && (
-            <div className="p-4 bg-blue-50 rounded-md border border-blue-200 mb-4">
-              <p className="font-medium text-blue-800">
-                Hiển thị yêu cầu bảo trì/sửa chữa cho tòa nhà: {user?.staffProfile?.managedBuilding?.name || `ID: ${user?.staffProfile?.managedBuildingId}`}
-              </p>
-              <p className="text-sm text-blue-600 mt-1">
-                Bạn chỉ có thể xem và quản lý các yêu cầu bảo trì trong tòa nhà mình được phân công quản lý.
-              </p>
-            </div>
-          )}
 
           {/* Bộ lọc cho Admin/Staff */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-md shadow-sm">

@@ -85,19 +85,17 @@ const UtilityReadingEdit = () => {
     return (
         <div className="max-w-lg mx-auto space-y-6">
             <h1 className="text-2xl font-semibold mb-4">Chỉnh sửa chỉ số tiện ích</h1>
-            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">
-                <Select
-                    label="Loại tiện ích *"
-                    id="type"
-                    name="type"
-                    value={formData.type}
-                    onChange={handleChange}
-                    options={utilityTypeOptions}
-                    required
-                    error={errors.type}
-                />
-                <Select
-                    label="Phòng *"
+            <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg p-6 space-y-6">                <Select
+                label="Loại tiện ích"
+                id="type"
+                name="type"
+                value={formData.type}
+                onChange={handleChange}
+                options={utilityTypeOptions}
+                required
+                error={errors.type}
+            />                <Select
+                    label="Phòng"
                     id="roomId"
                     name="roomId"
                     value={formData.roomId}
@@ -105,9 +103,8 @@ const UtilityReadingEdit = () => {
                     options={rooms.map(r => ({ value: r.id, label: r.number }))}
                     required
                     error={errors.roomId}
-                />
-                <Input
-                    label="Chỉ số *"
+                />                <Input
+                    label="Chỉ số"
                     id="indexValue"
                     name="indexValue"
                     type="number"
@@ -115,9 +112,8 @@ const UtilityReadingEdit = () => {
                     onChange={handleChange}
                     required
                     error={errors.indexValue}
-                />
-                <Input
-                    label="Ngày lấy *"
+                />                <Input
+                    label="Ngày lấy"
                     id="readingDate"
                     name="readingDate"
                     type="datetime-local"
@@ -126,21 +122,19 @@ const UtilityReadingEdit = () => {
                     required
                     error={errors.readingDate}
                 />
-                <div className="flex gap-4">
-                    <Input
-                        label="Tháng *"
-                        id="billingMonth"
-                        name="billingMonth"
-                        type="number"
-                        min="1"
-                        max="12"
-                        value={formData.billingMonth}
-                        onChange={handleChange}
-                        required
-                        error={errors.billingMonth}
-                    />
-                    <Input
-                        label="Năm *"
+                <div className="flex gap-4">                    <Input
+                    label="Tháng"
+                    id="billingMonth"
+                    name="billingMonth"
+                    type="number"
+                    min="1"
+                    max="12"
+                    value={formData.billingMonth}
+                    onChange={handleChange}
+                    required
+                    error={errors.billingMonth}
+                />                    <Input
+                        label="Năm"
                         id="billingYear"
                         name="billingYear"
                         type="number"
