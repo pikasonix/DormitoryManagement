@@ -21,13 +21,11 @@ const allowedOrigins = [
     'http://127.0.0.1:5173',
     'http://127.0.0.1:4173',
     /\.vercel\.app$/,
-    // Allow local network IPs in development
-    ...(isDev ? [/^http:\/\/192\.168\.\d+\.\d+:\d+$/] : []),
 ];
 const corsOptions = {
     origin: (origin, callback) => {
-        // In development, we can be more permissive
-        if (isDev && !origin) {
+        // For development, allow all origins
+        if (isDev) {
             callback(null, true);
             return;
         }
@@ -37,12 +35,10 @@ const corsOptions = {
             callback(null, true);
         }
         else {
-            console.error(`[CORS] Origin ${origin} not allowed`);
             callback(new Error('Not allowed by CORS'));
         }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    }, credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     exposedHeaders: ['Content-Length', 'Content-Type'],
     maxAge: 86400
@@ -50,7 +46,14 @@ const corsOptions = {
 // --- Áp dụng Middleware Cơ bản ---
 app.use((0, helmet_1.default)({
     contentSecurityPolicy: {
-        directives: Object.assign(Object.assign({}, helmet_1.default.contentSecurityPolicy.getDefaultDirectives()), { "img-src": ["'self'", "data:", "blob:", "http://localhost:5002", "*"] })
+        directives: Object.assign(Object.assign({}, helmet_1.default.contentSecurityPolicy.getDefaultDirectives()), { "img-src": [
+                "'self'",
+                "data:",
+                "blob:",
+                "http://localhost:5002", // local dev
+                "https://dormitorymanagement-production.up.railway.app", // ✅ Thêm domain Railway
+                "*"
+            ] })
     },
     crossOriginEmbedderPolicy: false
 }));
@@ -64,6 +67,22 @@ app.use('/uploads', express_1.default.static(path_1.default.resolve(process.cwd(
 app.use((req, _res, next) => {
     console.log(`[Request Log] ${new Date().toISOString()} - ${req.method} ${req.originalUrl}`);
     next();
+});
+// --- Health Check Endpoint ---
+app.get('/health', (_req, res) => {
+    res.status(200).json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+// Thêm root endpoint
+app.get('/', (_req, res) => {
+    res.status(200).json({
+        message: 'Dormitory Management API is running',
+        version: '1.0.0',
+        environment: process.env.NODE_ENV
+    });
 });
 // --- Gắn API Routes Chính ---
 app.use('/api', routes_1.default);

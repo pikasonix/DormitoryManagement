@@ -80,23 +80,60 @@ class MaintenanceService {
      */
     create(data) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const roomExists = yield prisma.room.findUnique({ where: { id: data.roomId } });
-                // Kiểm tra người báo cáo theo userId thay vì id
-                const reporterExists = yield prisma.studentProfile.findUnique({ where: { userId: data.reportedById } });
                 if (!roomExists)
                     throw new Error(`Phòng với ID ${data.roomId} không tồn tại.`);
-                if (!reporterExists)
-                    throw new Error(`Người báo cáo (StudentProfile) với ID người dùng ${data.reportedById} không tồn tại.`);
+                // Kiểm tra người báo cáo tồn tại (có thể là student hoặc staff)
+                const userExists = yield prisma.user.findUnique({
+                    where: { id: data.reportedById },
+                    include: {
+                        studentProfile: true,
+                        staffProfile: true
+                    }
+                });
+                if (!userExists) {
+                    throw new Error(`Người dùng với ID ${data.reportedById} không tồn tại.`);
+                }
+                // Nếu có assignedToId, kiểm tra staff tồn tại
                 if (data.assignedToId) {
                     const assigneeExists = yield prisma.staffProfile.findUnique({ where: { id: data.assignedToId } });
                     if (!assigneeExists)
                         throw new Error(`Nhân viên được giao (StaffProfile) với ID ${data.assignedToId} không tồn tại.`);
+                } // Xác định người báo cáo dựa trên loại user
+                // Theo schema, reportedBy phải là StudentProfile
+                let reportedByUserId;
+                if (userExists.studentProfile) {
+                    // Nếu là student, sử dụng chính sinh viên đó
+                    reportedByUserId = data.reportedById;
+                }
+                else {
+                    // Nếu là staff/admin, tìm một sinh viên đầu tiên làm người báo cáo danh nghĩa
+                    // Hoặc có thể sử dụng một sinh viên mặc định
+                    const firstStudent = yield prisma.studentProfile.findFirst({
+                        include: { user: true },
+                        where: { user: { isActive: true } }
+                    });
+                    if (!firstStudent) {
+                        throw new Error(`Không tìm thấy sinh viên nào trong hệ thống để làm người báo cáo.`);
+                    }
+                    reportedByUserId = firstStudent.userId;
+                    // Cập nhật notes để ghi rõ ai thực sự tạo request
+                    data.notes = `${data.notes || ''}\n[Tạo bởi ${userExists.role === 'ADMIN' ? 'Admin' : 'Staff'}: ${((_a = userExists.staffProfile) === null || _a === void 0 ? void 0 : _a.fullName) || userExists.email}]`.trim();
+                }
+                // Kiểm tra StudentProfile với userId này có tồn tại không
+                const studentProfile = yield prisma.studentProfile.findUnique({
+                    where: { userId: reportedByUserId },
+                    include: { user: true }
+                });
+                if (!studentProfile) {
+                    throw new Error(`Không tìm thấy StudentProfile với userId ${reportedByUserId}.`);
                 }
                 const newMaintenance = yield prisma.maintenance.create({
                     data: {
                         room: { connect: { id: data.roomId } },
-                        reportedBy: { connect: { userId: data.reportedById } }, // Sửa thành userId
+                        reportedBy: { connect: { userId: reportedByUserId } }, // Connect đến StudentProfile qua userId
                         issue: data.issue,
                         notes: data.notes,
                         status: data.status || client_1.MaintenanceStatus.PENDING,

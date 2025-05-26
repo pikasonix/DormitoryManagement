@@ -87,14 +87,15 @@ class AmenityController {
     createAmenity(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const { name, description } = req.body;
+                const { name, description, url } = req.body;
                 if (!name) {
                     return next(new Error('Amenity name is required'));
                 }
                 const newAmenity = yield prisma.amenity.create({
                     data: {
                         name,
-                        description
+                        description,
+                        url
                     }
                 });
                 res.status(201).json({
@@ -118,7 +119,7 @@ class AmenityController {
                 if (isNaN(id)) {
                     return next(new Error('Invalid Amenity ID'));
                 }
-                const { name, description } = req.body;
+                const { name, description, url } = req.body;
                 if (!name) {
                     return next(new Error('Amenity name is required'));
                 }
@@ -126,7 +127,8 @@ class AmenityController {
                     where: { id },
                     data: {
                         name,
-                        description
+                        description,
+                        url
                     }
                 });
                 res.status(200).json({

@@ -11,6 +11,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.RoomController = void 0;
 const client_1 = require("@prisma/client");
+const library_1 = require("@prisma/client/runtime/library");
 const file_service_1 = require("../services/file.service");
 const prisma = new client_1.PrismaClient();
 class RoomController {
@@ -134,7 +135,7 @@ class RoomController {
     createRoom(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const { buildingId, number, type, capacity, floor, status, description, amenities, imageIds } = req.body;
+                const { buildingId, number, type, capacity, floor, status, description, roomFee, amenities, imageIds } = req.body;
                 if (!buildingId || !number || !type || !capacity || !floor) {
                     return next(new Error('Thiếu trường bắt buộc: buildingId, number, type, capacity, floor'));
                 }
@@ -157,6 +158,7 @@ class RoomController {
                         floor: parseInt(floor),
                         status: status || client_1.RoomStatus.AVAILABLE,
                         description: description || null,
+                        roomFee: roomFee ? new library_1.Decimal(roomFee) : new library_1.Decimal(0),
                         actualOccupancy: 0,
                         amenities: amenities && Array.isArray(amenities) && amenities.length > 0 ? {
                             create: amenities.map((am) => ({
@@ -196,7 +198,7 @@ class RoomController {
                 if (isNaN(id)) {
                     return next(new Error('ID phòng không hợp lệ'));
                 }
-                const { number, type, capacity, floor, status, description, amenities, imageIds } = req.body;
+                const { number, type, capacity, floor, status, description, roomFee, amenities, imageIds } = req.body;
                 if (type && !Object.values(client_1.RoomType).includes(type)) {
                     return next(new Error(`Loại phòng không hợp lệ: ${type}`));
                 }
@@ -249,6 +251,7 @@ class RoomController {
                         floor: floor ? parseInt(floor) : undefined,
                         status: status,
                         description: description,
+                        roomFee: roomFee !== undefined ? new library_1.Decimal(roomFee) : undefined,
                         images: imagesUpdate,
                         amenities: amenitiesUpdate
                     };

@@ -78,6 +78,24 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
+// --- Health Check Endpoint ---
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Thêm root endpoint
+app.get('/', (_req: Request, res: Response) => {
+  res.status(200).json({
+    message: 'Dormitory Management API is running',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV
+  });
+});
+
 // --- Gắn API Routes Chính ---
 app.use('/api', apiRouter);
 

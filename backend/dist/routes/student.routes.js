@@ -133,6 +133,15 @@ const staffIdParamSchema = zod_1.z.object({
         id: zod_1.z.coerce.number().int().positive("ID hồ sơ nhân viên không hợp lệ"),
     }),
 });
+// Schema cho approve/reject student
+const rejectStudentSchema = zod_1.z.object({
+    params: zod_1.z.object({
+        id: zod_1.z.coerce.number().int().positive("ID hồ sơ sinh viên không hợp lệ"),
+    }),
+    body: zod_1.z.object({
+        reason: zod_1.z.string().optional().nullable(),
+    }),
+});
 router.use(auth_middleware_1.authMiddleware);
 router.get('/', (0, auth_middleware_1.checkRole)([client_1.Role.ADMIN, client_1.Role.STAFF]), studentController.getAllStudents);
 router.get('/by-user/:userId', (0, validation_middleware_1.validate)(userIdParamSchema), studentController.getStudentByUserId);
@@ -141,6 +150,9 @@ router.get('/:id', (0, validation_middleware_1.validate)(studentIdParamSchema), 
 router.post('/', (0, auth_middleware_1.checkRole)([client_1.Role.ADMIN, client_1.Role.STAFF]), (0, validation_middleware_1.validate)(createStudentSchema), studentController.createStudent);
 router.put('/:id', (0, validation_middleware_1.validate)(updateStudentSchema), studentController.updateStudent);
 router.delete('/:id', (0, auth_middleware_1.checkRole)([client_1.Role.ADMIN]), (0, validation_middleware_1.validate)(studentIdParamSchema), studentController.deleteStudent);
+// Routes cho approve/reject student
+router.patch('/:id/approve', (0, auth_middleware_1.checkRole)([client_1.Role.ADMIN]), (0, validation_middleware_1.validate)(studentIdParamSchema), studentController.approveStudent);
+router.patch('/:id/reject', (0, auth_middleware_1.checkRole)([client_1.Role.ADMIN]), (0, validation_middleware_1.validate)(rejectStudentSchema), studentController.rejectStudent);
 router.get('/staff', (0, auth_middleware_1.checkRole)([client_1.Role.ADMIN]), staffController.getAllStaff);
 router.get('/staff/:id', (0, validation_middleware_1.validate)(staffIdParamSchema), staffController.getStaffById);
 router.put('/staff/:id', (0, validation_middleware_1.validate)(updateStaffSchema), staffController.updateStaff);

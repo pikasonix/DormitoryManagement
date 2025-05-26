@@ -94,11 +94,11 @@ class TransferService {
                 }
                 if (toRoom.actualOccupancy >= toRoom.capacity) {
                     throw new Error(`Phòng muốn chuyển đến (${toRoom.id}) đã đầy.`);
-                }
+                } // Chỉ kiểm tra xem có yêu cầu nào đang ở trạng thái PENDING không
                 const pendingTransfer = yield prisma.roomTransfer.findFirst({
                     where: {
                         studentProfileId: data.studentProfileId,
-                        status: { in: [client_1.TransferStatus.PENDING, client_1.TransferStatus.APPROVED] }
+                        status: client_1.TransferStatus.PENDING
                     }
                 });
                 if (pendingTransfer) {
@@ -146,7 +146,11 @@ class TransferService {
             }
             if (!data.status || !Object.values(client_1.TransferStatus).includes(data.status)) {
                 throw new Error(`Trạng thái chuyển phòng không hợp lệ: ${data.status}`);
-            }
+            } // Không kiểm tra approvedById nữa vì admin có thể không có staffProfile
+            // Admin vẫn có thể phê duyệt/từ chối mà không cần profile
+            /* if ((data.status === TransferStatus.APPROVED || data.status === TransferStatus.COMPLETED) && !data.approvedById) {
+                throw new Error('Cần cung cấp ID người duyệt (approvedById) khi duyệt hoặc hoàn thành.');
+            } */
             try {
                 const updatedTransfer = yield prisma.$transaction((tx) => __awaiter(this, void 0, void 0, function* () {
                     const currentTransfer = yield tx.roomTransfer.findUnique({
@@ -164,9 +168,10 @@ class TransferService {
                     }
                     const transferUpdateData = {
                         status: data.status,
-                        approvedBy: data.approvedById ? { connect: { id: data.approvedById } } : (data.status === client_1.TransferStatus.REJECTED ? { disconnect: true } : undefined),
+                        approvedBy: data.approvedById ? { connect: { id: data.approvedById } } : (data.status === client_1.TransferStatus.REJECTED ? { disconnect: true } : undefined)
                     };
-                    if (data.status === client_1.TransferStatus.COMPLETED) {
+                    // Cập nhật khi trạng thái là APPROVED hoặc COMPLETED
+                    if (data.status === client_1.TransferStatus.APPROVED || data.status === client_1.TransferStatus.COMPLETED) {
                         const studentId = currentTransfer.studentProfileId;
                         const fromRoomId = currentTransfer.fromRoomId;
                         const toRoomId = currentTransfer.toRoomId;
@@ -174,6 +179,7 @@ class TransferService {
                         if (!toRoomCurrent || toRoomCurrent.status !== client_1.RoomStatus.AVAILABLE || toRoomCurrent.actualOccupancy >= toRoomCurrent.capacity) {
                             throw new Error(`Không thể hoàn thành: Phòng mới (${toRoomId}) không còn chỗ hoặc không khả dụng.`);
                         }
+                        // Cập nhật roomId của sinh viên
                         yield tx.studentProfile.update({ where: { id: studentId }, data: { roomId: toRoomId } });
                         if (fromRoomId) {
                             yield tx.room.update({

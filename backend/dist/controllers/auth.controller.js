@@ -77,13 +77,7 @@ class AuthController {
                     }
                     return res.status(401).json({ message: 'Email hoặc mật khẩu không chính xác' });
                 }
-                // JWT Signing
-                const payload = { userId: user.id, email: user.email, role: user.role };
-                const secret = JWT_SECRET;
-                const options = {
-                    expiresIn: JWT_EXPIRES_IN
-                };
-                const token = jsonwebtoken_1.default.sign(payload, secret, options);
+                // Tạo và lấy profile trước
                 let profile = null;
                 if (user.role === client_1.Role.STUDENT) {
                     profile = yield prisma.studentProfile.findUnique({
@@ -95,8 +89,7 @@ class AuthController {
                     profile = yield prisma.staffProfile.findUnique({
                         where: { userId: user.id },
                         include: { managedBuilding: true }
-                    });
-                    // Lưu log đăng nhập thành công cho ADMIN và STAFF
+                    }); // Lưu log đăng nhập thành công cho ADMIN và STAFF
                     const location = yield (0, ip_location_1.getLocationFromIP)(req.ip);
                     yield (0, auth_service_1.saveLoginLog)({
                         userId: user.id,
@@ -106,6 +99,17 @@ class AuthController {
                         location
                     });
                 }
+                // JWT Signing - Sau khi đã có profile
+                const payload = { userId: user.id, email: user.email, role: user.role };
+                // Thêm profileId vào JWT nếu có profile
+                if (profile) {
+                    payload.profileId = profile.id;
+                }
+                const secret = JWT_SECRET;
+                const options = {
+                    expiresIn: JWT_EXPIRES_IN
+                };
+                const token = jsonwebtoken_1.default.sign(payload, secret, options);
                 const formattedUser = formatUserResponse(user);
                 return res.json({
                     success: true,
@@ -171,11 +175,16 @@ class AuthController {
                     });
                 }
                 const formattedUser = formatUserResponse(user);
+                // Thêm profileId vào user response
+                const profile = userRole === client_1.Role.STUDENT ? user.studentProfile : user.staffProfile;
+                if (profile) {
+                    formattedUser.profileId = profile.id;
+                }
                 return res.json({
                     success: true,
                     data: {
                         user: formattedUser,
-                        profile: user.staffProfile || user.studentProfile || null
+                        profile: profile
                     }
                 });
             }
@@ -317,6 +326,70 @@ class AuthController {
                 return res.status(500).json({
                     success: false,
                     message: 'Đã xảy ra lỗi khi lấy lịch sử đăng nhập'
+                });
+            }
+        });
+    }
+    /**
+     * Đổi mật khẩu người dùng đang đăng nhập
+     */
+    static changePassword(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                if (!req.user) {
+                    return res.status(401).json({
+                        success: false,
+                        message: 'Không có quyền truy cập'
+                    });
+                }
+                const { oldPassword, newPassword } = req.body;
+                if (!oldPassword || !newPassword) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Mật khẩu cũ và mới không được để trống'
+                    });
+                }
+                if (newPassword.length < 6) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Mật khẩu mới phải có ít nhất 6 ký tự'
+                    });
+                }
+                // Lấy thông tin người dùng từ database
+                const user = yield prisma.user.findUnique({
+                    where: { id: req.user.userId }
+                });
+                if (!user) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Không tìm thấy người dùng'
+                    });
+                }
+                // Kiểm tra mật khẩu cũ
+                const isValidPassword = yield bcryptjs_1.default.compare(oldPassword, user.password);
+                if (!isValidPassword) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Mật khẩu cũ không chính xác'
+                    });
+                }
+                // Hash mật khẩu mới và cập nhật
+                const hashedPassword = yield bcryptjs_1.default.hash(newPassword, 10);
+                yield prisma.user.update({
+                    where: { id: req.user.userId },
+                    data: { password: hashedPassword }
+                });
+                return res.status(200).json({
+                    success: true,
+                    message: 'Đổi mật khẩu thành công'
+                });
+            }
+            catch (error) {
+                console.error('Lỗi đổi mật khẩu:', error);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Đã xảy ra lỗi khi đổi mật khẩu',
+                    error: error.message
                 });
             }
         });

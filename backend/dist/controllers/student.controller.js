@@ -27,6 +27,7 @@ exports.StaffController = exports.StudentController = void 0;
 const client_1 = require("@prisma/client");
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const file_service_1 = require("../services/file.service");
+const validation_1 = require("../utils/validation");
 const prisma = new client_1.PrismaClient();
 class StudentController {
     // Lấy danh sách tất cả sinh viên
@@ -39,6 +40,8 @@ class StudentController {
                 const applyPagination = limit > 0;
                 const offset = applyPagination ? (page - 1) * limit : 0;
                 const keyword = req.query.keyword;
+                const status = req.query.status;
+                const buildingId = req.query.buildingId;
                 const whereCondition = {};
                 if (keyword) {
                     whereCondition.OR = [
@@ -47,6 +50,20 @@ class StudentController {
                         { user: { email: { contains: keyword, mode: 'insensitive' } } },
                         { phoneNumber: { contains: keyword, mode: 'insensitive' } }
                     ];
+                }
+                // Lọc theo trạng thái nếu có
+                if (status && Object.values(client_1.StudentStatus).includes(status)) {
+                    whereCondition.status = status;
+                }
+                // Lọc theo tòa nhà nếu có (for STAFF users)
+                if (buildingId) {
+                    const parsedBuildingId = parseInt(buildingId);
+                    if (!isNaN(parsedBuildingId)) {
+                        whereCondition.room = {
+                            buildingId: parsedBuildingId
+                        };
+                        console.log(`[StudentController] Filtering students by building ID: ${parsedBuildingId}`);
+                    }
                 }
                 const totalStudents = yield prisma.studentProfile.count({
                     where: whereCondition
@@ -302,7 +319,15 @@ class StudentController {
                 if (error instanceof client_1.Prisma.PrismaClientKnownRequestError) {
                     if (error.code === 'P2002') {
                         const fields = (_b = (_a = error.meta) === null || _a === void 0 ? void 0 : _a.target) === null || _b === void 0 ? void 0 : _b.join(', ');
-                        return next(new Error(`Lỗi trùng lặp dữ liệu. Trường(s): ${fields} đã tồn tại.`));
+                        if (fields.includes('email')) {
+                            return next(new Error(`Email đã tồn tại trong hệ thống`));
+                        }
+                        else if (fields.includes('studentId')) {
+                            return next(new Error(`Mã sinh viên đã tồn tại trong hệ thống`));
+                        }
+                        else {
+                            return next(new Error(`Lỗi trùng lặp dữ liệu. Trường(s): ${fields} đã tồn tại.`));
+                        }
                     }
                 }
                 next(error);
@@ -354,7 +379,8 @@ class StudentController {
                             }
                         }
                     }
-                    const studentUpdateData = {
+                    // Prepare update data
+                    const updateData = {
                         studentId: profileData.studentId,
                         fullName: profileData.fullName,
                         gender: profileData.gender,
@@ -367,7 +393,6 @@ class StudentController {
                         permanentProvince: profileData.permanentProvince,
                         permanentDistrict: profileData.permanentDistrict,
                         permanentAddress: profileData.permanentAddress,
-                        status: profileData.status,
                         startDate: profileData.startDate ? new Date(profileData.startDate) : undefined,
                         contractEndDate: profileData.contractEndDate ? new Date(profileData.contractEndDate) : undefined,
                         checkInDate: profileData.checkInDate !== undefined ? (profileData.checkInDate ? new Date(profileData.checkInDate) : null) : undefined,
@@ -376,10 +401,29 @@ class StudentController {
                         fatherName: profileData.fatherName, fatherDobYear: profileData.fatherDobYear ? parseInt(profileData.fatherDobYear) : null, fatherPhone: profileData.fatherPhone, fatherAddress: profileData.fatherAddress,
                         motherName: profileData.motherName, motherDobYear: profileData.motherDobYear ? parseInt(profileData.motherDobYear) : null, motherPhone: profileData.motherPhone, motherAddress: profileData.motherAddress,
                         emergencyContactRelation: profileData.emergencyContactRelation, emergencyContactPhone: profileData.emergencyContactPhone, emergencyContactAddress: profileData.emergencyContactAddress,
-                        room: roomId !== undefined
-                            ? (roomId ? { connect: { id: parseInt(roomId) } } : { disconnect: true })
-                            : undefined
                     };
+                    // Auto-update status for PENDING_APPROVAL students when they complete their profile
+                    // Check if current status is PENDING_APPROVAL and check if profile is now complete
+                    if (currentProfile.status === client_1.StudentStatus.PENDING_APPROVAL) {
+                        // Use utility function to check if all required fields are filled
+                        if ((0, validation_1.isStudentProfileComplete)(Object.assign(Object.assign({}, currentProfile), updateData))) {
+                            console.log(`Student ${profileId} profile is now complete, automatically setting status to RENTING`);
+                            updateData.status = client_1.StudentStatus.RENTING;
+                        }
+                        else {
+                            // Keep as PENDING_APPROVAL if incomplete
+                            updateData.status = client_1.StudentStatus.PENDING_APPROVAL;
+                        }
+                    }
+                    else {
+                        // If not PENDING_APPROVAL, use the status provided or keep current
+                        updateData.status = profileData.status || currentProfile.status;
+                    }
+                    // Add room connection/disconnection if needed
+                    if (roomId !== undefined) {
+                        updateData.room = roomId ? { connect: { id: parseInt(roomId) } } : { disconnect: true };
+                    }
+                    const studentUpdateData = updateData;
                     const profileAfterUpdate = yield tx.studentProfile.update({
                         where: { id: profileId },
                         data: studentUpdateData,
@@ -483,6 +527,96 @@ class StudentController {
                 }
                 else if (error.message.includes('Không tìm thấy hồ sơ sinh viên')) {
                     return next(new Error(error.message));
+                }
+                next(error);
+            }
+        });
+    }
+    // Duyệt hồ sơ sinh viên (chuyển từ PENDING_APPROVAL sang RENTING)
+    approveStudent(req, res, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const profileId = parseInt(req.params.id);
+                if (isNaN(profileId)) {
+                    return next(new Error('ID hồ sơ sinh viên không hợp lệ'));
+                }
+                // Kiểm tra sinh viên có tồn tại và đang ở trạng thái PENDING_APPROVAL không
+                const student = yield prisma.studentProfile.findUnique({
+                    where: { id: profileId },
+                    include: { user: { select: { email: true } } }
+                });
+                if (!student) {
+                    return next(new Error(`Không tìm thấy hồ sơ sinh viên với ID ${profileId}`));
+                }
+                if (student.status !== client_1.StudentStatus.PENDING_APPROVAL) {
+                    return next(new Error('Chỉ có thể duyệt sinh viên có trạng thái "Chờ duyệt"'));
+                }
+                // Cập nhật trạng thái thành RENTING
+                const approvedStudent = yield prisma.studentProfile.update({
+                    where: { id: profileId },
+                    data: { status: client_1.StudentStatus.RENTING },
+                    include: {
+                        user: { select: { id: true, email: true, isActive: true, avatar: true } },
+                        room: { include: { building: true } }
+                    }
+                });
+                res.status(200).json({
+                    status: 'success',
+                    message: `Đã duyệt hồ sơ sinh viên "${student.fullName}" thành công`,
+                    data: approvedStudent
+                });
+            }
+            catch (error) {
+                console.error('Lỗi khi duyệt sinh viên:', error);
+                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                    return next(new Error(`Không tìm thấy hồ sơ sinh viên với ID ${req.params.id}`));
+                }
+                next(error);
+            }
+        });
+    }
+    // Từ chối hồ sơ sinh viên (chuyển từ PENDING_APPROVAL sang REJECTED/INACTIVE)
+    rejectStudent(req, res, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const profileId = parseInt(req.params.id);
+                if (isNaN(profileId)) {
+                    return next(new Error('ID hồ sơ sinh viên không hợp lệ'));
+                }
+                const { reason } = req.body;
+                // Kiểm tra sinh viên có tồn tại và đang ở trạng thái PENDING_APPROVAL không
+                const student = yield prisma.studentProfile.findUnique({
+                    where: { id: profileId },
+                    include: { user: { select: { email: true } } }
+                });
+                if (!student) {
+                    return next(new Error(`Không tìm thấy hồ sơ sinh viên với ID ${profileId}`));
+                }
+                if (student.status !== client_1.StudentStatus.PENDING_APPROVAL) {
+                    return next(new Error('Chỉ có thể từ chối sinh viên có trạng thái "Chờ duyệt"'));
+                }
+                // Cập nhật trạng thái thành CHECKED_OUT và ghi lý do (nếu có)
+                const rejectedStudent = yield prisma.studentProfile.update({
+                    where: { id: profileId },
+                    data: {
+                        status: client_1.StudentStatus.CHECKED_OUT,
+                        // Có thể thêm trường note hoặc rejectionReason nếu cần
+                    },
+                    include: {
+                        user: { select: { id: true, email: true, isActive: true, avatar: true } },
+                        room: { include: { building: true } }
+                    }
+                });
+                res.status(200).json({
+                    status: 'success',
+                    message: `Đã từ chối hồ sơ sinh viên "${student.fullName}"${reason ? `. Lý do: ${reason}` : ''}`,
+                    data: rejectedStudent
+                });
+            }
+            catch (error) {
+                console.error('Lỗi khi từ chối sinh viên:', error);
+                if (error instanceof client_1.Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                    return next(new Error(`Không tìm thấy hồ sơ sinh viên với ID ${req.params.id}`));
                 }
                 next(error);
             }

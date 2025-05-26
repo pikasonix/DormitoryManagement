@@ -13,10 +13,13 @@ const building_routes_1 = __importDefault(require("./building.routes"));
 const maintenance_routes_1 = __importDefault(require("./maintenance.routes"));
 const media_routes_1 = __importDefault(require("./media.routes"));
 const invoice_routes_1 = __importDefault(require("./invoice.routes"));
+const student_invoice_routes_1 = __importDefault(require("./student-invoice.routes"));
 const utility_routes_1 = __importDefault(require("./utility.routes"));
 const transfer_routes_1 = __importDefault(require("./transfer.routes"));
 const vehicle_routes_1 = __importDefault(require("./vehicle.routes"));
 const dashboard_routes_1 = __importDefault(require("./dashboard.routes"));
+const fee_routes_1 = __importDefault(require("./fee.routes"));
+const vnpay_1 = __importDefault(require("./vnpay"));
 const router = express_1.default.Router();
 // Test route
 router.get('/test', (req, res) => {
@@ -34,8 +37,11 @@ router.use('/buildings', building_routes_1.default);
 router.use('/maintenances', maintenance_routes_1.default);
 router.use('/media', media_routes_1.default);
 router.use('/invoices', invoice_routes_1.default);
+router.use('/student/invoices', student_invoice_routes_1.default);
 router.use('/utilities', utility_routes_1.default);
 router.use('/transfers', transfer_routes_1.default);
 router.use('/vehicles', vehicle_routes_1.default);
 router.use('/dashboard', dashboard_routes_1.default);
+router.use('/fees', fee_routes_1.default);
+router.use('/vnpay', vnpay_1.default);
 exports.default = router;

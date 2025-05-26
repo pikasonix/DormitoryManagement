@@ -18,55 +18,52 @@ class UtilityController {
     getAllReadings(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const { roomId, type, month, year, page, limit, search, roomNumber } = req.query;
+                const { roomId, type, month, year, page, limit, search, roomNumber, buildingId } = req.query;
                 console.log('Utility API called with query params:', req.query);
-                const options = { where: {} };
+                const options = { where: {} }; // Building filtering for STAFF users
+                if (buildingId) {
+                    if (!options.where.room) {
+                        options.where.room = {};
+                    }
+                    options.where.room.buildingId = parseInt(buildingId);
+                }
                 // Xây dựng bộ lọc
                 if (roomId)
-                    options.where.roomId = parseInt(roomId);
-                // Tìm kiếm theo số phòng nâng cao
+                    options.where.roomId = parseInt(roomId); // Tìm kiếm theo số phòng nâng cao
                 if (roomNumber) {
                     const roomSearch = roomNumber;
                     // Kiểm tra xem có phải pattern "306 (B3)" không
                     const roomWithBuildingPattern = /(\d+)\s*\(([^)]+)\)/;
                     const matchRoomWithBuilding = roomSearch.match(roomWithBuildingPattern);
+                    const roomFilter = Object.assign({}, (options.where.room || {}));
                     if (matchRoomWithBuilding) {
                         // Pattern "306 (B3)" - tìm theo cả số phòng và tòa nhà
                         const roomNum = matchRoomWithBuilding[1]; // "306"
                         const buildingName = matchRoomWithBuilding[2]; // "B3"
-                        options.where.room = {
-                            number: {
-                                contains: roomNum,
-                                mode: 'insensitive'
-                            },
-                            building: {
-                                name: {
-                                    contains: buildingName,
-                                    mode: 'insensitive'
-                                }
-                            }
+                        roomFilter.number = {
+                            contains: roomNum,
+                            mode: 'insensitive'
                         };
+                        roomFilter.building = Object.assign(Object.assign({}, roomFilter.building), { name: {
+                                contains: buildingName,
+                                mode: 'insensitive'
+                            } });
                     }
                     else if (/^\D+$/.test(roomSearch)) {
                         // Pattern chỉ có chữ cái (không có số) - có thể là tên tòa nhà "B3"
-                        options.where.room = {
-                            building: {
-                                name: {
-                                    contains: roomSearch,
-                                    mode: 'insensitive'
-                                }
-                            }
-                        };
+                        roomFilter.building = Object.assign(Object.assign({}, roomFilter.building), { name: {
+                                contains: roomSearch,
+                                mode: 'insensitive'
+                            } });
                     }
                     else {
                         // Mặc định - chỉ tìm theo số phòng
-                        options.where.room = {
-                            number: {
-                                contains: roomSearch,
-                                mode: 'insensitive'
-                            }
+                        roomFilter.number = {
+                            contains: roomSearch,
+                            mode: 'insensitive'
                         };
                     }
+                    options.where.room = roomFilter;
                 }
                 // Tìm kiếm chung
                 if (search) {

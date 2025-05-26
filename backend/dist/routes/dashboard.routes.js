@@ -16,4 +16,6 @@ router.get('/students/gender', dashboardController.getStudentsByGender);
 router.get('/rooms/occupancy', dashboardController.getRoomsOccupancy);
 // GET /api/dashboard/recent-activities - Lấy hoạt động gần đây
 router.get('/recent-activities', dashboardController.getRecentActivities);
+// GET /api/dashboard/room-statistics - Lấy thống kê phòng theo trạng thái
+router.get('/room-statistics', dashboardController.getRoomStatistics);
 exports.default = router;

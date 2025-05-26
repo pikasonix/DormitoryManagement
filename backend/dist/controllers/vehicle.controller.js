@@ -19,12 +19,37 @@ const vehicleService = new vehicle_service_1.VehicleService();
 class VehicleController {
     getAllRegistrations(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             try {
-                const { studentProfileId, vehicleType, isActive, licensePlate, parkingCardNo, page, limit } = req.query;
+                const { studentProfileId, vehicleType, isActive, licensePlate, parkingCardNo, hasParkingCardNo, buildingId, page, limit } = req.query;
+                const requesterUserId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+                const requesterRole = (_b = req.user) === null || _b === void 0 ? void 0 : _b.role;
                 const options = { where: {} };
-                // Xây dựng bộ lọc
-                if (studentProfileId)
-                    options.where.studentProfileId = parseInt(studentProfileId);
+                // Nếu là sinh viên, chỉ cho xem xe của chính mình
+                if (requesterRole === 'STUDENT') {
+                    const studentProfile = yield prisma.studentProfile.findUnique({
+                        where: { userId: requesterUserId },
+                        select: { id: true }
+                    });
+                    if (!studentProfile) {
+                        return next(new Error('Không tìm thấy hồ sơ sinh viên của bạn.'));
+                    }
+                    // Luôn filter theo studentProfileId của chính sinh viên đó
+                    options.where.studentProfileId = studentProfile.id;
+                } // Admin/Staff có thể xem tất cả hoặc lọc theo studentProfileId
+                else if (requesterRole === 'ADMIN' || requesterRole === 'STAFF') {
+                    if (studentProfileId)
+                        options.where.studentProfileId = parseInt(studentProfileId);
+                    // Nếu là STAFF và có buildingId, lọc theo tòa nhà
+                    if (requesterRole === 'STAFF' && buildingId) {
+                        options.where.studentProfile = {
+                            room: {
+                                buildingId: parseInt(buildingId)
+                            }
+                        };
+                    }
+                }
+                // Các bộ lọc khác
                 if (vehicleType && Object.values(client_1.VehicleType).includes(vehicleType)) {
                     options.where.vehicleType = vehicleType;
                 }
@@ -37,6 +62,15 @@ class VehicleController {
                     options.where.licensePlate = { contains: licensePlate, mode: 'insensitive' }; // Tìm kiếm biển số
                 if (parkingCardNo)
                     options.where.parkingCardNo = parkingCardNo;
+                // Lọc xe có hoặc không có parkingCardNo
+                if (hasParkingCardNo !== undefined) {
+                    if (hasParkingCardNo === 'true') {
+                        options.where.parkingCardNo = { not: null };
+                    }
+                    else {
+                        options.where.parkingCardNo = null;
+                    }
+                }
                 // Phân trang
                 const pageNum = parseInt(page) || 1;
                 const limitNum = parseInt(limit) || 10;
@@ -60,10 +94,32 @@ class VehicleController {
     }
     getRegistrationById(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             try {
                 const id = parseInt(req.params.id);
-                // Cần kiểm tra quyền xem ở đây (Admin/Staff hoặc chính sinh viên đó)
+                const requesterUserId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+                const requesterRole = (_b = req.user) === null || _b === void 0 ? void 0 : _b.role;
+                // Lấy thông tin xe trước
                 const registration = yield vehicleService.findById(id); // Service xử lý not found
+                // Kiểm tra xem có tìm thấy xe không
+                if (!registration) {
+                    return next(new Error('Không tìm thấy thông tin xe.'));
+                }
+                // Kiểm tra quyền xem chi tiết
+                if (requesterRole === 'STUDENT') {
+                    // Nếu là sinh viên, chỉ xem được xe của chính mình
+                    const studentProfile = yield prisma.studentProfile.findUnique({
+                        where: { userId: requesterUserId },
+                        select: { id: true }
+                    });
+                    if (!studentProfile) {
+                        return next(new Error('Không tìm thấy hồ sơ sinh viên của bạn.'));
+                    }
+                    // Nếu không phải xe của họ, từ chối truy cập
+                    if (registration.studentProfileId !== studentProfile.id) {
+                        return next(new Error('Bạn không có quyền xem thông tin xe này.'));
+                    }
+                }
                 res.status(200).json({
                     status: 'success',
                     data: registration
@@ -115,10 +171,9 @@ class VehicleController {
                     vehicleType: vehicleType,
                     licensePlate,
                     startDate, // Service sẽ chuyển thành Date
-                    brand, model, color, notes,
-                    // Chỉ Admin/Staff mới được set các trường này khi tạo?
+                    brand, model, color, notes, // Chỉ Admin/Staff mới được set các trường này khi tạo
                     parkingCardNo: (requesterRole !== 'STUDENT' ? parkingCardNo : undefined),
-                    isActive: (requesterRole !== 'STUDENT' ? isActive : true), // Sinh viên tự đăng ký thì mặc định active
+                    isActive: (requesterRole !== 'STUDENT' ? (isActive !== undefined ? isActive : true) : false), // Sinh viên tự đăng ký thì mặc định inactive (false) để đợi duyệt
                     endDate: (requesterRole !== 'STUDENT' ? endDate : undefined),
                     imageIds: imageIds ? (Array.isArray(imageIds) ? imageIds.map(Number) : [Number(imageIds)]) : undefined
                 };
@@ -167,12 +222,41 @@ class VehicleController {
                 next(error); // Chuyển lỗi từ service hoặc validation
             }
         });
-    }
-    // Admin/Staff xóa đăng ký xe
+    } // Admin/Staff xóa đăng ký xe hoặc sinh viên hủy đăng ký xe chờ duyệt của chính mình
     deleteRegistration(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             try {
                 const id = parseInt(req.params.id);
+                const requesterUserId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+                const requesterRole = (_b = req.user) === null || _b === void 0 ? void 0 : _b.role;
+                // Kiểm tra quyền xóa
+                if (requesterRole === 'STUDENT') {
+                    // Nếu là sinh viên, kiểm tra xem xe có phải của họ không
+                    const studentProfile = yield prisma.studentProfile.findUnique({
+                        where: { userId: requesterUserId },
+                        select: { id: true }
+                    });
+                    if (!studentProfile) {
+                        return next(new Error('Không tìm thấy hồ sơ sinh viên của bạn.'));
+                    }
+                    // Kiểm tra xe có thuộc sở hữu của sinh viên này không
+                    const vehicle = yield prisma.vehicleRegistration.findUnique({
+                        where: { id },
+                        select: { studentProfileId: true, isActive: true, parkingCardNo: true }
+                    });
+                    if (!vehicle) {
+                        return next(new Error('Không tìm thấy thông tin xe.'));
+                    }
+                    if (vehicle.studentProfileId !== studentProfile.id) {
+                        return next(new Error('Bạn không có quyền xóa thông tin xe này.'));
+                    }
+                    // Sinh viên chỉ được xóa xe đang chờ duyệt (isActive = false và chưa có parkingCardNo)
+                    if (vehicle.isActive || vehicle.parkingCardNo) {
+                        return next(new Error('Bạn chỉ có thể hủy đăng ký xe đang chờ duyệt.'));
+                    }
+                }
+                // Thực hiện xóa
                 const { oldImagePaths } = yield vehicleService.delete(id); // Service xử lý not found và transaction xóa
                 // Xóa file ảnh vật lý cũ
                 if (oldImagePaths.length > 0 && typeof file_service_1.deleteFile === 'function') {

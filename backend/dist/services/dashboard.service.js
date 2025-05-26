@@ -15,16 +15,43 @@ const prisma = new client_1.PrismaClient();
 class DashboardService {
     /**
      * Lấy các số liệu thống kê tổng quan cho dashboard.
+     * @param buildingId ID của tòa nhà cần lọc (tùy chọn)
      */
-    getStats() {
+    getStats(buildingId) {
         return __awaiter(this, void 0, void 0, function* () {
+            // Xây dựng các filter dựa trên buildingId
+            const studentFilter = {};
+            const roomFilter = {};
+            const maintenanceFilter = { status: 'PENDING' };
+            // Nếu có buildingId, áp dụng filter cho cả sinh viên, phòng và bảo trì
+            if (buildingId) {
+                // Lọc phòng trực tiếp theo buildingId
+                roomFilter.buildingId = buildingId;
+                // Đầu tiên lấy danh sách ID của các phòng trong tòa nhà
+                const roomIds = yield prisma.room.findMany({
+                    where: { buildingId: buildingId },
+                    select: { id: true }
+                });
+                const roomIdList = roomIds.map(r => r.id);
+                // Lọc sinh viên theo phòng thuộc tòa nhà
+                if (roomIdList.length > 0) {
+                    studentFilter.roomId = { in: roomIdList };
+                    // Lọc yêu cầu bảo trì theo phòng thuộc tòa nhà  
+                    maintenanceFilter.roomId = { in: roomIdList };
+                }
+                else {
+                    // Nếu không có phòng nào trong tòa nhà, trả về 0 cho tất cả
+                    studentFilter.id = -1; // Filter không thể có
+                    maintenanceFilter.id = -1; // Filter không thể có
+                }
+            }
             const [totalStudents, totalRooms, maleStudents, femaleStudents, totalBuildings, pendingMaintenance] = yield Promise.all([
-                prisma.studentProfile.count(),
-                prisma.room.count(),
-                prisma.studentProfile.count({ where: { gender: 'MALE' } }),
-                prisma.studentProfile.count({ where: { gender: 'FEMALE' } }),
-                prisma.building.count(),
-                prisma.maintenance.count({ where: { status: 'PENDING' } })
+                prisma.studentProfile.count({ where: studentFilter }),
+                prisma.room.count({ where: roomFilter }),
+                prisma.studentProfile.count({ where: Object.assign(Object.assign({}, studentFilter), { gender: 'MALE' }) }),
+                prisma.studentProfile.count({ where: Object.assign(Object.assign({}, studentFilter), { gender: 'FEMALE' }) }),
+                buildingId ? Promise.resolve(1) : prisma.building.count(), // Nếu có buildingId, chỉ có 1 tòa nhà
+                prisma.maintenance.count({ where: maintenanceFilter })
             ]);
             return {
                 totalStudents,

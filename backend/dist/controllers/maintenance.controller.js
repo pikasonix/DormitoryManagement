@@ -18,14 +18,41 @@ const maintenanceService = new maintenance_service_1.MaintenanceService();
 class MaintenanceController {
     getAllMaintenances(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             try {
                 // Lấy các tham số lọc từ query string
                 const { roomId, roomNumber, buildingName, status, assignedToId, buildingId, page, limit, id } = req.query;
-                console.log('[API] Maintenance filter params:', { roomId, roomNumber, buildingName, status, assignedToId, page, limit, id });
+                // Get user info and role from request object
+                const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId;
+                const userRole = (_b = req.user) === null || _b === void 0 ? void 0 : _b.role;
+                console.log('[API] Maintenance filter params:', { roomId, roomNumber, buildingName, status, assignedToId, page, limit, id, userRole });
                 // Phân trang
                 const pageNum = parseInt(page) || 1;
                 const limitNum = parseInt(limit) || 10;
                 const options = { where: {} };
+                // If user is a STUDENT, only show their maintenance requests
+                if (userRole === 'STUDENT' && userId) {
+                    // Find student's roomId if not provided in query
+                    if (!roomId) {
+                        const studentProfile = yield prisma.studentProfile.findUnique({
+                            where: { userId },
+                            select: { roomId: true }
+                        });
+                        if (studentProfile === null || studentProfile === void 0 ? void 0 : studentProfile.roomId) {
+                            // Filter by student's room
+                            options.where.roomId = studentProfile.roomId;
+                        }
+                        else {
+                            // Student has no room, return empty results
+                            return res.status(200).json({
+                                status: 'success',
+                                results: 0,
+                                total: 0,
+                                data: []
+                            });
+                        }
+                    }
+                }
                 // Xây dựng điều kiện lọc
                 if (id)
                     options.where.id = parseInt(id);
@@ -137,34 +164,37 @@ class MaintenanceController {
                             mode: 'insensitive'
                         }
                     };
-                }
-                // Lọc theo tòa nhà
+                } // Lọc theo tòa nhà
                 if (buildingId) {
-                    // Đảm bảo options.where!.room đã được khởi tạo
-                    if (!options.where.room) {
-                        options.where.room = {};
-                    }
+                    console.log(`[API] Filtering by buildingId: ${buildingId}`);
                     const buildingIdNum = parseInt(buildingId);
                     if (!isNaN(buildingIdNum)) {
-                        options.where.room.buildingId = buildingIdNum;
+                        // Đảm bảo options.where tồn tại
+                        options.where = options.where || {};
+                        // Xử lý trường hợp room filter đã được khởi tạo trước đó
+                        const existingRoom = options.where.room || {};
+                        // Tạo room filter với buildingId
+                        options.where.room = Object.assign(Object.assign({}, existingRoom), { buildingId: buildingIdNum });
+                        console.log(`[API] Applied buildingId filter: ${buildingIdNum}`);
                     }
                 }
                 // Hoặc lọc theo tên tòa nhà
                 else if (buildingName) {
-                    // Đảm bảo options.where!.room đã được khởi tạo
-                    if (!options.where.room) {
-                        options.where.room = {};
-                    }
-                    options.where.room.building = {
-                        name: {
-                            contains: buildingName,
-                            mode: 'insensitive'
-                        }
-                    };
-                }
-                // Áp dụng phân trang
+                    // Đảm bảo options.where tồn tại
+                    options.where = options.where || {};
+                    // Xử lý trường hợp room filter đã được khởi tạo trước đó
+                    const existingRoom = options.where.room || {};
+                    // Tạo room filter với building.name
+                    options.where.room = Object.assign(Object.assign({}, existingRoom), { building: Object.assign(Object.assign({}, (existingRoom.building || {})), { name: {
+                                contains: buildingName,
+                                mode: 'insensitive'
+                            } }) });
+                } // Áp dụng phân trang
                 options.skip = (pageNum - 1) * limitNum;
                 options.take = limitNum;
+                // Đảm bảo options.skip và options.take là số hợp lệ
+                options.skip = typeof options.skip === 'number' ? options.skip : 0;
+                options.take = typeof options.take === 'number' ? options.take : 10;
                 console.log('[API] Final query options:', JSON.stringify(options.where));
                 // Lấy tổng số bản ghi (cho phân trang phía client)
                 const totalRecords = yield prisma.maintenance.count({ where: options.where });
@@ -200,7 +230,7 @@ class MaintenanceController {
     }
     createMaintenance(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
-            var _a;
+            var _a, _b;
             try {
                 const { roomId, issue, notes, imageIds, assignedToId, status } = req.body;
                 const reporterUserId = (_a = req.user) === null || _a === void 0 ? void 0 : _a.userId; // Lấy userId của người dùng đang đăng nhập
@@ -209,20 +239,41 @@ class MaintenanceController {
                 }
                 if (!roomId || !issue) {
                     return next(new Error('Thiếu thông tin bắt buộc: roomId, issue.')); // Hoặc AppError 400
+                } // Kiểm tra vai trò người dùng
+                const userRole = (_b = req.user) === null || _b === void 0 ? void 0 : _b.role;
+                let reportedByUserId = reporterUserId;
+                if (userRole === client_1.Role.STUDENT) {
+                    // Sinh viên chỉ có thể tạo yêu cầu cho phòng của mình
+                    const reporterProfile = yield prisma.studentProfile.findUnique({
+                        where: { userId: reporterUserId },
+                        select: { id: true, roomId: true }
+                    });
+                    if (!reporterProfile) {
+                        return next(new Error('Không tìm thấy thông tin sinh viên.'));
+                    }
+                    // Kiểm tra xem sinh viên có đang ở phòng được yêu cầu không
+                    if (reporterProfile.roomId !== parseInt(roomId)) {
+                        return next(new Error('Sinh viên chỉ có thể tạo yêu cầu bảo trì cho phòng của mình.'));
+                    }
                 }
-                // Kiểm tra xem có phải sinh viên không (cần thiết vì reportedById giờ là userId)
-                const reporterProfile = yield prisma.studentProfile.findUnique({
-                    where: { userId: reporterUserId },
-                    select: { id: true }
-                });
-                if (!reporterProfile) {
-                    // Có thể là Staff/Admin báo cáo? Hoặc lỗi? Cần xác định logic.
-                    // Tạm thời báo lỗi nếu không phải sinh viên
-                    return next(new Error('Chỉ sinh viên mới có thể tạo báo cáo bảo trì qua API này.')); // Hoặc AppError 403
+                else if (userRole === client_1.Role.ADMIN || userRole === client_1.Role.STAFF) {
+                    // Admin/Staff có thể tạo yêu cầu cho bất kỳ phòng nào
+                    // Kiểm tra phòng có tồn tại không
+                    const roomExists = yield prisma.room.findUnique({
+                        where: { id: parseInt(roomId) }
+                    });
+                    if (!roomExists) {
+                        return next(new Error('Phòng không tồn tại.'));
+                    }
+                    // Admin/Staff tạo yêu cầu thay mặt cho hệ thống
+                    reportedByUserId = reporterUserId;
+                }
+                else {
+                    return next(new Error('Không có quyền tạo yêu cầu bảo trì.'));
                 }
                 const createData = {
                     roomId: parseInt(roomId),
-                    reportedById: reporterUserId, // Sử dụng userId trực tiếp thay vì profile.id
+                    reportedById: reportedByUserId, // Sử dụng userId đã được xác định theo role
                     issue,
                     notes,
                     imageIds: imageIds ? (Array.isArray(imageIds) ? imageIds.map(Number) : [Number(imageIds)]) : undefined,
@@ -276,6 +327,46 @@ class MaintenanceController {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const id = parseInt(req.params.id);
+                const user = req.user;
+                if (!user) {
+                    return res.status(401).json({ status: 'error', message: 'Người dùng chưa đăng nhập.' });
+                }
+                // Check if the maintenance request exists first
+                const existingRequest = yield prisma.maintenance.findUnique({
+                    where: { id },
+                    include: {
+                        reportedBy: true
+                    }
+                });
+                if (!existingRequest) {
+                    return res.status(404).json({
+                        status: 'error',
+                        message: 'Yêu cầu bảo trì không tồn tại.'
+                    });
+                }
+                // Permission check: 
+                // 1. Admin/Staff can delete any request
+                // 2. Students can only delete their own requests in PENDING status
+                if (user.role === client_1.Role.STUDENT) { // If student is trying to delete
+                    const studentProfile = yield prisma.studentProfile.findUnique({
+                        where: { userId: user.userId }
+                    });
+                    // Check if it's their own request - reportedById is already the userId
+                    if (!studentProfile || existingRequest.reportedById !== user.userId) {
+                        return res.status(403).json({
+                            status: 'error',
+                            message: 'Bạn không có quyền xóa yêu cầu bảo trì này.'
+                        });
+                    }
+                    // Check if request is in PENDING status
+                    if (existingRequest.status !== client_1.MaintenanceStatus.PENDING) {
+                        return res.status(403).json({
+                            status: 'error',
+                            message: 'Bạn chỉ có thể xóa yêu cầu bảo trì ở trạng thái Chờ Xử Lý.'
+                        });
+                    }
+                }
+                // If we get here, user has permission to delete
                 const { oldImagePaths } = yield maintenanceService.delete(id);
                 // Xóa file ảnh vật lý cũ sau khi xóa DB thành công
                 if (oldImagePaths.length > 0 && typeof file_service_1.deleteFile === 'function') {

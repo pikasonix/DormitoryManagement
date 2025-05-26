@@ -27,7 +27,8 @@ const authMiddleware = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
         req.user = {
             userId: decoded.userId,
             email: decoded.email,
-            role: decoded.role
+            role: decoded.role,
+            profileId: decoded.profileId // Thêm profileId nếu có
         };
         next();
     }

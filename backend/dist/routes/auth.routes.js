@@ -15,6 +15,8 @@ router.post('/register', auth_controller_1.AuthController.register);
 router.get('/me', auth_middleware_1.authMiddleware, auth_controller_1.AuthController.me);
 // POST /api/auth/logout - Đăng xuất (chủ yếu để client xóa token)
 router.post('/logout', auth_middleware_1.authMiddleware, auth_controller_1.AuthController.logout);
+// PUT /api/auth/change-password - Đổi mật khẩu người dùng đang đăng nhập
+router.put('/change-password', auth_middleware_1.authMiddleware, auth_controller_1.AuthController.changePassword);
 // GET /api/auth/login-history/:userId? - Lấy lịch sử đăng nhập (chỉ cho ADMIN và STAFF)
 router.get('/login-history/:userId?', auth_middleware_1.authMiddleware, auth_controller_1.AuthController.getLoginHistory);
 exports.default = router;

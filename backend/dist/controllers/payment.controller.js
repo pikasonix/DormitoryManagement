@@ -16,10 +16,9 @@ const library_1 = require("@prisma/client/runtime/library"); // Import Decimal
 const prisma = new client_1.PrismaClient();
 // Lấy danh sách thanh toán (có thể lọc)
 const getPayments = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        // Lấy tất cả các tham số lọc từ query params
+    try { // Lấy tất cả các tham số lọc từ query params
         const { id, studentId, studentProfileId, invoiceId, method, // Tham số từ frontend
-        page, limit, transactionCode } = req.query;
+        page, limit, transactionCode, buildingId } = req.query;
         // Lọc và phân trang
         const pageNum = parseInt(page) || 1;
         const limitNum = parseInt(limit) || 10;
@@ -50,13 +49,48 @@ const getPayments = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
         // Lọc theo phương thức thanh toán
         if (method) {
             whereClause.paymentMethod = method; // Sử dụng giá trị chính xác từ frontend
-        }
-        // Lọc theo mã giao dịch (nếu có)
+        } // Lọc theo mã giao dịch (nếu có)
         if (transactionCode) {
             whereClause.transactionCode = {
                 contains: transactionCode,
                 mode: 'insensitive' // Tìm kiếm không phân biệt chữ hoa/thường
             };
+        }
+        // Lọc theo tòa nhà (building filter for STAFF users)
+        if (buildingId) {
+            console.log('=== BUILDING FILTER DEBUG ===');
+            console.log('Building ID received:', buildingId);
+            const buildingIdNum = parseInt(buildingId);
+            console.log('Building ID parsed:', buildingIdNum);
+            // For payments, we need to filter by studentProfile.room.buildingId
+            // We need to handle existing studentProfile filters carefully
+            if (whereClause.studentProfile) {
+                // If there's already a studentProfile filter (e.g., from studentId search)
+                console.log('Existing studentProfile filter found:', JSON.stringify(whereClause.studentProfile, null, 2));
+                // We need to merge them using AND
+                const existingStudentProfileFilter = whereClause.studentProfile;
+                whereClause.studentProfile = {
+                    AND: [
+                        existingStudentProfileFilter,
+                        {
+                            room: {
+                                buildingId: buildingIdNum
+                            }
+                        }
+                    ]
+                };
+            }
+            else {
+                // If no existing studentProfile filter, just add the building filter
+                console.log('No existing studentProfile filter, adding building filter only');
+                whereClause.studentProfile = {
+                    room: {
+                        buildingId: buildingIdNum
+                    }
+                };
+            }
+            console.log('Final whereClause.studentProfile:', JSON.stringify(whereClause.studentProfile, null, 2));
+            console.log('=== END BUILDING FILTER DEBUG ===');
         }
         // Đếm tổng số bản ghi phù hợp với điều kiện lọc
         const totalRecords = yield prisma.payment.count({
@@ -73,7 +107,7 @@ const getPayments = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
                         id: true,
                         fullName: true,
                         studentId: true,
-                        room: { select: { id: true, number: true, building: { select: { name: true } } } }
+                        room: { select: { id: true, number: true, building: { select: { id: true, name: true } } } }
                     }
                 },
                 invoice: {
@@ -90,6 +124,22 @@ const getPayments = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
                 paymentDate: 'desc'
             }
         });
+        // Debug: Log the payments and their building info
+        if (buildingId) {
+            console.log('=== PAYMENT RESULTS DEBUG ===');
+            console.log(`Total payments found: ${payments.length}`);
+            payments.forEach((payment, index) => {
+                var _a, _b, _c, _d, _e, _f, _g, _h, _j;
+                console.log(`Payment ${index + 1}:`, {
+                    id: payment.id,
+                    studentId: (_a = payment.studentProfile) === null || _a === void 0 ? void 0 : _a.studentId,
+                    roomNumber: (_c = (_b = payment.studentProfile) === null || _b === void 0 ? void 0 : _b.room) === null || _c === void 0 ? void 0 : _c.number,
+                    buildingId: (_f = (_e = (_d = payment.studentProfile) === null || _d === void 0 ? void 0 : _d.room) === null || _e === void 0 ? void 0 : _e.building) === null || _f === void 0 ? void 0 : _f.id,
+                    buildingName: (_j = (_h = (_g = payment.studentProfile) === null || _g === void 0 ? void 0 : _g.room) === null || _h === void 0 ? void 0 : _h.building) === null || _j === void 0 ? void 0 : _j.name
+                });
+            });
+            console.log('=== END PAYMENT RESULTS DEBUG ===');
+        }
         res.status(200).json({
             status: 'success',
             results: payments.length,
