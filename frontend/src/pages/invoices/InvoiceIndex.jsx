@@ -179,7 +179,6 @@ const InvoiceIndex = () => {
                 fetchInvoices(currentPage, filters); // Refresh danh sách hóa đơn
             } catch (err) {
                 console.error('Lỗi tạo hóa đơn hàng loạt:', err);
-                toast.error(err?.message || 'Tạo hóa đơn hàng loạt thất bại.');
             } finally {
                 setIsBulkCreating(false);
             }
@@ -205,7 +204,7 @@ const InvoiceIndex = () => {
                 fetchInvoices(currentPage, filters); // Refresh danh sách hóa đơn
             } catch (err) {
                 console.error('Lỗi tạo hóa đơn tiền phòng:', err);
-                toast.error(err?.message || 'Tạo hóa đơn tiền phòng thất bại.');
+                // toast.error(err?.message || 'Tạo hóa đơn tiền phòng thất bại.');
             } finally {
                 setIsBulkCreating(false);
             }

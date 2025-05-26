@@ -36,20 +36,20 @@ const toastOptions = {
   },
 };
 
+// React.StrictMode removed to prevent duplicate API calls and toast notifications
+// in development mode. StrictMode intentionally double-invokes functions to help
+// detect side effects, but this was causing duplicate toasts when creating invoices.
 ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    {/* 1. Bọc toàn bộ ứng dụng bằng BrowserRouter */}
-    <BrowserRouter>
-      {/* 2. Bọc App bằng AuthProvider để cung cấp context */}
-      <AuthProvider>
-        <App />
-        {/* 3. Đặt Toaster ở đây để hiển thị thông báo global với cấu hình tùy chỉnh */}
-        <Toaster
-          position="top-right"
-          reverseOrder={false}
-          toastOptions={toastOptions}
-        />
-      </AuthProvider>
-    </BrowserRouter>
-  </React.StrictMode>
+  <BrowserRouter>
+    {/* 1. Bọc App bằng AuthProvider để cung cấp context */}
+    <AuthProvider>
+      <App />
+      {/* 2. Đặt Toaster ở đây để hiển thị thông báo global với cấu hình tùy chỉnh */}
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={toastOptions}
+      />
+    </AuthProvider>
+  </BrowserRouter>
 );

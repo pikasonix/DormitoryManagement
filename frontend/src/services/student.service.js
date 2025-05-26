@@ -122,20 +122,20 @@ const createStudent = async (studentData) => {
     // Nếu cần tạo user riêng, thì luồng sẽ phức tạp hơn.
     // Giả sử gửi thẳng data profile lên /students
     const response = await apiClient.post('/students', studentData);
-    
+
     // Handle success cases
     if (response.data?.success && response.data?.data) {
       return response.data.data;
     }
-    
+
     // Check for success message even if success flag is missing
-    if (response.data?.message && 
-        (response.data.message.includes('thành công') || 
-         response.data.message.includes('successfully'))) {
+    if (response.data?.message &&
+      (response.data.message.includes('thành công') ||
+        response.data.message.includes('successfully'))) {
       // If message indicates success but no data field, return the full response
       return response.data.data || response.data || { message: response.data.message };
     }
-    
+
     // If we get here, it's actually an error
     throw new Error(response.data?.message || 'Tạo hồ sơ sinh viên thất bại.');
   } catch (error) {

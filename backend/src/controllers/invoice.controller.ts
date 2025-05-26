@@ -10,7 +10,8 @@ const prisma = new PrismaClient();
 const invoiceService = new InvoiceService();
 
 export class InvoiceController {
-    async getAllInvoices(req: Request, res: Response, next: NextFunction) {        try {
+    async getAllInvoices(req: Request, res: Response, next: NextFunction) {
+        try {
             const {
                 studentProfileId, roomId, status, month, year, page, limit,
                 invoiceNumber, identifier, invoiceType, buildingId // Thêm tham số tìm kiếm mới: loại hóa đơn và building
@@ -36,7 +37,8 @@ export class InvoiceController {
                 } else {
                     // Nếu không có profileId, không cho phép xem hóa đơn nào
                     options.where!.id = -1;
-                }            } else {
+                }
+            } else {
                 // Đối với ADMIN/STAFF, xây dựng bộ lọc bình thường
                 if (studentProfileId) options.where!.studentProfileId = parseInt(studentProfileId as string);
                 if (roomId) options.where!.roomId = parseInt(roomId as string);

@@ -201,7 +201,7 @@ const BuildingForm = () => {
                 />
 
                 {/* Component upload ảnh tòa nhà */}
-                <ImageUpload
+                {/* <ImageUpload
                     ref={imageUploadRef}
                     label="Ảnh tòa nhà"
                     multiple={true}
@@ -213,7 +213,7 @@ const BuildingForm = () => {
                         // Lưu ID của các ảnh đã upload để gửi lên server
                         setImageIds(uploadedMedia.map(media => media.id).filter(Boolean));
                     }}
-                />
+                /> */}
 
                 {/* Nút Submit */}
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
