@@ -51,11 +51,19 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-      "img-src": ["'self'", "data:", "blob:", "http://localhost:5002", "*"]
+      "img-src": [
+        "'self'",
+        "data:",
+        "blob:",
+        "http://localhost:5002", // local dev
+        "https://dormitorymanagement-production.up.railway.app", // ✅ Thêm domain Railway
+        "*"
+      ]
     }
   },
   crossOriginEmbedderPolicy: false
 }));
+
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(compression());
