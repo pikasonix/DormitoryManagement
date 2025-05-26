@@ -13,7 +13,7 @@
     "dev:clean": "npm run kill && npm run dev",
     "build": "prisma generate && tsc",
     "postbuild": "node -e \"const fs=require('fs');const path=require('path');if(fs.existsSync('prisma')){try{fs.cpSync('prisma',path.join('dist','prisma'),{recursive:true});}catch(e){console.log('Copy prisma folder:',e.message);}}\"",
-    "railway:build": "prisma generate && npm run build",
+    "railway:build": "prisma generate && npx prisma db push && npx prisma db seed && npm run build",
     "railway:start": "prisma migrate deploy && npm run start:prod",
     "postinstall": "prisma generate",
     "health": "node scripts/health-check.js",
