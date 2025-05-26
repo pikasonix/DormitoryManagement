@@ -1,0 +1,510 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- User Authentication and Profiles ---
+
+model User {
+  id             Int      @id @default(autoincrement())
+  email          String   @unique // Email đăng nhập
+  password       String   // Mật khẩu đã hash
+  role           Role     @default(STUDENT) // Vai trò trong hệ thống
+  isActive       Boolean  @default(true) // Trạng thái hoạt động của tài khoản
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  resetToken     String?
+  resetTokenExpiry DateTime?
+  avatar         Media?   @relation(fields: [avatarId], references: [id]) // Avatar người dùng
+  avatarId       Int?
+
+  staffProfile   StaffProfile?   // Liên kết 1-1 đến hồ sơ nhân viên (nếu là STAFF)
+  studentProfile StudentProfile? // Liên kết 1-1 đến hồ sơ sinh viên (nếu là STUDENT)
+  loginLogs      LoginLog[]     // Lịch sử đăng nhập của người dùng
+
+  @@map("users")
+}
+
+enum Role {
+  STUDENT // Sinh viên ở KTX
+  STAFF   // Nhân viên quản lý KTX (quản lý tòa nhà)
+  ADMIN   // Quản trị viên hệ thống
+}
+
+// Hồ sơ chi tiết cho nhân viên quản lý
+model StaffProfile {
+  id                 Int      @id @default(autoincrement())
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             Int      @unique // Khóa ngoại liên kết đến User
+  fullName           String   // Họ và tên nhân viên
+  phoneNumber        String?  // Số điện thoại
+  position           String?  // Chức vụ (vd: Quản lý tòa B3)
+  identityCardNumber String?  @unique // Số CCCD/CMND
+  gender             Gender?
+  birthDate          DateTime? // Ngày sinh
+  address            String?  // Địa chỉ thường trú
+
+  // Nhân viên này quản lý tòa nhà nào? (Có thể null nếu quản lý chung hoặc chưa phân công)
+  managedBuilding    Building? @relation(fields: [managedBuildingId], references: [id])
+  managedBuildingId  Int?
+
+  // Các phần được phân công xử lý
+  assignedMaintenances Maintenance[] // Các báo hỏng được phân công xử lý
+  approvedTransfers   RoomTransfer[] // Các lần chuyển phòng đã duyệt
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("staff_profiles")
+}
+
+// Hồ sơ chi tiết cho sinh viên ở KTX
+model StudentProfile {
+  id                       Int      @id @default(autoincrement())
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId                   Int      @unique // Khóa ngoại liên kết đến User
+  studentId                String   @unique // Mã số sinh viên
+  fullName                 String   // Họ và tên
+  gender                   Gender
+  birthDate                DateTime // Ngày sinh (dùng DateTime)
+  identityCardNumber       String   @unique // Số CCCD/CMND/Hộ chiếu
+  ethnicity                String?  // Dân tộc
+  religion                 String?  // Tôn giáo
+  priorityObject           String?  // Đối tượng ưu tiên (text)
+  phoneNumber              String   // Số điện thoại liên hệ của sinh viên
+  personalEmail            String?  // Email cá nhân (khác email đăng nhập nếu cần)
+  // school                   String   // Trường (Mặc định là BKHN, có thể bỏ nếu không cần)
+  faculty                  String   // Khoa/Viện
+  courseYear               Int      // Khóa (vd: 66)
+  className                String?  // Lớp
+  permanentProvince        String?  // Tỉnh/Thành phố thường trú
+  permanentDistrict        String?  // Quận/Huyện thường trú
+  permanentAddress         String?  // Địa chỉ chi tiết thường trú
+
+  status                   StudentStatus @default(RENTING) // Trạng thái ở KTX
+  startDate                DateTime // Ngày bắt đầu ở
+  checkInDate              DateTime? // Ngày thực tế làm thủ tục vào ở
+  checkOutDate             DateTime? // Ngày thực tế làm thủ tục rời đi
+  contractEndDate          DateTime // Ngày hết hạn hợp đồng/dự kiến rời đi
+
+  // Thông tin gia đình
+  fatherName               String?
+  fatherDobYear            Int?     // Năm sinh cha
+  fatherPhone              String?
+  fatherAddress            String?
+  motherName               String?
+  motherDobYear            Int?     // Năm sinh mẹ
+  motherPhone              String?
+  motherAddress            String?
+
+  // Thông tin liên lạc khẩn cấp
+  emergencyContactRelation String?  // Quan hệ người cần báo tin (Ông, bà, cha, mẹ,...)
+  emergencyContactPhone    String?  // Số điện thoại báo tin
+  emergencyContactAddress  String?  // Địa chỉ báo tin
+
+  // Sinh viên này đang ở phòng nào?
+  room                     Room?    @relation(fields: [roomId], references: [id])
+  roomId                   Int?     // Có thể null ban đầu khi mới đăng ký
+
+  invoices                 Invoice[] // Các hóa đơn của sinh viên này
+  payments                 Payment[] // Các giao dịch thanh toán của sinh viên này
+  
+  // Lịch sử chuyển phòng
+  roomTransfers            RoomTransfer[]
+  
+  // Báo hỏng
+  reportedMaintenances     Maintenance[] @relation("reportedMaintenance")
+  
+  // Đăng ký xe
+  vehicleRegistrations     VehicleRegistration[]
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@map("student_profiles")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum StudentStatus {
+  PENDING_APPROVAL // Chờ duyệt hồ sơ (mới đăng ký)
+  RENTING          // Đang thuê/ở
+  EVICTED          // Bị buộc thôi ở
+  CHECKED_OUT      // Đã trả phòng/rời đi
+}
+
+// --- Building and Room Management ---
+
+model Building {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // Tên tòa nhà (vd: B3, B9)
+  address     String?  // Địa chỉ cụ thể của tòa nhà (nếu cần)
+  description String?  // Mô tả thêm
+  images      Media[]  @relation("BuildingImages") // Ảnh của tòa nhà
+
+  rooms       Room[]   // Danh sách các phòng trong tòa nhà
+  staff       StaffProfile[] // Nhân viên quản lý tòa nhà này
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("buildings")
+}
+
+model Room {
+  id              Int          @id @default(autoincrement())
+  building        Building     @relation(fields: [buildingId], references: [id])
+  buildingId      Int          // Khóa ngoại tới tòa nhà
+  number          String       // Số phòng (vd: 301, 505A) - nên unique trong phạm vi tòa nhà
+  type            RoomType     // Loại phòng
+  capacity        Int          // Sức chứa tối đa
+  actualOccupancy Int          @default(0) // Số người thực tế đang ở
+  floor           Int          // Tầng số mấy
+  status          RoomStatus   @default(AVAILABLE) // Trạng thái phòng
+  description     String?      // Mô tả thêm về phòng
+  roomFee         Decimal      @default(0) @db.Decimal(15, 2) // Phí phòng mỗi tháng
+  images          Media[]      @relation("RoomImages") // Ảnh của phòng
+
+  residents       StudentProfile[] // Danh sách sinh viên đang ở phòng này
+  amenities       RoomAmenity[]    // Các tiện nghi có trong phòng
+  meterReadings   UtilityMeterReading[] // Lịch sử ghi số điện/nước
+  invoices        Invoice[]        // Các hóa đơn điện nước của phòng
+  
+  // Báo hỏng phòng
+  maintenances    Maintenance[]
+  
+  // Chuyển phòng
+  fromTransfers   RoomTransfer[]   @relation("FromRoom")
+  toTransfers     RoomTransfer[]   @relation("ToRoom")
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([buildingId, number]) // Đảm bảo số phòng là duy nhất trong tòa nhà
+  @@map("rooms")
+}
+
+enum RoomType {
+  MALE     // Phòng dành cho nam
+  FEMALE   // Phòng dành cho nữ
+  MANAGEMENT // Phòng quản lý/nhân viên
+}
+
+enum RoomStatus {
+  AVAILABLE        // Còn chỗ / Sẵn sàng
+  FULL             // Đủ người
+  UNDER_MAINTENANCE // Đang sửa chữa (Không khả dụng)
+  // HAS_VACANCY    // Có chỗ trống (có thể tính toán thay vì lưu trữ)
+}
+
+model Amenity {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // Tên tiện nghi (vd: Điều hòa, Nóng lạnh, WC riêng)
+  description String?
+  url         String?  // URL hình ảnh tiện nghi
+
+  rooms       RoomAmenity[] // Liên kết đến các phòng có tiện nghi này
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("amenities")
+}
+
+// Bảng trung gian cho quan hệ nhiều-nhiều Room <-> Amenity
+model RoomAmenity {
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId     Int
+  amenity    Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+  amenityId  Int
+  quantity   Int      @default(1) // Số lượng tiện nghi này trong phòng (vd: 2 WC)
+  notes      String?  // Ghi chú thêm
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+
+  @@id([roomId, amenityId])
+  @@map("room_amenities")
+}
+
+// --- Bảng Quản lý Đơn giá các loại phí ---
+// Bảng này giúp lưu trữ lịch sử giá và quản lý tập trung mọi loại phí
+
+model FeeRate {
+  id             Int          @id @default(autoincrement())
+  name           String       // Tên loại phí (vd: "Tiền điện", "Tiền nước", "Phí gửi xe máy")
+  feeType        FeeType      // Loại phí (ROOM_FEE, ELECTRICITY, WATER, PARKING, OTHER_FEE)
+  vehicleType    VehicleType? // Chỉ áp dụng cho loại phương tiện nào (nếu là PARKING)
+  unitPrice      Decimal      @db.Decimal(12, 2) // Đơn giá (VNĐ/kWh, VNĐ/m3, VNĐ/tháng)
+  unit           String?      // Đơn vị tính (kWh, m3, tháng, ...)
+  effectiveFrom  DateTime     // Thời điểm bắt đầu áp dụng mức giá này
+  effectiveTo    DateTime?    // Thời điểm kết thúc áp dụng, null nếu vẫn còn hiệu lực
+  description    String?      // Mô tả thêm
+  isActive       Boolean      @default(true) // Trạng thái kích hoạt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@map("fee_rates")
+}
+
+// --- Billing and Payments ---
+
+model Invoice {
+  id             Int           @id @default(autoincrement())
+  studentProfile StudentProfile? @relation(fields: [studentProfileId], references: [id]) // Hóa đơn cá nhân (tiền phòng, gửi xe,...)
+  studentProfileId Int?
+  room           Room?         @relation(fields: [roomId], references: [id]) // Hóa đơn chung của phòng (điện, nước)
+  roomId         Int?
+
+  billingMonth   Int           // Tháng lập hóa đơn (1-12)
+  billingYear    Int           // Năm lập hóa đơn
+  issueDate      DateTime      @default(now()) // Ngày phát hành hóa đơn
+  dueDate        DateTime      // Hạn thanh toán
+  paymentDeadline DateTime     // Hạn cuối cùng phải thanh toán (có thể khác hạn thông thường)
+  totalAmount    Decimal       @db.Decimal(15, 2) // Tổng số tiền cần thanh toán
+  paidAmount     Decimal       @default(0) @db.Decimal(15, 2) // Số tiền đã thanh toán
+  status         InvoiceStatus @default(UNPAID) // Trạng thái hóa đơn
+  notes          String?       // Ghi chú hóa đơn
+
+  items          InvoiceItem[] // Chi tiết các khoản trong hóa đơn
+  payments       Payment[]     // Các giao dịch thanh toán cho hóa đơn này
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Đảm bảo hóa đơn phải thuộc về sinh viên HOẶC phòng, không thể cả hai hoặc không có gì
+  @@index([studentProfileId])
+  @@index([roomId])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          Int         @id @default(autoincrement())
+  invoice     Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoiceId   Int
+  type        PaymentType // Loại phí (Tiền phòng, Điện, Nước,...)
+  description String      // Mô tả chi tiết (vd: Tiền điện tháng 5/2024)
+  amount      Decimal     @db.Decimal(12, 2) // Số tiền của khoản này
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("invoice_items")
+}
+
+// Enum cho loại phí - sử dụng chung cho FeeRate và InvoiceItem
+enum FeeType {
+  ROOM_FEE    // Tiền phòng
+  ELECTRICITY // Tiền điện
+  WATER       // Tiền nước
+  PARKING     // Phí gửi xe
+  OTHER_FEE   // Phí khác
+  // DEPOSIT  // Tiền cọc (nếu cần quản lý)
+  // FINE     // Phí phạt (nếu cần)
+}
+
+// Giữ nguyên enum này để tương thích với code cũ
+enum PaymentType {
+  ROOM_FEE    // Tiền phòng
+  ELECTRICITY // Tiền điện
+  WATER       // Tiền nước
+  PARKING     // Phí gửi xe
+  OTHER_FEE   // Phí khác
+}
+
+enum InvoiceStatus {
+  UNPAID          // Chưa thanh toán
+  PAID            // Đã thanh toán đủ
+  PARTIALLY_PAID  // Đã thanh toán một phần
+  OVERDUE         // Quá hạn
+  CANCELLED       // Đã hủy
+}
+
+// Ghi lại mỗi giao dịch thanh toán thực tế
+model Payment {
+  id             Int            @id @default(autoincrement())
+  invoice        Invoice        @relation(fields: [invoiceId], references: [id])
+  invoiceId      Int            // Thanh toán cho hóa đơn nào
+  studentProfile StudentProfile @relation(fields: [studentProfileId], references: [id])
+  studentProfileId Int            // Ai là người thanh toán
+  amount         Decimal        @db.Decimal(15, 2) // Số tiền thanh toán
+  paymentDate    DateTime       @default(now()) // Ngày thanh toán
+  paymentMethod  String?        // Phương thức thanh toán (Tiền mặt, Chuyển khoản,...)
+  transactionCode String?       // Mã giao dịch (nếu có)
+  notes          String?        // Ghi chú thanh toán
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@map("payments")
+}
+
+// --- Utility Meter Readings ---
+
+model UtilityMeterReading {
+  id           Int         @id @default(autoincrement())
+  room         Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  roomId       Int         // Ghi số cho phòng nào
+  type         UtilityType // Loại công tơ (Điện/Nước)
+  readingDate  DateTime    // Ngày ghi số
+  indexValue   Float       // Chỉ số công tơ
+  billingMonth Int         // Dùng để tính hóa đơn cho tháng nào
+  billingYear  Int         // Dùng để tính hóa đơn cho năm nào
+  notes        String?
+
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@index([roomId, type, billingYear, billingMonth]) // Index để tra cứu nhanh
+  @@map("utility_meter_readings")
+}
+
+enum UtilityType {
+  ELECTRICITY
+  WATER
+}
+
+// --- Quản lý báo hỏng và sửa chữa ---
+
+model Maintenance {
+  id            Int      @id @default(autoincrement())
+  room          Room     @relation(fields: [roomId], references: [id])
+  roomId        Int
+  reportedBy    StudentProfile @relation("reportedMaintenance", fields: [reportedById], references: [userId])
+  reportedById  Int      // Tham chiếu đến userId (không phải id) trong StudentProfile
+  issue         String   // Mô tả vấn đề
+  reportDate    DateTime @default(now())
+  status        MaintenanceStatus @default(PENDING)
+  assignedTo    StaffProfile? @relation(fields: [assignedToId], references: [id])
+  assignedToId  Int?
+  completedDate DateTime?
+  notes         String?
+  images        Media[]  @relation("MaintenanceImages") // Ảnh kèm theo báo cáo bảo trì
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("maintenances")
+}
+
+enum MaintenanceStatus {
+  PENDING
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+// --- Lịch sử chuyển phòng ---
+
+model RoomTransfer {
+  id               Int            @id @default(autoincrement())
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id])
+  studentProfileId Int
+  fromRoom         Room?          @relation("FromRoom", fields: [fromRoomId], references: [id])
+  fromRoomId       Int?
+  toRoom           Room           @relation("ToRoom", fields: [toRoomId], references: [id])
+  toRoomId         Int
+  transferDate     DateTime
+  reason           String?
+  adminNotes       String?        // Admin notes when approving or rejecting requests
+  approvedBy       StaffProfile?  @relation(fields: [approvedById], references: [id])
+  approvedById     Int?
+  status           TransferStatus @default(PENDING)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@map("room_transfers")
+}
+
+enum TransferStatus {
+  PENDING
+  APPROVED
+  COMPLETED
+  REJECTED
+}
+
+// --- Quản lý xe và thẻ gửi xe ---
+
+model VehicleRegistration {
+  id               Int            @id @default(autoincrement())
+  studentProfile   StudentProfile @relation(fields: [studentProfileId], references: [id])
+  studentProfileId Int
+  vehicleType      VehicleType
+  licensePlate     String
+  brand            String?
+  model            String?
+  color            String?
+  parkingCardNo    String?        @unique
+  isActive         Boolean        @default(true)
+  startDate        DateTime
+  endDate          DateTime?
+  notes            String?
+  images           Media[]        @relation("VehicleImages") // Ảnh xe
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@map("vehicle_registrations")
+}
+
+enum VehicleType {
+  BICYCLE
+  MOTORBIKE
+  ELECTRIC_BICYCLE // Xe đạp/máy điện
+  CAR
+  OTHER
+}
+
+// --- Media Management ---
+
+model Media {
+  id               Int          @id @default(autoincrement())
+  filename         String       // Tên file
+  path             String       // Đường dẫn lưu trữ trên server/cloud
+  mimeType         String       // Kiểu MIME (vd: image/jpeg, image/png)
+  size             Int          // Kích thước file (bytes)
+  mediaType        MediaType    // Loại media (xác định role của file)
+  uploadedAt       DateTime     @default(now()) // Thời điểm upload
+
+  // Các quan hệ truy ngược
+  avatarFor        User[]       // Avatar cho user nào
+  roomImages       Room[]       @relation("RoomImages") // Ảnh của phòng nào
+  buildingImages   Building[]   @relation("BuildingImages") // Ảnh của tòa nhà nào
+  vehicleImages    VehicleRegistration[] @relation("VehicleImages") // Ảnh của xe nào
+  maintenanceImages Maintenance[] @relation("MaintenanceImages") // Ảnh báo cáo bảo trì
+
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@map("media")
+}
+
+enum MediaType {
+  USER_AVATAR     // Avatar người dùng
+  ROOM_IMAGE      // Ảnh phòng
+  BUILDING_IMAGE  // Ảnh tòa nhà
+  VEHICLE_IMAGE   // Ảnh xe
+  MAINTENANCE_IMAGE // Ảnh báo cáo bảo trì
+  OTHER           // Loại ảnh khác
+}
+
+// Model lưu lịch sử đăng nhập (chỉ cho ADMIN và STAFF)
+model LoginLog {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  timestamp   DateTime  @default(now())
+  ipAddress   String?
+  userAgent   String?
+  status      String    // SUCCESS hoặc FAILED
+  location    String?   // Thông tin vị trí (có thể lấy từ IP)
+
+  @@index([userId])
+}
