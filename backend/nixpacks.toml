@@ -4,18 +4,15 @@ nixPkgs = ['nodejs_18', 'openssl_3_0', 'pkg-config']
 [phases.install]
 cmds = [
     'npm ci --omit=dev',
-    'npx prisma generate --no-engine'
+    'npx prisma generate'
 ]
 
 [phases.build] 
-cmds = [
-    'npx prisma generate',
-    'npm run railway:build'
-]
+cmds = ['npm run railway:build']
 
 [start]
 cmd = 'npm run railway:start'
 
 [variables]
-PRISMA_CLI_BINARY_TARGETS = "debian-openssl-3.0.x,linux-musl-openssl-3.0.x"
+PRISMA_CLI_BINARY_TARGETS = "debian-openssl-3.0.x"
 OPENSSL_CONF = "/dev/null"
