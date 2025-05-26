@@ -17,6 +17,7 @@ import {
     TruckIcon
 } from '@heroicons/react/24/outline';
 import SecuritySettings from '../../components/profile/SecuritySettings';
+import defaultAvatar from '../../assets/default-avatar.png';
 
 // Helper format date
 const formatDate = (dateString) => {
@@ -98,15 +99,9 @@ const StudentProfilePage = () => {
                 {(value !== null && value !== undefined && value !== '') ? value : <span className="text-gray-400">-</span>}
             </dd>
         </div>
-    );    // Get avatar URL
+    );    // Get avatar URL - always use default avatar
     const getAvatarUrl = (user) => {
-        const baseUrl = import.meta.env.VITE_UPLOADS_URL || '';
-        if (user?.avatar?.path) {
-            const path = user.avatar.path;
-            return path.startsWith('http') ? path : `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
-        }
-        // Sử dụng đường dẫn tương đối hoặc import trực tiếp
-        return new URL('/src/assets/default-avatar.png', import.meta.url).href;
+        return defaultAvatar;
     };// Render basic information tab
     const renderBasicInfo = (profile) => (
         <dl className="divide-y divide-gray-100">
@@ -275,10 +270,9 @@ const StudentProfilePage = () => {
                     <div className="flex items-center gap-4">                        <img
                         src={avatarUrl}
                         alt={`Avatar của ${profile.fullName}`}
-                        className="h-20 w-20 rounded-full object-cover ring-2 ring-offset-2 ring-indigo-500"
-                        onError={(e) => {
+                        className="h-20 w-20 rounded-full object-cover ring-2 ring-offset-2 ring-indigo-500" onError={(e) => {
                             e.target.onerror = null;
-                            e.target.src = new URL('/src/assets/default-avatar.png', import.meta.url).href;
+                            e.target.src = defaultAvatar;
                         }}
                     />
                         <div>

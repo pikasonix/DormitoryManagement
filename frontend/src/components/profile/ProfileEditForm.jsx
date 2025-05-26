@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import LoadingSpinner from '../shared/LoadingSpinner';
 import { useAuth } from '../../contexts/AuthContext';
 import { Input, Button, Select, Textarea } from '../shared'; // **Import các component chung**
+import defaultAvatar from '../../assets/default-avatar.png';
 
 // Định nghĩa các tùy chọn cho Select (ví dụ)
 const genderOptions = [
@@ -225,7 +226,7 @@ const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
 
     // --- Xử lý đường dẫn avatar chuẩn ---
     const getAvatarUrl = (avatarPath) => {
-        if (!avatarPath) return '/src/assets/default-avatar.png';
+        if (!avatarPath) return defaultAvatar;
 
         // Nếu là URL đầy đủ thì trả về nguyên vẹn
         if (avatarPath.startsWith('http')) {
@@ -258,11 +259,9 @@ const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
         });
 
         return fullUrl;
-    };
-
-    const currentAvatarUrl = user?.avatar?.path
+    }; const currentAvatarUrl = user?.avatar?.path
         ? getAvatarUrl(user.avatar.path)
-        : '/src/assets/default-avatar.png';
+        : defaultAvatar;
 
     return (
         <form onSubmit={handleSubmit} className="bg-white shadow sm:rounded-lg">
@@ -271,7 +270,7 @@ const ProfileEditForm = ({ user, onCancel, onSaveSuccess }) => {
                 <div>
                     <h3 className="text-base font-semibold leading-7 text-gray-900">Ảnh đại diện</h3>
                     <div className="mt-4 flex items-center gap-x-4">
-                        <img className="h-20 w-20 rounded-full object-cover bg-gray-200" src={newAvatarPreview || currentAvatarUrl} alt="Avatar Preview" onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png' }} />
+                        <img className="h-20 w-20 rounded-full object-cover bg-gray-200" src={newAvatarPreview || currentAvatarUrl} alt="Avatar Preview" onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar }} />
                         <div className='flex flex-col sm:flex-row gap-3'>
                             <label htmlFor="avatar-upload" className="cursor-pointer rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 inline-flex items-center justify-center">
                                 <CameraIcon className="h-5 w-5 mr-1.5 text-gray-500" aria-hidden="true" />

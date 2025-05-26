@@ -12,6 +12,7 @@ import AdminLoginHistory from '../../components/profile/AdminLoginHistory';
 import SecuritySettings from '../../components/profile/SecuritySettings';
 import Tabs from '../../components/shared/Tabs';
 import Tab from '../../components/shared/Tab';
+import defaultAvatar from '../../assets/default-avatar.png';
 
 // Helper format functions
 const formatDate = (dateString) => {
@@ -75,16 +76,9 @@ const AdminProfilePage = () => {
                 {(value !== null && value !== undefined && value !== '') ? value : <span className="text-gray-400">-</span>}
             </dd>
         </div>
-    );
-
-    // Get avatar URL
+    );    // Get avatar URL - Always use default avatar instead of API
     const getAvatarUrl = (user) => {
-        const baseUrl = import.meta.env.VITE_UPLOADS_URL || '';
-        if (user?.avatar?.path) {
-            const path = user.avatar.path;
-            return path.startsWith('http') ? path : `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
-        }
-        return '/src/assets/default-avatar.png';
+        return defaultAvatar;
     };
 
     // Handle avatar change
@@ -174,7 +168,7 @@ const AdminProfilePage = () => {
                                 src={avatarUrl}
                                 alt={`Avatar của ${staffProfile.fullName || profile.email}`}
                                 className="h-20 w-20 rounded-full object-cover ring-2 ring-offset-2 ring-indigo-500"
-                                onError={(e) => { e.target.onerror = null; e.target.src = '/src/assets/default-avatar.png' }}
+                                onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar }}
                             />
                             <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                                 <label htmlFor="avatar-upload" className="cursor-pointer w-full h-full flex items-center justify-center text-white">

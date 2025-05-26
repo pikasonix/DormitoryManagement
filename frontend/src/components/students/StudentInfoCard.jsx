@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { UserCircleIcon, EnvelopeIcon, PhoneIcon, HomeIcon, BuildingOfficeIcon, AcademicCapIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import Badge from '../shared/Badge'; // Import Badge
+import defaultAvatar from '../../assets/default-avatar.png';
 
 const API_ASSET_URL = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || '';
 
@@ -24,7 +25,7 @@ const StudentInfoCard = ({ student }) => {
     const building = room?.building;
     const avatarUrl = user?.avatar?.path
         ? (user.avatar.path.startsWith('http') ? user.avatar.path : `${API_ASSET_URL}${user.avatar.path}`)
-        : '/src/assets/default-avatar.png';
+        : defaultAvatar;
 
     const statusBadge = getStatusBadge(profile.status);
 

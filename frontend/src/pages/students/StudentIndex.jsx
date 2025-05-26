@@ -10,6 +10,7 @@ import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useAuth } from '../../contexts/AuthContext';
+import defaultAvatar from '../../assets/default-avatar.png';
 
 // Helper format ngày
 const formatDate = (dateString) => {
@@ -213,19 +214,11 @@ const StudentIndex = () => {
       Header: 'Ảnh',
       accessor: 'avatar',
       Cell: ({ value, row }) => {
-        const UPLOADS_BASE_URL = import.meta.env.VITE_UPLOADS_URL || '';
-        let avatarUrl = 'src/assets/default-avatar.png';
+        // Always use default avatar
+        let avatarUrl = defaultAvatar;
 
         try {
-          // Try different avatar sources
-          const original = row?.original;
-          if (original?.user?.avatar?.path) {
-            avatarUrl = original.user.avatar.path.startsWith('http')
-              ? original.user.avatar.path
-              : `${UPLOADS_BASE_URL}${original.user.avatar.path.startsWith('/') ? '' : '/'}${original.user.avatar.path}`;
-          } else if (original?.user?.avatarUrl) {
-            avatarUrl = original.user.avatarUrl;
-          }
+          // No API logic needed - always use default avatar
         } catch (error) {
           console.log('Avatar rendering error:', error);
         }
@@ -235,7 +228,7 @@ const StudentIndex = () => {
             src={avatarUrl}
             alt="Avatar"
             className="h-8 w-8 rounded-full object-cover mx-auto"
-            onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png' }}
+            onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar }}
           />
         );
       }

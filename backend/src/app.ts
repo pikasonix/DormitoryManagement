@@ -56,7 +56,7 @@ app.use(helmet({
         "data:",
         "blob:",
         "http://localhost:5002", // local dev
-        "https://dormitorymanagement-production.up.railway.app", // ✅ Thêm domain Railway
+        "https://dormitorymanagement-production.up.railway.app",
         "*"
       ]
     }

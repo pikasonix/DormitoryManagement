@@ -10,6 +10,7 @@ import { toast } from 'react-hot-toast';
 import { ArrowLeftIcon, CheckCircleIcon, ClockIcon, XCircleIcon, PencilSquareIcon, PaperClipIcon, EyeIcon, UserIcon } from '@heroicons/react/24/outline';
 import { format, parseISO } from 'date-fns';
 import { vi } from 'date-fns/locale';
+import defaultAvatar from '../../assets/default-avatar.png';
 
 // --- Helper Functions ---
 const formatDate = (dateString) => {
@@ -218,10 +219,10 @@ const MaintenanceForm = () => {
                                     const imageUrl = image.url || image.path; // Ưu tiên url nếu có
                                     const finalImageUrl = imageUrl
                                         ? (imageUrl.startsWith('http') ? imageUrl : `${UPLOADS_BASE_URL || ''}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`)
-                                        : 'src/assets/default-avatar.png';
+                                        : defaultAvatar;
                                     return (
                                         <a key={image.id || index} href={finalImageUrl} target="_blank" rel="noopener noreferrer" className="relative block aspect-square group border rounded-md overflow-hidden bg-gray-100">
-                                            <img src={finalImageUrl} alt={`Ảnh ${index + 1}`} className="object-contain w-full h-full" onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png' }} />
+                                            <img src={finalImageUrl} alt={`Ảnh ${index + 1}`} className="object-contain w-full h-full" onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar }} />
                                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-opacity flex items-center justify-center">
                                                 <EyeIcon className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                                             </div>

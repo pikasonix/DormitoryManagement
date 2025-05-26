@@ -7,6 +7,7 @@ import SecuritySettings from '../components/profile/SecuritySettings'; // Đảm
 import LoadingSpinner from '../components/shared/LoadingSpinner'; // Import Spinner
 import { toast } from 'react-hot-toast';
 import StudentProfilePage from './profile/StudentProfilePage';
+import defaultAvatar from '../assets/default-avatar.png';
 
 const Profile = () => {
   const { user, isLoading: isAuthLoading, checkAuthStatus } = useAuth(); // Lấy thêm isLoading và hàm refresh
@@ -44,7 +45,7 @@ const Profile = () => {
 
   // --- Xử lý đường dẫn avatar chuẩn ---
   const getAvatarUrl = (avatarPath) => {
-    if (!avatarPath) return '/src/assets/default-avatar.png';
+    if (!avatarPath) return defaultAvatar;
 
     // Nếu là URL đầy đủ thì trả về nguyên vẹn
     if (avatarPath.startsWith('http')) {
@@ -65,10 +66,9 @@ const Profile = () => {
 
     return fullUrl;
   };
-
   const avatarUrl = user.avatar?.path
     ? getAvatarUrl(user.avatar.path)
-    : '/src/assets/default-avatar.png';
+    : defaultAvatar;
 
   // --- Render ---
   return (
@@ -85,7 +85,7 @@ const Profile = () => {
             className="h-16 w-16 rounded-full object-cover ring-2 ring-offset-2 ring-indigo-500 sm:h-20 sm:w-20" // Thay đổi ring style
             src={avatarUrl}
             alt="User Avatar"
-            onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png' }} // Fallback nếu ảnh lỗi
+            onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar }} // Fallback nếu ảnh lỗi
           />
           <div>
             {/* **Kiểm tra user.profile trước khi dùng fullName** */}

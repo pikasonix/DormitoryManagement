@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useMemo, useEffect } from 'react'; // Thêm useEffect
 import { useAuth } from '../contexts/AuthContext'; // Import useAuth
-import { getMediaUrl } from '../utils/mediaUtils';
+import defaultAvatar from '../assets/default-avatar.png';
 // Import Icons (Đảm bảo đã import đủ các icon cần dùng)
 import {
   HomeIcon,              // Dashboard
@@ -23,9 +23,6 @@ import {
 } from '@heroicons/react/24/outline';
 // LoadingSpinner không cần thiết ở đây vì PrivateRoute xử lý
 // Notification không cần nếu dùng Toaster global
-
-// Thêm default avatar path
-const DEFAULT_AVATAR = 'src/assets/default-avatar.png';
 
 // --- Component Sidebar tách biệt ---
 const SidebarContent = ({ navigation, pathname }) => {
@@ -116,40 +113,10 @@ const DashboardLayout = () => {
   const handleLogout = () => {
     setIsProfileOpen(false);
     logout();
-  };
-
-  // --- Cập nhật lại hàm getAvatarUrl ---
+  };  // --- Simplified getAvatarUrl function to always use default avatar ---
   const getAvatarUrl = () => {
-    // Nếu user có avatarUrl là một đường link hoàn chỉnh (bắt đầu với http/https), sử dụng trực tiếp
-    if (user?.avatarUrl && typeof user.avatarUrl === 'string' && user.avatarUrl.trim() !== '') {
-      // Kiểm tra xem URL có bắt đầu bằng http:// hoặc https:// không
-      if (user.avatarUrl.startsWith('http://') || user.avatarUrl.startsWith('https://')) {
-        console.log('Sử dụng URL đầy đủ:', user.avatarUrl);
-        return user.avatarUrl;
-      } else {
-        // Nếu là đường dẫn tương đối, thêm URL cơ sở
-        console.log('Sử dụng URL tương đối:', user.avatarUrl);
-        const baseUrl = import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, '') || '';
-        return `${baseUrl}${user.avatarUrl.startsWith('/') ? '' : '/'}${user.avatarUrl}`;
-      }
-    }
-    // Nếu không có avatarUrl nhưng có avatar.path thì sử dụng
-    else if (user?.avatar?.path) {
-      return getMediaUrl(user.avatar.path);
-    }
-    // Nếu không có cả hai thì trả về null (sẽ dùng default)
-    return null;
+    return defaultAvatar;
   };
-
-  // Log thông tin avatar để debug
-  useEffect(() => {
-    const avatarUrl = getAvatarUrl();
-    console.log('Thông tin avatar:', {
-      userAvatar: user?.avatarUrl,
-      processedUrl: avatarUrl,
-      defaultPath: DEFAULT_AVATAR
-    });
-  }, [user]);
 
   // --- Render Layout ---
   return (
@@ -321,38 +288,24 @@ const DashboardLayout = () => {
                     aria-haspopup="true"
                     onClick={() => setIsProfileOpen(!isProfileOpen)}
                   >
-                    <span className="sr-only">Mở menu người dùng</span>
-                    {/* Hiển thị avatar - sửa lại xử lý URL đầy đủ */}
+                    <span className="sr-only">Mở menu người dùng</span>                    {/* Hiển thị avatar - sửa lại xử lý URL đầy đủ */}
                     {(() => {
                       const avatarUrl = getAvatarUrl();
-                      console.log('Rendering avatar with URL:', avatarUrl);
 
-
-
-                      if (avatarUrl) {
-                        // Có URL avatar hợp lệ
-                        return (
-                          <img
-                            className="h-8 w-8 rounded-full bg-gray-200 object-cover border border-gray-200"
-                            src={avatarUrl}
-                            alt="User Avatar"
-                            onError={(e) => {
-                              console.error('Avatar load error:', e);
-                              console.log('Failed URL:', e.target.src);
-                              e.target.onerror = null;
-                              e.target.src = DEFAULT_AVATAR;
-                            }}
-                          />
-
-                        );
-                      } else {
-                        // Không có avatar, hiển thị mặc định
-                        return (
-                          <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                            <UserCircleIcon className="h-7 w-7 text-gray-500" aria-hidden="true" />
-                          </div>
-                        );
-                      }
+                      // Luôn hiển thị ảnh, nếu load lỗi thì fallback về defaultAvatar
+                      return (
+                        <img
+                          className="h-8 w-8 rounded-full bg-gray-200 object-cover border border-gray-200"
+                          src={avatarUrl}
+                          alt="User Avatar"
+                          onError={(e) => {
+                            console.error('Avatar load error:', e);
+                            console.log('Failed URL:', e.target.src);
+                            e.target.onerror = null;
+                            e.target.src = defaultAvatar;
+                          }}
+                        />
+                      );
                     })()}
                     <span className="hidden lg:flex lg:items-center">
                       <span className="ml-3 text-sm font-semibold leading-6 text-gray-900" aria-hidden="true">

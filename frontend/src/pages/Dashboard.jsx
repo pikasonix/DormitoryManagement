@@ -65,7 +65,7 @@ const Dashboard = () => {
             apiClient.get(`/dashboard/room-statistics${buildingQueryParam}`),
 
             // Lấy yêu cầu bảo trì PENDING, lọc theo tòa nhà nếu là Staff
-            apiClient.get(`/maintenance?status=PENDING&limit=1${isStaffWithBuilding ? `&buildingId=${managedBuildingId}` : ''}`),
+            apiClient.get(`/maintenances?status=PENDING&limit=1${isStaffWithBuilding ? `&buildingId=${managedBuildingId}` : ''}`),
 
             // Lấy hóa đơn chưa thanh toán, lọc theo tòa nhà nếu là Staff
             apiClient.get(`/invoices?status=UNPAID&limit=1${isStaffWithBuilding ? `&buildingId=${managedBuildingId}` : ''}`),

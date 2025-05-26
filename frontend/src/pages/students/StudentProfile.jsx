@@ -16,6 +16,7 @@ import {
     PhoneIcon,
     TruckIcon
 } from '@heroicons/react/24/outline';
+import defaultAvatar from '../../assets/default-avatar.png';
 
 // Helper format date
 const formatDate = (dateString) => {
@@ -127,16 +128,9 @@ const StudentProfile = ({ overrideStudent = null, hideNavigation = false }) => {
                 {(value !== null && value !== undefined && value !== '') ? value : <span className="text-gray-400">-</span>}
             </dd>
         </div>
-    );
-
-    // Get avatar URL
+    );    // Get avatar URL - always use default avatar
     const getAvatarUrl = (profile) => {
-        const baseUrl = import.meta.env.VITE_UPLOADS_URL || '';
-        if (profile?.user?.avatar?.path) {
-            const path = profile.user.avatar.path;
-            return path.startsWith('http') ? path : `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
-        }
-        return '/src/assets/default-avatar.png';
+        return defaultAvatar;
     };
 
     // Render basic information tab
@@ -327,7 +321,7 @@ const StudentProfile = ({ overrideStudent = null, hideNavigation = false }) => {
                             src={avatarUrl}
                             alt={`Avatar của ${profile.fullName}`}
                             className="h-20 w-20 rounded-full object-cover ring-2 ring-offset-2 ring-indigo-500"
-                            onError={(e) => { e.target.onerror = null; e.target.src = '/src/assets/default-avatar.png' }}
+                            onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar }}
                         />
                         <div>
                             <h2 className="text-xl font-semibold text-gray-900">{profile.fullName}</h2>

@@ -3,6 +3,7 @@ import { mediaService } from '../../services/media.service'; // Import service u
 import { toast } from 'react-hot-toast';
 import { ArrowUpTrayIcon, TrashIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import LoadingSpinner from './LoadingSpinner'; // Import Spinner
+import defaultAvatar from '../../assets/default-avatar.png';
 
 const ImageUpload = ({
     label = "Tải ảnh lên",
@@ -225,7 +226,7 @@ const ImageUpload = ({
                                     src={displayUrl}
                                     alt={`Preview ${index + 1}`}
                                     className="object-cover w-full h-full bg-gray-100"
-                                    onError={(e) => { e.target.onerror = null; e.target.src = 'src/assets/default-avatar.png'; }} // Fallback
+                                    onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatar; }} // Fallback
                                 />
                                 {/* Nút xóa */}
                                 {!disabled && !isProcessing && (
